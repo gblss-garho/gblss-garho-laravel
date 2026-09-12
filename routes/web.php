@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\TeacherAttendanceController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -21,6 +22,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
 Route::middleware(['auth', 'role:teacher'])->group(function () {
     Route::get('/teacher/dashboard', fn () => view('dashboards.teacher'))->name('teacher.dashboard');
+    Route::get('/teacher/attendance', [TeacherAttendanceController::class, 'index'])->name('teacher.attendance.index');
+    Route::post('/teacher/attendance/checkin', [TeacherAttendanceController::class, 'checkIn'])->name('teacher.attendance.checkin');
+    Route::post('/teacher/attendance/checkout', [TeacherAttendanceController::class, 'checkOut'])->name('teacher.attendance.checkout');
 });
 
 Route::middleware(['auth', 'role:parent'])->group(function () {
