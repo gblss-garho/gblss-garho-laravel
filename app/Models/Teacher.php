@@ -23,6 +23,7 @@ class Teacher extends Model
         return [
             'dob' => 'date',
             'entry_in_service' => 'date',
+            'face_descriptor' => 'array',
         ];
     }
 

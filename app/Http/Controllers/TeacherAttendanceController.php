@@ -3,17 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\TeacherAttendance;
+use App\Services\FaceRecognitionService;
 use App\Services\SchoolScheduleService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class TeacherAttendanceController extends Controller
 {
-    public function __construct(protected SchoolScheduleService $schedule)
-    {
+    public function __construct(
+        protected SchoolScheduleService $schedule,
+        protected FaceRecognitionService $face,
+    ) {
     }
 
-    /** Shows the check-in/check-out screen with current window status. */
     public function index(Request $request)
     {
         $teacher = $request->user()->teacher;
@@ -30,6 +33,7 @@ class TeacherAttendanceController extends Controller
             'isSchoolDay' => $this->schedule->isSchoolDay($now),
             'canCheckIn' => $this->schedule->isWithinCheckInWindow($now),
             'canCheckOut' => $this->schedule->isWithinCheckOutWindow($now),
+            'isFaceEnrolled' => $teacher && ! empty($teacher->face_descriptor),
         ]);
     }
 
@@ -40,10 +44,25 @@ class TeacherAttendanceController extends Controller
             return back()->withErrors(['attendance' => 'Aapke account se koi teacher record linked nahi hai.']);
         }
 
+        if (empty($teacher->face_descriptor)) {
+            return redirect()->route('teacher.face.enroll', [], false)
+                ->withErrors(['attendance' => 'Pehle apna chehra enroll karen.']);
+        }
+
         $now = Carbon::now();
 
         if (! $this->schedule->isWithinCheckInWindow($now)) {
             return back()->withErrors(['attendance' => 'Check-in sirf 8:00–8:30 AM ke darmiyan school ke dinon mein ho sakta hai.']);
+        }
+
+        try {
+            $descriptor = FaceEnrollController::decodeDescriptorOrFail($request->input('descriptor_json'));
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        if (! $this->face->isMatch($teacher->face_descriptor, $descriptor)) {
+            return back()->withErrors(['attendance' => 'Chehra match nahi hua. Dobara try karen ya achi roshni mein camera use karen.']);
         }
 
         $record = TeacherAttendance::firstOrNew([
@@ -56,7 +75,7 @@ class TeacherAttendanceController extends Controller
         }
 
         $record->check_in_at = $now;
-        $record->check_in_method = $request->input('method', 'manual'); // Phase 4b sets this to face_recognition
+        $record->check_in_method = 'face_recognition';
         $record->save();
 
         return back()->with('status', 'Check-in ho gaya: ' . $now->format('h:i A'));
@@ -69,10 +88,25 @@ class TeacherAttendanceController extends Controller
             return back()->withErrors(['attendance' => 'Aapke account se koi teacher record linked nahi hai.']);
         }
 
+        if (empty($teacher->face_descriptor)) {
+            return redirect()->route('teacher.face.enroll', [], false)
+                ->withErrors(['attendance' => 'Pehle apna chehra enroll karen.']);
+        }
+
         $now = Carbon::now();
 
         if (! $this->schedule->isWithinCheckOutWindow($now)) {
             return back()->withErrors(['attendance' => 'Check-out sirf school khatam hone se pehle aakhri 15 minutes mein ho sakta hai.']);
+        }
+
+        try {
+            $descriptor = FaceEnrollController::decodeDescriptorOrFail($request->input('descriptor_json'));
+        } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        }
+
+        if (! $this->face->isMatch($teacher->face_descriptor, $descriptor)) {
+            return back()->withErrors(['attendance' => 'Chehra match nahi hua. Dobara try karen ya achi roshni mein camera use karen.']);
         }
 
         $record = TeacherAttendance::where('teacher_id', $teacher->id)
@@ -88,7 +122,7 @@ class TeacherAttendanceController extends Controller
         }
 
         $record->check_out_at = $now;
-        $record->check_out_method = $request->input('method', 'manual');
+        $record->check_out_method = 'face_recognition';
         $record->save();
 
         return back()->with('status', 'Check-out ho gaya: ' . $now->format('h:i A'));
