@@ -29,7 +29,7 @@ class LoginController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended($this->dashboardPathFor(Auth::user()));
+        return redirect($this->dashboardPathFor(Auth::user()));
     }
 
     public function logout(Request $request)
