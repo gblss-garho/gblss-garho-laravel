@@ -32,3 +32,4 @@ Default seeded admin: `wariskatyar2015@gmail.com` / `password` (change immediate
 ## Reference
 The original site is not included in this skeleton — keep using your live
 GitHub Pages + Supabase site as the reference while each phase is rebuilt.
+https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/tiny_face_detector_model-weights_manifest.json

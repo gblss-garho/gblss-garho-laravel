@@ -29,7 +29,7 @@ class FaceEnrollController extends Controller
         $teacher->face_descriptor = $descriptor;
         $teacher->save();
 
-        return redirect()->route('teacher.attendance.index', [], false)
+        return redirect(route('teacher.attendance.index', [], false))
             ->with('status', 'Chehra successfully enroll ho gaya. Ab aap face se check-in/check-out kar sakte hain.');
     }
 
