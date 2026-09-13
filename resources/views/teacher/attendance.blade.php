@@ -16,12 +16,14 @@
         </div>
     @endif
 
+    @if (! $isFaceEnrolled)
+        <p>Attendance ke liye pehle apna chehra enroll karna zaroori hai (yeh ek dafa karna hoga).</p>
+        <p><a href="{{ route('teacher.face.enroll', [], false) }}">Chehra Enroll Karen</a></p>
+    @endif
+
     @if (! $isSchoolDay)
         <p>Aaj school off hai (Saturday/Sunday).</p>
-    @elseif (! $isFaceEnrolled)
-        <p>Attendance ke liye pehle apna chehra enroll karna zaroori hai.</p>
-        <p><a href="{{ route('teacher.face.enroll', [], false) }}">Chehra Enroll Karen</a></p>
-    @else
+    @elseif ($isFaceEnrolled)
         <p>Check-in window: 8:00–8:30 AM. Check-out window: school khatam hone se 15 minute pehle.</p>
 
         <p>
