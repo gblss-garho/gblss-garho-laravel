@@ -2,18 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasQrCode;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Student extends Model
 {
+    use HasQrCode;
+
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'id', 'gr_number', 'name', 'father_name', 'dob', 'class', 'section',
         'address', 'guardian_phone', 'photo_url', 'admission_date',
-        'passed_out', 'pass_out_year', 'status', 'results_class_override',
+        'passed_out', 'pass_out_year', 'status', 'results_class_override', 'qr_code',
     ];
 
     protected function casts(): array

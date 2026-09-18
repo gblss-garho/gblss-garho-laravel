@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasQrCode;
 use Illuminate\Database\Eloquent\Model;
 
 class Teacher extends Model
 {
+    use HasQrCode;
+
     protected $keyType = 'string';
     public $incrementing = false;
 
@@ -13,7 +16,7 @@ class Teacher extends Model
         'id', 'user_id', 'name', 'cnic', 'pid', 'dob', 'subject', 'designation',
         'qualification', 'experience', 'entry_in_service', 'photo_url',
         'auth_email', 'portal_pin', 'intro_line', 'syllabus_plan',
-        'progress_notes', 'school_name', 'assigned_class',
+        'progress_notes', 'school_name', 'assigned_class', 'qr_code',
     ];
 
     protected $hidden = ['cnic', 'portal_pin']; // never exposed to public views

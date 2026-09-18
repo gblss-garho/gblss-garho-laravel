@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class AttendanceMark extends Model
 {
-    protected $fillable = ['attendance_record_id', 'student_id', 'status'];
+    protected $fillable = ['attendance_record_id', 'student_id', 'status', 'marked_via'];
 
     public function record()
     {
