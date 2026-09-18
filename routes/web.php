@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\FaceEnrollController;
 use App\Http\Controllers\TeacherAttendanceController;
+use App\Http\Controllers\TeacherQrScanController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -28,6 +29,8 @@ Route::middleware(['auth', 'role:teacher'])->group(function () {
     Route::post('/teacher/attendance/checkout', [TeacherAttendanceController::class, 'checkOut'])->name('teacher.attendance.checkout');
     Route::get('/teacher/face-enroll', [FaceEnrollController::class, 'show'])->name('teacher.face.enroll');
     Route::post('/teacher/face-enroll', [FaceEnrollController::class, 'store'])->name('teacher.face.enroll.store');
+    Route::get('/teacher/qr-scan', [TeacherQrScanController::class, 'show'])->name('teacher.qr.scan');
+    Route::post('/teacher/qr-scan', [TeacherQrScanController::class, 'store'])->name('teacher.qr.scan.store');
 });
 
 Route::middleware(['auth', 'role:parent'])->group(function () {

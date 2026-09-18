@@ -57,4 +57,18 @@ class SchoolScheduleService
 
         return $now->between($start, $end);
     }
+
+    /** True on school days between the day's start and end time. */
+    public function isWithinSchoolHours(Carbon $now): bool
+    {
+        $hours = $this->hoursFor($now);
+        if ($hours === null) {
+            return false;
+        }
+
+        $start = $now->copy()->setTimeFromTimeString($hours[0]);
+        $end = $now->copy()->setTimeFromTimeString($hours[1]);
+
+        return $now->between($start, $end);
+    }
 }
