@@ -15,12 +15,12 @@
     .small { font-size: 10px; }
     h1 { font-size: 20px; margin: 6px 0 4px; }
     h2 { font-size: 17px; margin: 4px 0; }
-    table.f { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.f { width: 100%; border-collapse: collapse;  }
     table.f td { padding: 7px 4px 2px; vertical-align: bottom; }
     td.lbl2 { padding-left: 8px; }
     td.val { border-bottom: 1px solid #000; text-align: center; font-weight: bold; }
     .dash { border-top: 1px dashed #666; margin-top: 14px; padding-top: 6px; }
-    table.sig { width: 100%; border-collapse: collapse; margin-top: 190px; }
+    table.sig { width: 100%; border-collapse: collapse; margin-top: 0; }
     table.sig td.line { border-top: 1px solid #000; width: 40%; text-align: center; padding-top: 4px; }
     table.sig td.gap { width: 20%; }
 </style>
@@ -36,10 +36,10 @@
 
     <table class="f">
         <tr>
-            <td style="width:26px;padding:0;height:0;font-size:0;line-height:0"></td>
-            <td style="width:200px;padding:0;height:0;font-size:0;line-height:0"></td>
+            <td width="26" style="width:26px;padding:0;height:0;font-size:0;line-height:0"></td>
+            <td width="250" style="width:250px;padding:0;height:0;font-size:0;line-height:0"></td>
             <td style="padding:0;height:0;font-size:0;line-height:0"></td>
-            <td style="width:190px;padding:0;height:0;font-size:0;line-height:0"></td>
+            <td width="190" style="width:190px;padding:0;height:0;font-size:0;line-height:0"></td>
             <td style="padding:0;height:0;font-size:0;line-height:0"></td>
         </tr>
         <tr><td colspan="2">School General Register No.:</td><td class="val">{{ $c->gr_number }}</td><td colspan="2"></td></tr>
@@ -66,6 +66,7 @@
 
     <div class="center" style="margin-top:30px;">Date of Issue: <strong>{{ $fmt($c->issue_date) }}</strong></div>
 
+    <div style="height:150px;"></div>
     <table class="sig">
         <tr>
             <td class="line">School Head Master</td>
