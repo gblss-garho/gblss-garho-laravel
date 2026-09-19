@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminPromotionController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\FaceEnrollController;
 use App\Http\Controllers\TeacherAttendanceController;
@@ -20,6 +21,10 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/dashboard', fn () => view('dashboards.admin'))->name('admin.dashboard');
+    Route::get('/admin/promotions', [AdminPromotionController::class, 'history'])->name('admin.promotions.history');
+    Route::get('/admin/promotions/{batch}/review', [AdminPromotionController::class, 'review'])->name('admin.promotions.review');
+    Route::post('/admin/promotions/{batch}/undo', [AdminPromotionController::class, 'undo'])->name('admin.promotions.undo');
+    Route::post('/admin/promotions/{batch}/undo/{student}', [AdminPromotionController::class, 'undoStudent'])->name('admin.promotions.undoStudent');
 });
 
 Route::middleware(['auth', 'role:teacher'])->group(function () {
