@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminLeavingCertificateController;
 use App\Http\Controllers\AdminPromotionController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\FaceEnrollController;
@@ -25,6 +26,10 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/promotions/{batch}/review', [AdminPromotionController::class, 'review'])->name('admin.promotions.review');
     Route::post('/admin/promotions/{batch}/undo', [AdminPromotionController::class, 'undo'])->name('admin.promotions.undo');
     Route::post('/admin/promotions/{batch}/undo/{student}', [AdminPromotionController::class, 'undoStudent'])->name('admin.promotions.undoStudent');
+    Route::get('/admin/leaving-certificates', [AdminLeavingCertificateController::class, 'index'])->name('admin.leaving-certificates.index');
+    Route::get('/admin/leaving-certificates/create/{student}', [AdminLeavingCertificateController::class, 'create'])->name('admin.leaving-certificates.create');
+    Route::post('/admin/leaving-certificates/{student}', [AdminLeavingCertificateController::class, 'store'])->name('admin.leaving-certificates.store');
+    Route::get('/admin/leaving-certificates/{certificate}/pdf', [AdminLeavingCertificateController::class, 'pdf'])->name('admin.leaving-certificates.pdf');
 });
 
 Route::middleware(['auth', 'role:teacher'])->group(function () {

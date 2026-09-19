@@ -10,7 +10,7 @@ class LeavingCertificate extends Model
     public $incrementing = false;
 
     protected $fillable = [
-        'id', 'student_id', 'gr_number', 'name', 'father_name', 'dob', 'dob_words',
+        'id', 'serial_no', 'student_id', 'gr_number', 'name', 'father_name', 'dob', 'dob_words',
         'caste', 'religion', 'place_of_birth', 'admission_date', 'admitted_class',
         'passed_class', 'year', 'progress', 'conduct', 'dues', 'reason', 'remarks',
         'last_school', 'leaving_date', 'issue_date',
