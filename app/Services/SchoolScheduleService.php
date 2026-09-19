@@ -23,7 +23,7 @@ class SchoolScheduleService
             return ['08:00', '12:30']; // Friday
         }
 
-        return ['08:00', '13:30']; // Monday–Thursday
+        return ['08:00', '13:30']; // Monday-Thursday
     }
 
     public function isSchoolDay(Carbon $date): bool
@@ -31,7 +31,7 @@ class SchoolScheduleService
         return $this->hoursFor($date) !== null;
     }
 
-    /** Teacher check-in window: 08:00–08:30 on school days. */
+    /** Teacher check-in window: 08:00-08:30 on school days. */
     public function isWithinCheckInWindow(Carbon $now): bool
     {
         if (! $this->isSchoolDay($now)) {
@@ -70,5 +70,15 @@ class SchoolScheduleService
         $end = $now->copy()->setTimeFromTimeString($hours[1]);
 
         return $now->between($start, $end);
+    }
+
+    /** Returns the academic year string (e.g. "2025-2026") for the given date. Academic year runs 1 Apr - 31 Mar. */
+    public function academicYearFor(Carbon $date): string
+    {
+        if ($date->month >= 4) {
+            return $date->year . '-' . ($date->year + 1);
+        }
+
+        return ($date->year - 1) . '-' . $date->year;
     }
 }
