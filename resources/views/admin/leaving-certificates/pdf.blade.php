@@ -1,5 +1,7 @@
 @php
     $fmt = fn ($d) => $d ? $d->format('M d, Y') : '';
+    $emblem = public_path('images/lc/emblem.jpg');
+    $border = public_path('images/lc/border.jpg');
 @endphp
 <!DOCTYPE html>
 <html lang="en">
@@ -7,39 +9,57 @@
 <meta charset="utf-8">
 <title>School Leaving Certificate</title>
 <style>
-    @page { margin: 18px; }
-    body { font-family: DejaVu Sans, sans-serif; font-size: 11px; color: #000; margin: 0; }
-    .frame { border: 6px double #3f7f7a; padding: 22px 28px; height: 990px; }
+    @page { margin: 0; }
+    body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #000; margin: 0; }
+    .bg { z-index: -5; position: fixed; top: 0; left: 0; width: 595.28pt; height: 841.89pt; }
+    .frame { padding: 94px 97px 0 97px; }
     .center { text-align: center; }
     .right { text-align: right; }
-    .small { font-size: 10px; }
-    h1 { font-size: 20px; margin: 6px 0 4px; }
-    h2 { font-size: 17px; margin: 4px 0; }
-    table.f { width: 100%; border-collapse: collapse;  }
-    table.f td { padding: 7px 4px 2px; vertical-align: bottom; }
+    .small { font-size: 9px; }
+    h1 { font-size: 19px; margin: 2px 0 4px; }
+    h2 { font-size: 14px; margin: 3px 0; }
+    table.f { font-size: 9.5px; width: 100%; border-collapse: collapse; }
+    table.f td { padding: 11px 4px 3px; vertical-align: bottom; }
     td.lbl2 { padding-left: 8px; }
     td.val { border-bottom: 1px solid #000; text-align: center; font-weight: bold; }
-    .dash { border-top: 1px dashed #666; margin-top: 14px; padding-top: 6px; }
-    table.sig { width: 100%; border-collapse: collapse; margin-top: 0; }
+    .dash { border-top: 1px dashed #666; margin-top: 16px; padding-top: 6px; }
+    table.sig { width: 100%; border-collapse: collapse; }
     table.sig td.line { border-top: 1px solid #000; width: 40%; text-align: center; padding-top: 4px; }
     table.sig td.gap { width: 20%; }
 </style>
 </head>
 <body>
+@if (is_file($border))
+    <img class="bg" src="{{ $border }}">
+@endif
 <div class="frame">
     <div class="right small">LC No.: {{ $c->serial_no ? sprintf('LC-%04d', $c->serial_no) : '-' }}</div>
     <div class="center small">Form No.: 16</div>
-    <div class="center"><h1>SCHOOL LEAVING CERTIFICATE</h1></div>
-    <div class="center"><h2>{{ $school['name'] }}</h2></div>
-    <div class="center"><strong>(SEMIS Code: {{ $school['code'] }})</strong></div>
-    <div class="center small">{{ $school['address'] }}</div>
 
+    <table style="width:100%;border-collapse:collapse;margin-top:4px;">
+        <tr>
+            <td style="width:70px;padding:0;text-align:left;vertical-align:middle;">
+                @if (is_file($emblem))<img src="{{ $emblem }}" width="58">@endif
+            </td>
+            <td class="center" style="padding:0;vertical-align:middle;">
+                <h1>SCHOOL LEAVING CERTIFICATE</h1>
+                <h2>{{ $school['name'] }}</h2>
+                <strong>(SEMIS Code: {{ $school['code'] }})</strong>
+                <div class="small">{{ $school['address'] }}</div>
+            </td>
+            <td style="width:70px;padding:0;text-align:right;vertical-align:middle;">
+                @if (is_file($emblem))<img src="{{ $emblem }}" width="58">@endif
+            </td>
+        </tr>
+    </table>
+
+    <div style="height:6px;"></div>
     <table class="f">
         <tr>
-            <td width="26" style="width:26px;padding:0;height:0;font-size:0;line-height:0"></td>
-            <td width="250" style="width:250px;padding:0;height:0;font-size:0;line-height:0"></td>
+            <td width="22" style="width:22px;padding:0;height:0;font-size:0;line-height:0"></td>
+            <td width="222" style="width:222px;padding:0;height:0;font-size:0;line-height:0"></td>
             <td style="padding:0;height:0;font-size:0;line-height:0"></td>
-            <td width="190" style="width:190px;padding:0;height:0;font-size:0;line-height:0"></td>
+            <td width="160" style="width:160px;padding:0;height:0;font-size:0;line-height:0"></td>
             <td style="padding:0;height:0;font-size:0;line-height:0"></td>
         </tr>
         <tr><td colspan="2">School General Register No.:</td><td class="val">{{ $c->gr_number }}</td><td colspan="2"></td></tr>
@@ -64,9 +84,9 @@
         * Date format: mmm dd, yyyy
     </div>
 
-    <div class="center" style="margin-top:30px;">Date of Issue: <strong>{{ $fmt($c->issue_date) }}</strong></div>
+    <div class="center" style="margin-top:26px;">Date of Issue: <strong>{{ $fmt($c->issue_date) }}</strong></div>
 
-    <div style="height:150px;"></div>
+    <div style="height:170px;"></div>
     <table class="sig">
         <tr>
             <td class="line">School Head Master</td>
