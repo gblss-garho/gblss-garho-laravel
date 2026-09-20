@@ -118,7 +118,7 @@ class AdminLeavingCertificateController extends Controller
 
         return [
             'name' => $info?->name ?: 'Government Boys Lower Secondary School Garho',
-            'code' => $info?->emis_code ?: '404030082',
+            'code' => $info?->semis_code ?: '404030082',
             'address' => $info?->address ?: 'Taluka Ketibunder, District Thatta, Sindh, Pakistan',
         ];
     }
