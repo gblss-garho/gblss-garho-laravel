@@ -32,6 +32,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/leaving-certificates/{certificate}/pdf', [AdminLeavingCertificateController::class, 'pdf'])->name('admin.leaving-certificates.pdf');
     Route::get('/admin/id-cards', [\App\Http\Controllers\AdminIdCardController::class, 'index'])->name('admin.id-cards.index');
     Route::get('/admin/id-cards/{student}/pdf', [\App\Http\Controllers\AdminIdCardController::class, 'pdf'])->name('admin.id-cards.pdf');
+    Route::get('/admin/staff-id-cards', [\App\Http\Controllers\AdminStaffIdCardController::class, 'index'])->name('admin.staff-id-cards.index');
+    Route::get('/admin/staff-id-cards/{teacher}/pdf', [\App\Http\Controllers\AdminStaffIdCardController::class, 'pdf'])->name('admin.staff-id-cards.pdf');
     Route::get('/admin/admit-cards', [\App\Http\Controllers\AdminAdmitCardController::class, 'index'])->name('admin.admit-cards.index');
     Route::get('/admin/admit-cards/{student}/pdf', [\App\Http\Controllers\AdminAdmitCardController::class, 'pdf'])->name('admin.admit-cards.pdf');
 });

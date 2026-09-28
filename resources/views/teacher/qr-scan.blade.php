@@ -20,6 +20,9 @@
         <input type="text" id="manual_code" maxlength="32" autocapitalize="characters">
         <button type="button" id="manual_submit">Mark Present</button>
 
+        <p>Ya gallery/screenshot se QR image select karein:</p>
+        <input type="file" id="qr_file" accept="image/*">
+
         <h2>Abhi ki scans</h2>
         <ul id="log"></ul>
 
@@ -120,7 +123,29 @@
                 if (code) { submitCode(code); input.value = ''; }
             });
 
-            window.addEventListener('pagehide', function () {
+            document.getElementById('qr_file').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) { return; }
+            const img = new Image();
+            img.onload = function () {
+                const scale = Math.min(1, MAX_WIDTH / img.width);
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const found = jsQR(data.data, data.width, data.height, { inversionAttempts: 'dontInvert' });
+                if (found && found.data) {
+                    submitCode(found.data.trim().toUpperCase());
+                } else {
+                    show('QR image mein code nahi mila.', false);
+                }
+            };
+            img.onerror = function () { show('Image load nahi ho saki.', false); };
+            img.src = URL.createObjectURL(file);
+            e.target.value = '';
+        });
+
+        window.addEventListener('pagehide', function () {
                 if (video.srcObject) { video.srcObject.getTracks().forEach(function (t) { t.stop(); }); }
             });
 
