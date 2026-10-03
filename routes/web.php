@@ -56,3 +56,4 @@ Route::middleware(['auth', 'role:parent'])->group(function () {
 Route::middleware(['auth', 'role:student'])->group(function () {
     Route::get('/student/dashboard', fn () => view('dashboards.student'))->name('student.dashboard');
 });
+Route::get('/teacher/absentees', [\App\Http\Controllers\TeacherAbsenteesController::class, 'index'])->name('teacher.absentees');
