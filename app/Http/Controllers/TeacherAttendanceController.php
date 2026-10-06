@@ -24,7 +24,7 @@ class TeacherAttendanceController extends Controller
         $today = $now->toDateString();
 
         $record = $teacher
-            ? TeacherAttendance::where('teacher_id', $teacher->id)->where('date', $today)->first()
+            ? TeacherAttendance::where('teacher_id', $teacher->id)->whereDate('date', $today)->first()
             : null;
 
         return view('teacher.attendance', [
@@ -65,10 +65,7 @@ class TeacherAttendanceController extends Controller
             return back()->withErrors(['attendance' => 'Chehra match nahi hua. Dobara try karen ya achi roshni mein camera use karen.']);
         }
 
-        $record = TeacherAttendance::firstOrNew([
-            'teacher_id' => $teacher->id,
-            'date' => $now->toDateString(),
-        ]);
+        $record = TeacherAttendance::whereDate('date', $now->toDateString())->where('teacher_id', $teacher->id)->first() ?? new TeacherAttendance(['teacher_id' => $teacher->id, 'date' => $now->toDateString()]);
 
         if ($record->exists && $record->check_in_at) {
             return back()->withErrors(['attendance' => 'Aap aaj already check-in kar chuke hain.']);
@@ -110,7 +107,7 @@ class TeacherAttendanceController extends Controller
         }
 
         $record = TeacherAttendance::where('teacher_id', $teacher->id)
-            ->where('date', $now->toDateString())
+            ->whereDate('date', $now->toDateString())
             ->first();
 
         if (! $record || ! $record->check_in_at) {
