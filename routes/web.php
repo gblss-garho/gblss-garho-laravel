@@ -57,3 +57,7 @@ Route::middleware(['auth', 'role:student'])->group(function () {
     Route::get('/student/dashboard', fn () => view('dashboards.student'))->name('student.dashboard');
 });
 Route::get('/teacher/absentees', [\App\Http\Controllers\TeacherAbsenteesController::class, 'index'])->name('teacher.absentees');
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::resource('students', \App\Http\Controllers\AdminStudentController::class)->except(['show']);
+    Route::get('results', [\App\Http\Controllers\AdminResultController::class, 'index'])->name('results.index');
+});
