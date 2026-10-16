@@ -78,3 +78,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/content')->name('admin.
     Route::post('/event', [\App\Http\Controllers\AdminContentController::class, 'addEvent'])->name('event.add');
     Route::delete('/event/{id}', [\App\Http\Controllers\AdminContentController::class, 'deleteEvent'])->name('event.delete');
 });
+
+Route::middleware(['auth', 'role:teacher'])->prefix('teacher/homework')->name('teacher.homework.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\TeacherHomeworkController::class, 'index'])->name('index');
+    Route::post('/', [\App\Http\Controllers\TeacherHomeworkController::class, 'store'])->name('store');
+    Route::delete('/{id}', [\App\Http\Controllers\TeacherHomeworkController::class, 'destroy'])->name('destroy');
+});
