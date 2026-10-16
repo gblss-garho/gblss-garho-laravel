@@ -61,3 +61,8 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::resource('students', \App\Http\Controllers\AdminStudentController::class)->except(['show']);
     Route::get('results', [\App\Http\Controllers\AdminResultController::class, 'index'])->name('results.index');
 });
+
+Route::middleware(['auth', 'role:admin'])->post('/admin/results/toggle', [\App\Http\Controllers\AdminResultPublishController::class, 'toggle'])->name('admin.results.toggle');
+
+Route::get('/parent-lookup', [\App\Http\Controllers\PublicLookupController::class, 'show'])->name('public.lookup');
+Route::post('/parent-lookup', [\App\Http\Controllers\PublicLookupController::class, 'check'])->middleware('throttle:30,1')->name('public.lookup.check');
