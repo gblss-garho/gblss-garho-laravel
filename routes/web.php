@@ -70,3 +70,11 @@ Route::post('/parent-lookup', [\App\Http\Controllers\PublicLookupController::cla
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::resource('teachers', \App\Http\Controllers\AdminTeacherController::class)->except(['show']);
 });
+
+Route::middleware(['auth', 'role:admin'])->prefix('admin/content')->name('admin.content.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\AdminContentController::class, 'index'])->name('index');
+    Route::post('/notice', [\App\Http\Controllers\AdminContentController::class, 'addNotice'])->name('notice.add');
+    Route::delete('/notice/{id}', [\App\Http\Controllers\AdminContentController::class, 'deleteNotice'])->name('notice.delete');
+    Route::post('/event', [\App\Http\Controllers\AdminContentController::class, 'addEvent'])->name('event.add');
+    Route::delete('/event/{id}', [\App\Http\Controllers\AdminContentController::class, 'deleteEvent'])->name('event.delete');
+});
