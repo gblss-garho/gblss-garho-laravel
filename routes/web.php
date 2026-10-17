@@ -94,3 +94,13 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/settings')->name('admin
     Route::get('/', [\App\Http\Controllers\AdminSettingsController::class, 'edit'])->name('edit');
     Route::post('/', [\App\Http\Controllers\AdminSettingsController::class, 'update'])->name('update');
 });
+
+Route::middleware(['auth', 'role:teacher'])->prefix('teacher/leave')->name('teacher.leave.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\TeacherLeaveController::class, 'index'])->name('index');
+    Route::post('/', [\App\Http\Controllers\TeacherLeaveController::class, 'store'])->name('store');
+});
+
+Route::middleware(['auth', 'role:admin'])->prefix('admin/leave')->name('admin.leave.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\AdminLeaveController::class, 'index'])->name('index');
+    Route::put('/{id}', [\App\Http\Controllers\AdminLeaveController::class, 'update'])->name('update');
+});

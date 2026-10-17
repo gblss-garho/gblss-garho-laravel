@@ -10,6 +10,7 @@
     <p><a href="{{ route('teacher.qr.scan', [], false) }}">QR Attendance (Students)</a></p>
     <p><a href="{{ route('teacher.absentees', [], false) }}">Absentees (WhatsApp)</a></p>
     <p><a href="{{ route('teacher.homework.index', [], false) }}">Homework</a></p>
+    <p><a href="{{ route('teacher.leave.index', [], false) }}">Chhutti ki darkhwast</a></p>
     <form method="POST" action="{{ route('logout', [], false) }}">
         @csrf
         <button type="submit">Logout</button>
