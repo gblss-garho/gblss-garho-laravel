@@ -38,5 +38,29 @@
         @empty
             <p>Abhi koi homework nahi.</p>
         @endforelse
+        @php
+            $p = (int) ($attMonth['P'] ?? 0); $a = (int) ($attMonth['A'] ?? 0); $l = (int) ($attMonth['L'] ?? 0);
+            $tot = $p + $a + $l;
+        @endphp
+        <h3>Is mahine ki attendance ({{ now()->format('F Y') }})</h3>
+        @if ($tot > 0)
+            <p>Present: {{ $p }} | Absent: {{ $a }} | Leave: {{ $l }} | Fi sad: {{ round((($p + $l) / $tot) * 100) }}%</p>
+        @else
+            <p>Is mahine ka koi attendance record nahi.</p>
+        @endif
+
+        <h3>Taaza notices</h3>
+        @forelse ($notices as $n)
+            <p><b>{{ substr($n->date, 0, 10) }}</b> &mdash; {{ $n->text }}</p>
+        @empty
+            <p>Koi notice nahi.</p>
+        @endforelse
+
+        <h3>Aane wale events</h3>
+        @forelse ($events as $e)
+            <p><b>{{ substr($e->date, 0, 10) }}</b> &mdash; {{ $e->title }}</p>
+        @empty
+            <p>Koi event nahi.</p>
+        @endforelse
 @endif
 @endsection

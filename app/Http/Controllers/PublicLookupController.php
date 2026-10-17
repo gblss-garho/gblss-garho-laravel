@@ -64,6 +64,20 @@ class PublicLookupController extends Controller
         $exams = StudentResult::where('student_id', $student->id)->whereIn('exam_type', $published)
             ->orderBy('subject')->get()->groupBy('exam_type');
 
-        return view('pages.lookup', ['student' => $student, 'exams' => $exams, 'homework' => \App\Models\Homework::where('class_name', $student->class)->where('status', 'published')->orderByDesc('date')->limit(15)->get(), 'error' => null]);
+        return view('pages.lookup', ['student' => $student, 'exams' => $exams, 'homework' => \App\Models\Homework::where('class_name', $student->class)->where('status', 'published')->orderByDesc('date')->limit(15)->get(), 'error' => null] + $this->extras($student));
+    }
+
+    private function extras($student): array
+    {
+        $marks = DB::table('attendance_marks')
+            ->join('attendance_records', 'attendance_records.id', '=', 'attendance_marks.attendance_record_id')
+            ->where('attendance_marks.student_id', $student->id)
+            ->where('attendance_records.date', 'like', now()->format('Y-m') . '%')
+            ->selectRaw('attendance_marks.status as s, count(*) as c')
+            ->groupBy('attendance_marks.status')->pluck('c', 's');
+        $notices = DB::table('notices')->orderByDesc('date')->limit(5)->get();
+        $events = DB::table('calendar_events')->whereDate('date', '>=', now()->toDateString())->orderBy('date')->limit(5)->get();
+
+        return ['attMonth' => $marks, 'notices' => $notices, 'events' => $events];
     }
 }
