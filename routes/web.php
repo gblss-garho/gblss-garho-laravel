@@ -84,3 +84,13 @@ Route::middleware(['auth', 'role:teacher'])->prefix('teacher/homework')->name('t
     Route::post('/', [\App\Http\Controllers\TeacherHomeworkController::class, 'store'])->name('store');
     Route::delete('/{id}', [\App\Http\Controllers\TeacherHomeworkController::class, 'destroy'])->name('destroy');
 });
+
+Route::middleware(['auth', 'role:admin'])->prefix('admin/settings')->name('admin.settings.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\AdminSettingsController::class, 'edit'])->name('edit');
+    Route::post('/', [\App\Http\Controllers\AdminSettingsController::class, 'update'])->name('update');
+});
+
+Route::middleware(['auth', 'role:admin'])->prefix('admin/settings')->name('admin.settings.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\AdminSettingsController::class, 'edit'])->name('edit');
+    Route::post('/', [\App\Http\Controllers\AdminSettingsController::class, 'update'])->name('update');
+});
