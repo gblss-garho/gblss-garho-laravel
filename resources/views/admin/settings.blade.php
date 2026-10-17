@@ -14,6 +14,7 @@
             'attendance_radius' => 'Attendance radius (meter)',
             'time_in_window_start' => 'Check-in shuru (HH:MM)', 'time_in_window_end' => 'Check-in khatam (HH:MM)',
             'time_out_window_start' => 'Check-out shuru (HH:MM)', 'time_out_window_end' => 'Check-out khatam (HH:MM)',
+            'friday_time_out_window_start' => 'Friday check-out shuru (HH:MM)', 'friday_time_out_window_end' => 'Friday check-out khatam (HH:MM)',
             'weekly_off_days' => 'Haftawar chhutti (0=Sunday ... 6=Saturday, comma se, jaise 0,6)',
         ];
     @endphp

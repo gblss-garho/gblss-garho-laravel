@@ -12,7 +12,7 @@ class AdminSettingsController extends Controller
         'established_year', 'total_classes', 'current_exam_title', 'current_exam_year',
         'school_lat', 'school_lng', 'attendance_radius',
         'time_in_window_start', 'time_in_window_end',
-        'time_out_window_start', 'time_out_window_end', 'weekly_off_days',
+        'time_out_window_start', 'time_out_window_end', 'weekly_off_days', 'friday_time_out_window_start', 'friday_time_out_window_end',
     ];
 
     public function edit()
