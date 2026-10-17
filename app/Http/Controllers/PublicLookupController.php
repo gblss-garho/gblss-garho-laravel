@@ -64,6 +64,6 @@ class PublicLookupController extends Controller
         $exams = StudentResult::where('student_id', $student->id)->whereIn('exam_type', $published)
             ->orderBy('subject')->get()->groupBy('exam_type');
 
-        return view('pages.lookup', ['student' => $student, 'exams' => $exams, 'error' => null]);
+        return view('pages.lookup', ['student' => $student, 'exams' => $exams, 'homework' => \App\Models\Homework::where('class_name', $student->class)->where('status', 'published')->orderByDesc('date')->limit(15)->get(), 'error' => null]);
     }
 }

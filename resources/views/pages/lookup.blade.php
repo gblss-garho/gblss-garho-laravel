@@ -31,5 +31,12 @@
         @empty
             <p>Abhi is class ka koi result publish nahi hua.</p>
         @endforelse
-    @endif
+            <h3>Homework</h3>
+        @forelse ($homework as $h)
+            <p><b>{{ $h->date->format('d-m-Y') }} | {{ ucfirst($h->subject) }}</b><br>{{ $h->text }}
+            @if ($h->attachment_path)<br><a href="{{ asset('storage/' . $h->attachment_path) }}" target="_blank">{{ $h->attachment_name ?: 'File' }}</a>@endif</p>
+        @empty
+            <p>Abhi koi homework nahi.</p>
+        @endforelse
+@endif
 @endsection
