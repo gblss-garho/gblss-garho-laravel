@@ -104,3 +104,17 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/leave')->name('admin.le
     Route::get('/', [\App\Http\Controllers\AdminLeaveController::class, 'index'])->name('index');
     Route::put('/{id}', [\App\Http\Controllers\AdminLeaveController::class, 'update'])->name('update');
 });
+
+Route::get('/gallery', [\App\Http\Controllers\PublicPagesController::class, 'gallery'])->name('public.gallery');
+Route::get('/textbooks', [\App\Http\Controllers\PublicPagesController::class, 'textbooks'])->name('public.textbooks');
+Route::get('/feedback', [\App\Http\Controllers\PublicPagesController::class, 'feedbackForm'])->name('public.feedback');
+Route::post('/feedback', [\App\Http\Controllers\PublicPagesController::class, 'feedbackStore'])->middleware('throttle:5,10')->name('public.feedback.store');
+
+Route::middleware(['auth', 'role:admin'])->prefix('admin/media')->name('admin.media.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\AdminMediaController::class, 'index'])->name('index');
+    Route::post('/gallery', [\App\Http\Controllers\AdminMediaController::class, 'galleryAdd'])->name('gallery.add');
+    Route::delete('/gallery/{id}', [\App\Http\Controllers\AdminMediaController::class, 'galleryDelete'])->name('gallery.delete');
+    Route::post('/textbook', [\App\Http\Controllers\AdminMediaController::class, 'textbookAdd'])->name('textbook.add');
+    Route::delete('/textbook/{id}', [\App\Http\Controllers\AdminMediaController::class, 'textbookDelete'])->name('textbook.delete');
+    Route::delete('/feedback/{id}', [\App\Http\Controllers\AdminMediaController::class, 'feedbackDelete'])->name('feedback.delete');
+});
