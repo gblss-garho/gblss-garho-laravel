@@ -8,9 +8,7 @@ use App\Http\Controllers\TeacherAttendanceController;
 use App\Http\Controllers\TeacherQrScanController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('pages.home');
-})->name('home');
+Route::get('/', [\App\Http\Controllers\PublicHomeController::class, 'index'])->name('home');
 
 Route::get('/portal', function () {
     return view('pages.portal-select');
