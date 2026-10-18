@@ -102,7 +102,7 @@ class ImportSupabaseData extends Command
         }
         $tables = ['attendance_records', 'attendance_marks', 'teacher_attendance', 'student_results',
             'notices', 'calendar_events', 'homework', 'feedback', 'gallery', 'leave_requests',
-            'textbooks', 'leaving_certificates', 'school_info'];
+            'textbooks', 'leaving_certificates', 'school_info', 'bookbank_catalog', 'bookbank_issues'];
         $data = [];
         foreach ($tables as $t) {
             $data[$t] = $this->fetch($t);
@@ -218,6 +218,24 @@ class ImportSupabaseData extends Command
             $this->put('feedback', ['id' => $r['id']], [
                 'name' => $r['name'] ?: 'Anonymous', 'rating' => $r['rating'], 'message' => $r['message'],
                 'created_at' => $this->dt($r['created_at'] ?? null) ?? now()->toDateTimeString(),
+            ]);
+        });
+
+        $this->runSet('bookbank_catalog', $data['bookbank_catalog'], function ($r) {
+            $this->put('bookbank_catalog', ['id' => $r['id']], [
+                'class' => $r['class'] ?? null, 'subject' => $r['subject'] ?? null,
+                'book_title' => $r['book_title'] ?? null,
+                'available_qty' => (int) ($r['available_qty'] ?? 0), 'issued_qty' => (int) ($r['issued_qty'] ?? 0),
+            ]);
+        });
+
+        $this->runSet('bookbank_issues', $data['bookbank_issues'], function ($r) {
+            $this->put('bookbank_issues', ['id' => $r['id']], [
+                'student_id' => $r['student_id'] ?? null, 'student_name' => $r['student_name'] ?? null,
+                'class' => $r['class'] ?? null, 'book_title' => $r['book_title'] ?? null,
+                'issue_date' => $r['issue_date'] ?? null, 'return_date' => $r['return_date'] ?? null,
+                'condition' => isset($r['condition']) ? trim($r['condition']) : null,
+                'status' => $r['status'] ?? 'Issued',
             ]);
         });
 

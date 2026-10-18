@@ -15,6 +15,7 @@
     <p><a href="{{ route('admin.admit-cards.index', [], false) }}">Admit Cards</a></p>
     <p><a href="{{ route('admin.staff-id-cards.index', [], false) }}">Staff ID Cards</a></p>
     <p><a href="{{ route('admin.settings.edit', [], false) }}">School Settings</a></p>
+    <p><a href="{{ route('admin.bookbank.index', [], false) }}">Book Bank</a></p>
     <p><a href="{{ route('admin.leave.index', [], false) }}">Teacher Leave Requests</a></p>
     <p><a href="{{ route('admin.media.index', [], false) }}">Gallery, Textbooks &amp; Feedback</a></p>
     <form method="POST" action="{{ route('logout') }}">

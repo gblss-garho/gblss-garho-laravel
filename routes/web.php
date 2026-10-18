@@ -118,3 +118,12 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/media')->name('admin.me
     Route::delete('/textbook/{id}', [\App\Http\Controllers\AdminMediaController::class, 'textbookDelete'])->name('textbook.delete');
     Route::delete('/feedback/{id}', [\App\Http\Controllers\AdminMediaController::class, 'feedbackDelete'])->name('feedback.delete');
 });
+
+Route::middleware(['auth', 'role:admin'])->prefix('admin/bookbank')->name('admin.bookbank.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\AdminBookBankController::class, 'index'])->name('index');
+    Route::post('/catalog', [\App\Http\Controllers\AdminBookBankController::class, 'catalogAdd'])->name('catalog.add');
+    Route::post('/catalog/{id}/qty', [\App\Http\Controllers\AdminBookBankController::class, 'catalogQty'])->name('catalog.qty');
+    Route::delete('/catalog/{id}', [\App\Http\Controllers\AdminBookBankController::class, 'catalogDelete'])->name('catalog.delete');
+    Route::post('/issue', [\App\Http\Controllers\AdminBookBankController::class, 'issue'])->name('issue');
+    Route::post('/issues/{id}/return', [\App\Http\Controllers\AdminBookBankController::class, 'giveBack'])->name('return');
+});
