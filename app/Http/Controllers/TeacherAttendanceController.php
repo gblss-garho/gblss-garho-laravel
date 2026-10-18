@@ -62,7 +62,7 @@ class TeacherAttendanceController extends Controller
         }
 
         if (! $this->face->isMatch($teacher->face_descriptor, $descriptor)) {
-            return back()->withErrors(['attendance' => 'Chehra match nahi hua. Dobara try karen ya achi roshni mein camera use karen.']);
+            $this->logFace($teacher, 'check_in'); return back()->withErrors(['attendance' => 'Chehra match nahi hua. Dobara try karen ya achi roshni mein camera use karen.']);
         }
 
         $record = TeacherAttendance::whereDate('date', $now->toDateString())->where('teacher_id', $teacher->id)->first() ?? new TeacherAttendance(['teacher_id' => $teacher->id, 'date' => $now->toDateString()]);
@@ -103,7 +103,7 @@ class TeacherAttendanceController extends Controller
         }
 
         if (! $this->face->isMatch($teacher->face_descriptor, $descriptor)) {
-            return back()->withErrors(['attendance' => 'Chehra match nahi hua. Dobara try karen ya achi roshni mein camera use karen.']);
+            $this->logFace($teacher, 'check_out'); return back()->withErrors(['attendance' => 'Chehra match nahi hua. Dobara try karen ya achi roshni mein camera use karen.']);
         }
 
         $record = TeacherAttendance::where('teacher_id', $teacher->id)
@@ -123,5 +123,15 @@ class TeacherAttendanceController extends Controller
         $record->save();
 
         return back()->with('status', 'Check-out ho gaya: ' . $now->format('h:i A'));
+    }
+
+    private function logFace($teacher, string $type): void
+    {
+        \Illuminate\Support\Facades\DB::table('teacher_liveness_failures')->insert([
+            'teacher_id' => (string) $teacher->id,
+            'reason' => 'face_mismatch',
+            'failure_type' => $type,
+            'occurred_at' => now(),
+        ]);
     }
 }

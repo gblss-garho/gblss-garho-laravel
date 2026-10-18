@@ -17,6 +17,7 @@
     <p><a href="{{ route('admin.settings.edit', [], false) }}">School Settings</a></p>
     <p><a href="{{ route('admin.bookbank.index', [], false) }}">Book Bank</a></p>
     <p><a href="{{ route('admin.results.history', [], false) }}">Results History</a></p>
+    <p><a href="{{ route('admin.security.index', [], false) }}">Security Logs</a></p>
     <p><a href="{{ route('admin.leave.index', [], false) }}">Teacher Leave Requests</a></p>
     <p><a href="{{ route('admin.media.index', [], false) }}">Gallery, Textbooks &amp; Feedback</a></p>
     <form method="POST" action="{{ route('logout') }}">
