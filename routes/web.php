@@ -125,3 +125,5 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/bookbank')->name('admin
     Route::post('/issue', [\App\Http\Controllers\AdminBookBankController::class, 'issue'])->name('issue');
     Route::post('/issues/{id}/return', [\App\Http\Controllers\AdminBookBankController::class, 'giveBack'])->name('return');
 });
+
+Route::middleware(['auth', 'role:admin'])->get('/admin/results-history', [\App\Http\Controllers\AdminResultHistoryController::class, 'index'])->name('admin.results.history');
