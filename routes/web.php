@@ -129,3 +129,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/bookbank')->name('admin
 Route::middleware(['auth', 'role:admin'])->get('/admin/results-history', [\App\Http\Controllers\AdminResultHistoryController::class, 'index'])->name('admin.results.history');
 
 Route::middleware(['auth', 'role:admin'])->get('/admin/security', [\App\Http\Controllers\AdminSecurityController::class, 'index'])->name('admin.security.index');
+
+Route::get('/about', [\App\Http\Controllers\PublicInfoController::class, 'about'])->name('public.about');
+Route::get('/staff', [\App\Http\Controllers\PublicInfoController::class, 'staff'])->name('public.staff');

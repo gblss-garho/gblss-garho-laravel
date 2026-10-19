@@ -33,6 +33,8 @@
         @if (!empty($info->motto))<div class="motto">{{ $info->motto }}</div>@endif
         <a class="btn b1" href="{{ route('public.lookup', [], false) }}">Parents Corner</a>
         <a class="btn b2" href="{{ route('public.gallery', [], false) }}">Gallery</a>
+        <a class="btn b2" href="{{ route('public.about', [], false) }}">About</a>
+        <a class="btn b2" href="{{ route('public.staff', [], false) }}">Staff</a>
         <a class="btn b2" href="{{ route('login', [], false) }}">Staff Login</a>
     </div>
 </div>
