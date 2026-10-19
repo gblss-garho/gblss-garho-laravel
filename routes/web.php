@@ -132,3 +132,5 @@ Route::middleware(['auth', 'role:admin'])->get('/admin/security', [\App\Http\Con
 
 Route::get('/about', [\App\Http\Controllers\PublicInfoController::class, 'about'])->name('public.about');
 Route::get('/staff', [\App\Http\Controllers\PublicInfoController::class, 'staff'])->name('public.staff');
+
+Route::get('/toppers', [\App\Http\Controllers\PublicInfoController::class, 'toppers'])->name('public.toppers');

@@ -17,6 +17,7 @@
     <a href="{{ route('home', [], false) }}">Home</a>
     <a href="{{ route('public.about', [], false) }}">About</a>
     <a href="{{ route('public.staff', [], false) }}">Staff</a>
+    <a href="{{ route('public.toppers', [], false) }}">Toppers</a>
     <a href="{{ route('public.gallery', [], false) }}">Gallery</a>
     <a href="{{ route('public.lookup', [], false) }}">Parents Corner</a>
 </div>
