@@ -25,7 +25,7 @@
                     <table border="1" cellpadding="6" cellspacing="0">
                         <tr><th>Subject</th><th>Marks</th></tr>
                         @foreach ($rows as $row)
-                            <tr><td>{{ $row->subject }}</td><td>{{ $row->score }}</td></tr>
+                            <tr><td>{{ config('subjects.' . $row->subject, $row->subject) }}</td><td>{{ $row->score }}</td></tr>
                         @endforeach
                     </table>
                 @endforeach
