@@ -34,7 +34,7 @@ class SyncDob extends Command
             }
             $n += DB::table('students')->where('id', $row['id'])
                 ->where(fn ($q) => $q->whereNull('dob')->orWhere('dob', ''))
-                ->update(['dob' => substr($row['dob'], 0, 10) . ' 00:00:00']);
+                ->update(['dob' => substr($row['dob'], 0, 10)]);
         }
         $this->info("rows $seen, updated $n");
         return 0;
