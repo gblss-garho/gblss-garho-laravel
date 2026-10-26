@@ -26,3 +26,7 @@ yarn-error.log
 !/storage/framework/views/.gitignore
 /database/*.sqlite
 missing_dob.csv
+
+/storage/logs/*.log
+/storage/app/public/homework/
+missing_dob.csv
