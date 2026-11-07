@@ -79,6 +79,10 @@
         td { padding: 9px 10px; border-bottom:1px solid #eee; font-size:15px; }
         tr:nth-child(even) td { background:#fbf9f2; }
         .scroll { overflow-x:auto; }
+        main > .wrap { overflow-x:auto; }
+        main hr { border:0; border-top:1px solid #e3dfd0; margin: 18px 0; }
+        main ul { padding-left: 20px; }
+        main form { margin: 6px 0; }
 
         /* messages */
         .ok { background:#e6f4ec; color:#14532d; border:1px solid #b7dfc6; border-radius:10px; padding: 10px 14px; }

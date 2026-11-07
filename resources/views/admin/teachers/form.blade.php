@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.portal')
 
 @section('title', $teacher ? 'Edit Teacher' : 'Naya Teacher')
 

@@ -57,4 +57,15 @@ class PortalLayoutTest extends TestCase
             ->assertSee('Admin Dashboard')
             ->assertSee('Security Logs');
     }
+
+    public function test_admin_pages_use_portal_layout(): void
+    {
+        $this->actingAs($this->user('admin'));
+
+        foreach (['admin.students.index', 'admin.teachers.index', 'admin.results.index', 'admin.results.history', 'admin.content.index',
+                  'admin.settings.edit', 'admin.bookbank.index', 'admin.leave.index', 'admin.media.index', 'admin.security.index',
+                  'admin.leaving-certificates.index', 'admin.id-cards.index', 'admin.admit-cards.index', 'admin.staff-id-cards.index'] as $name) {
+            $this->get(route($name, [], false))->assertOk()->assertSee('site-head', false);
+        }
+    }
 }
