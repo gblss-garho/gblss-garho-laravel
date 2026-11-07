@@ -1,17 +1,26 @@
-@extends('layouts.app')
+@extends('layouts.portal')
 
 @section('title', 'Feedback')
 
 @section('content')
-    <p><a href="{{ route('home') }}">&larr; Home</a></p>
-    <h1>Feedback</h1>
-    @if (session('ok'))<p style="color:green">{{ session('ok') }}</p>@endif
-    @if ($errors->any())<p style="color:red">{{ $errors->first() }}</p>@endif
-    <form method="POST" action="{{ route('public.feedback.store') }}">
-        @csrf
-        <p>Naam (optional)<br><input name="name" maxlength="80"></p>
-        <p>Rating (1-5)<br><select name="rating"><option value="">--</option>@for ($i = 5; $i >= 1; $i--)<option value="{{ $i }}">{{ $i }}</option>@endfor</select></p>
-        <p>Aap ka paigham<br><textarea name="message" rows="4" cols="40" required></textarea></p>
-        <p><button type="submit">Bhejein</button></p>
-    </form>
+    <div class="page-title"><h1>Feedback</h1></div>
+    @if (session('ok'))<div class="ok">{{ session('ok') }}</div>@endif
+    @if ($errors->any())<div class="err">{{ $errors->first() }}</div>@endif
+    <div class="card narrow">
+        <form method="POST" action="{{ route('public.feedback.store', [], false) }}">
+            @csrf
+            <label for="name">Naam (optional)</label>
+            <input id="name" name="name" maxlength="80" value="{{ old('name') }}">
+            <label>Rating</label>
+            <div class="stars">
+                @for ($i = 5; $i >= 1; $i--)
+                    <input type="radio" name="rating" id="star{{ $i }}" value="{{ $i }}" @checked(old('rating') == $i)>
+                    <label for="star{{ $i }}" title="{{ $i }} star">&#9733;</label>
+                @endfor
+            </div>
+            <label for="message">Aap ka paigham</label>
+            <textarea id="message" name="message" rows="4" required>{{ old('message') }}</textarea>
+            <button type="submit">Bhejein</button>
+        </form>
+    </div>
 @endsection

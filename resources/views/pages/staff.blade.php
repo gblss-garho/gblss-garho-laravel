@@ -1,10 +1,8 @@
-@extends('layouts.app')
+@extends('layouts.portal')
 
 @section('title', 'Our Staff')
 
 @section('content')
-@include('pages._nav')
-<div class="wrap">
     <h1>Hamara Staff ({{ count($teachers) }})</h1>
     <div class="grid">
         @foreach ($teachers as $t)
@@ -24,6 +22,4 @@
             </div>
         @endforeach
     </div>
-</div>
-<footer>{{ $info->name ?? '' }}</footer>
 @endsection

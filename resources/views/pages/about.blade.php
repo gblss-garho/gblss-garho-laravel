@@ -1,10 +1,8 @@
-@extends('layouts.app')
+@extends('layouts.portal')
 
 @section('title', 'About the School')
 
 @section('content')
-@include('pages._nav')
-<div class="wrap">
     <h1>{{ $info->name ?? 'GBLSS Garho' }}</h1>
     @if (!empty($info->urdu_name))<div style="font-size:20px">{{ $info->urdu_name }}</div>@endif
     @if (!empty($info->motto))<p style="color:#8a6d00;font-style:italic">{{ $info->motto }}</p>@endif
@@ -38,6 +36,4 @@
             </div>
         @endif
     @endforeach
-</div>
-<footer>{{ $info->name ?? '' }}<br>{{ $info->address ?? '' }}</footer>
 @endsection

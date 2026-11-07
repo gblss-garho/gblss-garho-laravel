@@ -73,6 +73,34 @@ class SchoolScheduleService
         return $now->between($start, $end);
     }
 
+    private function formatTime(string $hhmm): string
+    {
+        try {
+            return Carbon::createFromFormat('H:i', substr($hhmm, 0, 5))->format('g:i A');
+        } catch (\Throwable $e) {
+            return $hhmm;
+        }
+    }
+
+    /** Human-readable check-in window from the settings, e.g. "8:30 AM – 9:00 AM". */
+    public function checkInWindowLabel(): string
+    {
+        return $this->formatTime($this->setting('time_in_window_start', '08:00'))
+            . ' – ' . $this->formatTime($this->setting('time_in_window_end', '08:30'));
+    }
+
+    /** Human-readable check-out window for the given day (Friday differs). */
+    public function checkOutWindowLabel(Carbon $now): string
+    {
+        if ($this->isFriday($now)) {
+            return $this->formatTime($this->setting('friday_time_out_window_start', '12:15'))
+                . ' – ' . $this->formatTime($this->setting('friday_time_out_window_end', '12:30'));
+        }
+
+        return $this->formatTime($this->setting('time_out_window_start', '13:15'))
+            . ' – ' . $this->formatTime($this->setting('time_out_window_end', '13:30'));
+    }
+
     /** Teacher check-out window (Friday has its own window). */
     public function isWithinCheckOutWindow(Carbon $now): bool
     {

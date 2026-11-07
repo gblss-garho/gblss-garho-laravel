@@ -1,18 +1,17 @@
-@extends('layouts.app')
+@extends('layouts.portal')
 
 @section('title', 'Textbooks')
 
 @section('content')
-    <p><a href="{{ route('home') }}">&larr; Home</a></p>
-    <h1>Textbooks</h1>
+    <div class="page-title"><h1>Textbooks</h1></div>
     @forelse ($items as $class => $books)
         <h2>Class {{ $class }}</h2>
-        <ul>
+        <div class="card">
             @foreach ($books as $b)
-                <li>{{ $b->subject }} &mdash; <a href="{{ $b->book_url }}" target="_blank">{{ $b->book_name }}</a></li>
+                <div class="row">{{ $b->subject }} &mdash; <a href="{{ $b->book_url }}" target="_blank" rel="noopener">{{ $b->book_name }}</a></div>
             @endforeach
-        </ul>
+        </div>
     @empty
-        <p>Abhi koi kitaab nahi.</p>
+        <div class="card">Abhi koi kitaab nahi.</div>
     @endforelse
 @endsection

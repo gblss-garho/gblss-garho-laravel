@@ -34,6 +34,8 @@ class TeacherAttendanceController extends Controller
             'canCheckIn' => $this->schedule->isWithinCheckInWindow($now),
             'canCheckOut' => $this->schedule->isWithinCheckOutWindow($now),
             'isFaceEnrolled' => $teacher && ! empty($teacher->face_descriptor),
+            'checkInLabel' => $this->schedule->checkInWindowLabel(),
+            'checkOutLabel' => $this->schedule->checkOutWindowLabel($now),
         ]);
     }
 
@@ -52,7 +54,7 @@ class TeacherAttendanceController extends Controller
         $now = Carbon::now();
 
         if (! $this->schedule->isWithinCheckInWindow($now)) {
-            return back()->withErrors(['attendance' => 'Check-in sirf 8:00–8:30 AM ke darmiyan school ke dinon mein ho sakta hai.']);
+            return back()->withErrors(['attendance' => 'Check-in sirf ' . $this->schedule->checkInWindowLabel() . ' ke darmiyan school ke dinon mein ho sakta hai.']);
         }
 
         try {

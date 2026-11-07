@@ -24,7 +24,7 @@
     @if (! $isSchoolDay)
         <p>Aaj school off hai (Saturday/Sunday).</p>
     @elseif ($isFaceEnrolled)
-        <p>Check-in window: 8:00–8:30 AM. Check-out window: school khatam hone se 15 minute pehle.</p>
+        <p>Check-in window: {{ $checkInLabel }}. Check-out window: {{ $checkOutLabel }}.</p>
 
         <p>
             Check-in status:

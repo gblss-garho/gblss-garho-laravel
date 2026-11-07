@@ -1,10 +1,8 @@
-@extends('layouts.app')
+@extends('layouts.portal')
 
 @section('title', 'Toppers')
 
 @section('content')
-@include('pages._nav')
-<div class="wrap">
     <h1>Toppers</h1>
     <p>Annual Exam &mdash; Session {{ $year }}</p>
     @foreach ($byClass as $cls => $list)
@@ -25,6 +23,4 @@
             <div class="card">Is class ka annual result abhi publish nahi hua.</div>
         @endforelse
     @endforeach
-</div>
-<footer>{{ $info->name ?? '' }}</footer>
 @endsection
