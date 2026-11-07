@@ -1,0 +1,149 @@
+diff --git a/app/Http/Controllers/TeacherAttendanceController.php b/app/Http/Controllers/TeacherAttendanceController.php
+index 804443e..10dfeca 100644
+--- a/app/Http/Controllers/TeacherAttendanceController.php
++++ b/app/Http/Controllers/TeacherAttendanceController.php
+@@ -34,7 +34,7 @@ class TeacherAttendanceController extends Controller
+             'canCheckIn' => $this->schedule->isWithinCheckInWindow($now),
+             'canCheckOut' => $this->schedule->isWithinCheckOutWindow($now),
+             'isFaceEnrolled' => $teacher && ! empty($teacher->face_descriptor),
+-            'checkInLabel' => $this->schedule->checkInWindowLabel(),
++            'checkInLabel' => $this->schedule->checkInWindowLabel($now),
+             'checkOutLabel' => $this->schedule->checkOutWindowLabel($now),
+         ]);
+     }
+@@ -54,7 +54,7 @@ class TeacherAttendanceController extends Controller
+         $now = Carbon::now();
+ 
+         if (! $this->schedule->isWithinCheckInWindow($now)) {
+-            return back()->withErrors(['attendance' => 'Check-in sirf ' . $this->schedule->checkInWindowLabel() . ' ke darmiyan school ke dinon mein ho sakta hai.']);
++            return back()->withErrors(['attendance' => 'Check-in sirf ' . $this->schedule->checkInWindowLabel($now) . ' ke darmiyan school ke dinon mein ho sakta hai.']);
+         }
+ 
+         try {
+diff --git a/app/Services/SchoolScheduleService.php b/app/Services/SchoolScheduleService.php
+index 0730647..becebca 100644
+--- a/app/Services/SchoolScheduleService.php
++++ b/app/Services/SchoolScheduleService.php
+@@ -30,6 +30,30 @@ class SchoolScheduleService
+         return ($v === null || trim((string) $v) === '') ? $default : trim((string) $v);
+     }
+ 
++    /**
++     * Sindh Government school timings (single shift, secondary).
++     * Mon-Thu & Sat: summer (1 Apr - 31 Oct) 08:00 - 13:30, winter (1 Nov - 31 Mar) 08:30 - 14:00.
++     * Friday: summer 08:00 - 12:00, winter 08:30 - 12:30.
++     * Check-in window = first 30 min; check-out window = last 20 min of the day.
++     */
++    private function season(Carbon $d): array
++    {
++        $summer = $d->month >= 4 && $d->month <= 10;
++        $start = $summer ? '08:00' : '08:30';
++        if ($d->dayOfWeek === 5) {
++            $end = $summer ? '12:00' : '12:30';
++        } else {
++            $end = $summer ? '13:30' : '14:00';
++        }
++
++        return [
++            'in_start' => $start,
++            'in_end' => Carbon::createFromFormat('H:i', $start)->addMinutes(30)->format('H:i'),
++            'out_start' => Carbon::createFromFormat('H:i', $end)->subMinutes(20)->format('H:i'),
++            'out_end' => $end,
++        ];
++    }
++
+     private function offDays(): array
+     {
+         $raw = $this->setting('weekly_off_days', '0,6');
+@@ -48,10 +72,9 @@ class SchoolScheduleService
+         if (in_array($date->dayOfWeek, $this->offDays(), true)) {
+             return null;
+         }
+-        $start = $this->setting('time_in_window_start', '08:00');
+-        $end = $this->isFriday($date)
+-            ? $this->setting('friday_time_out_window_end', '12:30')
+-            : $this->setting('time_out_window_end', '13:30');
++        $season = $this->season($date);
++        $start = $season['in_start'];
++        $end = $season['out_end'];
+ 
+         return [$start, $end];
+     }
+@@ -67,8 +90,9 @@ class SchoolScheduleService
+         if (! $this->isSchoolDay($now)) {
+             return false;
+         }
+-        $start = $now->copy()->setTimeFromTimeString($this->setting('time_in_window_start', '08:00'));
+-        $end = $now->copy()->setTimeFromTimeString($this->setting('time_in_window_end', '08:30'));
++        $season = $this->season($now);
++        $start = $now->copy()->setTimeFromTimeString($season['in_start']);
++        $end = $now->copy()->setTimeFromTimeString($season['in_end']);
+ 
+         return $now->between($start, $end);
+     }
+@@ -83,22 +107,19 @@ class SchoolScheduleService
+     }
+ 
+     /** Human-readable check-in window from the settings, e.g. "8:30 AM – 9:00 AM". */
+-    public function checkInWindowLabel(): string
++    public function checkInWindowLabel(?Carbon $now = null): string
+     {
+-        return $this->formatTime($this->setting('time_in_window_start', '08:00'))
+-            . ' – ' . $this->formatTime($this->setting('time_in_window_end', '08:30'));
++        $season = $this->season($now ?? Carbon::now());
++
++        return $this->formatTime($season['in_start']) . ' – ' . $this->formatTime($season['in_end']);
+     }
+ 
+     /** Human-readable check-out window for the given day (Friday differs). */
+     public function checkOutWindowLabel(Carbon $now): string
+     {
+-        if ($this->isFriday($now)) {
+-            return $this->formatTime($this->setting('friday_time_out_window_start', '12:15'))
+-                . ' – ' . $this->formatTime($this->setting('friday_time_out_window_end', '12:30'));
+-        }
++        $season = $this->season($now);
+ 
+-        return $this->formatTime($this->setting('time_out_window_start', '13:15'))
+-            . ' – ' . $this->formatTime($this->setting('time_out_window_end', '13:30'));
++        return $this->formatTime($season['out_start']) . ' – ' . $this->formatTime($season['out_end']);
+     }
+ 
+     /** Teacher check-out window (Friday has its own window). */
+@@ -107,13 +128,9 @@ class SchoolScheduleService
+         if (! $this->isSchoolDay($now)) {
+             return false;
+         }
+-        if ($this->isFriday($now)) {
+-            $s = $this->setting('friday_time_out_window_start', '12:15');
+-            $e = $this->setting('friday_time_out_window_end', '12:30');
+-        } else {
+-            $s = $this->setting('time_out_window_start', '13:15');
+-            $e = $this->setting('time_out_window_end', '13:30');
+-        }
++        $season = $this->season($now);
++        $s = $season['out_start'];
++        $e = $season['out_end'];
+ 
+         return $now->between($now->copy()->setTimeFromTimeString($s), $now->copy()->setTimeFromTimeString($e));
+     }
+diff --git a/tests/Feature/PublicPagesTest.php b/tests/Feature/PublicPagesTest.php
+index 8205a41..b890856 100644
+--- a/tests/Feature/PublicPagesTest.php
++++ b/tests/Feature/PublicPagesTest.php
+@@ -24,6 +24,14 @@ class PublicPagesTest extends TestCase
+     public function test_attendance_window_label_follows_settings(): void
+     {
+         $s = new \App\Services\SchoolScheduleService();
+-        $this->assertSame('8:00 AM – 8:30 AM', $s->checkInWindowLabel());
++        $C = fn ($d) => \Carbon\Carbon::parse($d);
++        $this->assertSame('8:30 AM – 9:00 AM', $s->checkInWindowLabel($C('2026-11-09 08:45')));
++        $this->assertSame('1:40 PM – 2:00 PM', $s->checkOutWindowLabel($C('2026-11-09 13:50')));
++        $this->assertSame('8:00 AM – 8:30 AM', $s->checkInWindowLabel($C('2026-06-08 08:15')));
++        $this->assertSame('1:10 PM – 1:30 PM', $s->checkOutWindowLabel($C('2026-06-08 13:20')));
++        $this->assertSame('12:10 PM – 12:30 PM', $s->checkOutWindowLabel($C('2026-11-13 12:15')));
++        $this->assertSame('11:40 AM – 12:00 PM', $s->checkOutWindowLabel($C('2026-06-12 11:50')));
++        $this->assertTrue($s->isWithinCheckInWindow($C('2026-11-09 08:45')));
++        $this->assertFalse($s->isWithinCheckInWindow($C('2026-11-09 08:10')));
+     }
+ }
