@@ -1,31 +1,34 @@
-@extends('layouts.app')
+@extends('layouts.portal')
 
 @section('title', 'Login')
 
 @section('content')
-    <h1>Login</h1>
+    <div class="hero-card">
+        <img src="{{ file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg') }}" alt="">
+        <h2>Staff Login</h2>
+        <span class="pill">Teachers &amp; Admin</span>
+    </div>
 
-    @if ($errors->any())
-        <div style="color:red">
-            @foreach ($errors->all() as $error)
-                <p>{{ $error }}</p>
-            @endforeach
-        </div>
-    @endif
+    <div class="card narrow">
+        @if ($errors->any())
+            <div class="err">
+                @foreach ($errors->all() as $error)
+                    <p>{{ $error }}</p>
+                @endforeach
+            </div>
+        @endif
 
-    <form method="POST" action="{{ route('login', [], false) }}">
-        @csrf
-        <div>
-            <label>Email</label>
-            <input type="email" name="email" value="{{ old('email') }}" required autofocus>
-        </div>
-        <div>
-            <label>Password</label>
-            <input type="password" name="password" required>
-        </div>
-        <div>
+        <form method="POST" action="{{ route('login', [], false) }}">
+            @csrf
+            <label for="email">Email</label>
+            <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus autocomplete="username">
+
+            <label for="password">Password / PIN</label>
+            <input id="password" type="password" name="password" required autocomplete="current-password">
+
             <label><input type="checkbox" name="remember"> Remember me</label>
-        </div>
-        <button type="submit">Login</button>
-    </form>
+
+            <button type="submit">Login</button>
+        </form>
+    </div>
 @endsection
