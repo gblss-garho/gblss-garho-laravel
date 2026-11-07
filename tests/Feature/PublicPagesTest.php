@@ -24,6 +24,14 @@ class PublicPagesTest extends TestCase
     public function test_attendance_window_label_follows_settings(): void
     {
         $s = new \App\Services\SchoolScheduleService();
-        $this->assertSame('8:00 AM – 8:30 AM', $s->checkInWindowLabel());
+        $C = fn ($d) => \Carbon\Carbon::parse($d);
+        $this->assertSame('8:30 AM – 9:00 AM', $s->checkInWindowLabel($C('2026-11-09 08:45')));
+        $this->assertSame('1:40 PM – 2:00 PM', $s->checkOutWindowLabel($C('2026-11-09 13:50')));
+        $this->assertSame('8:00 AM – 8:30 AM', $s->checkInWindowLabel($C('2026-06-08 08:15')));
+        $this->assertSame('1:10 PM – 1:30 PM', $s->checkOutWindowLabel($C('2026-06-08 13:20')));
+        $this->assertSame('12:10 PM – 12:30 PM', $s->checkOutWindowLabel($C('2026-11-13 12:15')));
+        $this->assertSame('11:40 AM – 12:00 PM', $s->checkOutWindowLabel($C('2026-06-12 11:50')));
+        $this->assertTrue($s->isWithinCheckInWindow($C('2026-11-09 08:45')));
+        $this->assertFalse($s->isWithinCheckInWindow($C('2026-11-09 08:10')));
     }
 }
