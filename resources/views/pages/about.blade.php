@@ -15,7 +15,10 @@
     <div class="card">
         @if (!empty($info->established_year))<div class="row"><b>Qayam:</b> {{ $info->established_year }}</div>@endif
         @if (!empty($info->semis_code))<div class="row"><b>SEMIS Code:</b> {{ $info->semis_code }}</div>@endif
-        @if (!empty($info->shifts))<div class="row"><b>Shifts:</b> {{ is_string($d = json_decode($info->shifts)) ? $d : $info->shifts }}</div>@endif
+        @php($summer = now()->month >= 4 && now()->month <= 10)
+        <div class="row"><b>School ka waqt:</b>
+            {{ $summer ? 'Monday–Thursday & Saturday: 8:00 AM – 1:30 PM, Friday: 8:00 AM – 12:00 PM (1 April – 31 October)' : 'Monday–Thursday & Saturday: 8:30 AM – 2:00 PM, Friday: 8:30 AM – 12:30 PM (1 November – 31 March)' }}
+        </div>
         @if (!empty($info->address))<div class="row"><b>Pata:</b> {{ $info->address }}</div>@endif
         @if (!empty($info->phone))<div class="row"><b>Phone:</b> {{ $info->phone }}</div>@endif
         @if (!empty($info->email))<div class="row"><b>Email:</b> {{ $info->email }}</div>@endif
