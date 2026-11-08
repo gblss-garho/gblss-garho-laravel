@@ -10,6 +10,14 @@
         <button type="submit">Talaash</button>
     </form>
 
+    @if ($classes->isNotEmpty())
+        <p style="margin-top:12px"><b>Poori class ke admit cards (Print All):</b><br>
+            @foreach ($classes as $c)
+                <a class="btn ghost" href="{{ route('admin.admit-cards.class-pdf', ['class' => $c], false) }}" target="_blank">Class {{ $c }}</a>
+            @endforeach
+        </p>
+    @endif
+
     @if ($students->isEmpty())
         <p>Koi student nahi mila.</p>
     @else

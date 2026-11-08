@@ -33,6 +33,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/staff-id-cards', [\App\Http\Controllers\AdminStaffIdCardController::class, 'index'])->name('admin.staff-id-cards.index');
     Route::get('/admin/staff-id-cards/{teacher}/pdf', [\App\Http\Controllers\AdminStaffIdCardController::class, 'pdf'])->name('admin.staff-id-cards.pdf');
     Route::get('/admin/admit-cards', [\App\Http\Controllers\AdminAdmitCardController::class, 'index'])->name('admin.admit-cards.index');
+    Route::get('/admin/admit-cards/class/{class}/pdf', [\App\Http\Controllers\AdminAdmitCardController::class, 'classPdf'])->name('admin.admit-cards.class-pdf');
     Route::get('/admin/admit-cards/{student}/pdf', [\App\Http\Controllers\AdminAdmitCardController::class, 'pdf'])->name('admin.admit-cards.pdf');
 });
 

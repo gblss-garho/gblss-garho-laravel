@@ -44,6 +44,7 @@ class AdminIdCardController extends Controller
             'address' => $info?->address ?: 'Taluka Ketibunder, District Thatta, Sindh, Pakistan',
             'phone' => $info?->phone,
             'motto' => $info?->motto,
+            'email' => $info?->email,
         ];
     }
 }

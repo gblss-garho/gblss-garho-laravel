@@ -20,7 +20,9 @@ class AdminAdmitCardController extends Controller
             }))
             ->orderBy('class')->orderByRaw('CAST(gr_number AS UNSIGNED)')
             ->limit(50)->get();
-        return view('admin.admit-cards.index', compact('students', 'q'));
+        $classes = Student::query()->where('passed_out', false)->whereNotNull('class')->distinct()->orderBy('class')->pluck('class');
+
+        return view('admin.admit-cards.index', compact('students', 'q', 'classes'));
     }
 
     public function pdf(Student $student)
@@ -31,11 +33,27 @@ class AdminAdmitCardController extends Controller
             ->stream('admit-card-'.($student->gr_number ?: $student->id).'.pdf');
     }
 
+    /** All admit cards of one class on one PDF (old site: "Print All"). */
+    public function classPdf(string $class)
+    {
+        $school = $this->schoolHeader();
+        $students = Student::query()
+            ->where('passed_out', false)
+            ->where('class', $class)
+            ->orderByRaw('CAST(gr_number AS UNSIGNED)')
+            ->get();
+        abort_if($students->isEmpty(), 404);
+
+        return Pdf::loadView('admin.admit-cards.class', compact('students', 'school', 'class'))
+            ->setPaper('a4')
+            ->stream('admit-cards-class-'.$class.'.pdf');
+    }
+
     private function schoolHeader(): array
     {
         $info = SchoolInfo::first();
         $name = $info?->name ?: 'Government Boys Lower Secondary School Garho';
         $address = $info?->address ?: 'Taluka Ketibunder, District Thatta, Sindh, Pakistan';
-        return ['name' => $name, 'address' => $address, 'exam_title' => null, 'exam_year' => $info?->current_exam_year];
+        return ['name' => $name, 'address' => $address, 'exam_title' => $info?->current_exam_title, 'exam_year' => $info?->current_exam_year];
     }
 }

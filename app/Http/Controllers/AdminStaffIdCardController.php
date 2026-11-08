@@ -45,6 +45,8 @@ class AdminStaffIdCardController extends Controller
             'code' => $info?->semis_code ?? '404030082',
             'address' => $info?->address ?? 'Garho, Sindh',
             'motto' => $info?->motto,
+            'phone' => $info?->phone,
+            'email' => $info?->email,
         ];
     }
 }
