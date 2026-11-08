@@ -12,6 +12,6 @@
             @endforeach
         </div>
     @empty
-        <div class="card">Abhi koi kitaab nahi.</div>
+        <div class="card sd">اڃا ڪا ڪتاب شامل نه ڪئي وئي.</div>
     @endforelse
 @endsection

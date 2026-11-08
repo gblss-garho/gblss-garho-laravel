@@ -7,12 +7,21 @@
     <link rel="manifest" href="{{ asset('manifest.json') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
+        @font-face { font-family: 'CustomSindhi'; src: url('{{ asset('fonts/CustomSindhi.ttf') }}') format('truetype'); font-display: swap; }
         :root { --g:#0F5132; --g2:#1B7A4D; --g3:#0a3a24; --gold:#DBB43C; --gold2:#c9a22c; --bg:#F7F5EE; --ink:#2b2b2b; --muted:#6b6b6b; --red:#9b2c2c; }
         * { box-sizing: border-box; }
         html { -webkit-text-size-adjust: 100%; }
-        body { margin:0; background:var(--bg); color:var(--ink); font-family: 'Noto Serif', Georgia, 'Times New Roman', serif; line-height:1.55; min-height:100vh; display:flex; flex-direction:column; }
+        body { margin:0; background:var(--bg); color:var(--ink); font-family: 'Noto Serif', Georgia, 'Times New Roman', 'CustomSindhi', serif; line-height:1.55; min-height:100vh; display:flex; flex-direction:column; }
         a { color: var(--g2); }
         .wrap { width:100%; max-width: 1000px; margin: 0 auto; padding: 0 16px; }
+
+        /* Sindhi / Urdu text: browser shapes it, CustomSindhi supplies the letters */
+        .sd, .err, .ok { unicode-bidi: plaintext; }
+        .sd { font-family: 'CustomSindhi', 'Noto Nastaliq Urdu', serif; font-size: 1.08em; line-height: 1.9; }
+        .sd-note { color: var(--muted); }
+        .highlights { display:grid; grid-template-columns:1fr; gap:10px; margin: 6px 0 18px; }
+        @media (min-width:700px){ .highlights { grid-template-columns: repeat(2,1fr); } }
+        .highlights div { background:#fff; border-radius:12px; padding:12px 14px; border-right:4px solid var(--gold); box-shadow:0 2px 10px rgba(0,0,0,.06); text-align:right; }
 
         /* header */
         .site-head { background: linear-gradient(160deg, var(--g), var(--g3)); color:#fff; border-bottom: 4px solid var(--gold); }

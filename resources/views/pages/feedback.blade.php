@@ -7,9 +7,10 @@
     @if (session('ok'))<div class="ok">{{ session('ok') }}</div>@endif
     @if ($errors->any())<div class="err">{{ $errors->first() }}</div>@endif
     <div class="card narrow">
+        <p class="sd">پنهنجو فيڊبيڪ ڏيو</p>
         <form method="POST" action="{{ route('public.feedback.store', [], false) }}">
             @csrf
-            <label for="name">Naam (optional)</label>
+            <label for="name">Naam (optional) <span class="sd">/ توهان جو نالو (اختياري)</span></label>
             <input id="name" name="name" maxlength="80" value="{{ old('name') }}">
             <label>Rating</label>
             <div class="stars">
@@ -19,7 +20,7 @@
                 @endfor
             </div>
             <label for="message">Aap ka paigham</label>
-            <textarea id="message" name="message" rows="4" required>{{ old('message') }}</textarea>
+            <textarea id="message" name="message" rows="4" dir="auto" required placeholder="پنهنجي راءِ يا تجويز لکو…">{{ old('message') }}</textarea>
             <button type="submit">Bhejein</button>
         </form>
     </div>

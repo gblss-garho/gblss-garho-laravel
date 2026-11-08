@@ -34,4 +34,10 @@ class PublicPagesTest extends TestCase
         $this->assertTrue($s->isWithinCheckInWindow($C('2026-11-09 08:45')));
         $this->assertFalse($s->isWithinCheckInWindow($C('2026-11-09 08:10')));
     }
+
+    public function test_sindhi_font_and_text_present(): void
+    {
+        $this->get('/feedback')->assertSee('CustomSindhi', false)->assertSee('پنهنجو فيڊبيڪ ڏيو');
+        $this->assertFileExists(public_path('fonts/CustomSindhi.ttf'));
+    }
 }

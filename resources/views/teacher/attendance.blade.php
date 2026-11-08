@@ -85,7 +85,7 @@
                         btn.disabled = false;
                         status.textContent = 'Camera taiyar hai.';
                     } catch (err) {
-                        status.textContent = 'Camera nahi khul saka: ' + err.message;
+                        status.textContent = 'ڪئميرا access نه ملي سگهيو: ' + err.message;
                     }
                 }
 
@@ -103,7 +103,7 @@
                             .withFaceDescriptor();
 
                         if (! detection) {
-                            status.textContent = 'Koi chehra nazar nahi aaya. Seedha camera mein dekhen.';
+                            status.textContent = 'چهرو نه پئي مليو — ڪئميرا اڳيان اچو';
                             return;
                         }
 

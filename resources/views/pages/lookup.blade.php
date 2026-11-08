@@ -10,6 +10,7 @@
     </div>
 
     <div class="card narrow">
+        <p class="sd">پنهنجي ٻار جي تفصيل ڏسو</p>
         <p>Apne bachay ka GR number aur date of birth likh kar result dekhein.</p>
 
         @if ($error)<div class="err"><p>{{ $error }}</p></div>@endif
@@ -19,7 +20,7 @@
             <label for="gr_number">GR number</label>
             <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric">
 
-            <label for="dob">Date of birth (jaise 2013-05-21 ya 21-05-2013)</label>
+            <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span> &mdash; jaise 2013-05-21</label>
             <input id="dob" name="dob" value="{{ old('dob') }}" required>
 
             <button type="submit">Dekhein</button>
@@ -46,7 +47,7 @@
                 </div>
             </div>
         @empty
-            <div class="card"><p>Abhi is class ka koi result publish nahi hua.</p></div>
+            <div class="card"><p class="sd">نتيجو اڃا شايع نه ٿيو آهي</p></div>
         @endforelse
 
         <div class="card">
@@ -55,7 +56,7 @@
                 <p><b>{{ $h->date->format('d-m-Y') }} | {{ ucfirst($h->subject) }}</b><br>{{ $h->text }}
                 @if ($h->attachment_path)<br><a href="{{ asset('storage/' . $h->attachment_path) }}" target="_blank">{{ $h->attachment_name ?: 'File' }}</a>@endif</p>
             @empty
-                <p>Abhi koi homework nahi.</p>
+                <p class="sd">اڄ لاءِ هن ڪلاس جو ڪو Homework/Diary داخل نه ٿيو آهي.</p>
             @endforelse
         </div>
 
@@ -68,7 +69,7 @@
             @if ($tot > 0)
                 <p>Present: {{ $p }} | Absent: {{ $a }} | Leave: {{ $l }} | Fi sad: {{ round((($p + $l) / $tot) * 100) }}%</p>
             @else
-                <p>Is mahine ka koi attendance record nahi.</p>
+                <p class="sd">هن دوري لاءِ ڪو رڪارڊ نه مليو.</p>
             @endif
         </div>
 

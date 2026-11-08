@@ -10,6 +10,7 @@
     </div>
 
     <div class="card narrow">
+        <p class="sd">Admin يا Teacher اڪائونٽ سان لاگ ان ڪريو.</p>
         @if ($errors->any())
             <div class="err">
                 @foreach ($errors->all() as $error)

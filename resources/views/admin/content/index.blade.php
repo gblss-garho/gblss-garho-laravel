@@ -62,7 +62,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="4">Koi event nahi.</td></tr>
+            <tr><td colspan="4"><span class="sd">اڃا ڪئلينڊر ۾ ڪا تاريخ شامل نه ڪئي وئي.</span></td></tr>
         @endforelse
     </table>
 @endsection

@@ -9,7 +9,7 @@
     @if ($errors->any())<p style="color:red">{{ $errors->first() }}</p>@endif
 
     @if (count($classes) === 0)
-        <p>Aap ko abhi koi class assign nahi hai.</p>
+        <p class="sd">توهان جي ٽيچر رڪارڊ ۾ اڃا ڪا ڪلاس مقرر ناهي ٿيل. ايڊمن کان پنهنجي پروفائل ۾ 'Assigned Class' سيٽ ڪرايو.</p>
     @else
     <form method="POST" action="{{ route('teacher.homework.store', [], false) }}" enctype="multipart/form-data">
         @csrf
@@ -43,7 +43,7 @@
             </td>
         </tr>
         @empty
-        <tr><td colspan="5">Koi homework nahi.</td></tr>
+        <tr><td colspan="5"><span class="sd">اڃا ڪو Homework/Diary داخل نه ڪيو ويو آهي.</span></td></tr>
         @endforelse
     </table>
 @endsection

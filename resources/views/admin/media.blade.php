@@ -24,7 +24,7 @@
                 </form>
             </div>
         @empty
-            <p>Koi photo nahi.</p>
+            <p class="sd">اڃا ڪا فوٽو ناهي.</p>
         @endforelse
     </div>
 
@@ -47,7 +47,7 @@
                     @csrf @method('DELETE')<button type="submit">Delete</button></form></td>
             </tr>
         @empty
-            <tr><td colspan="4">Koi kitaab nahi.</td></tr>
+            <tr><td colspan="4"><span class="sd">اڃا ڪا ڪتاب شامل نه ڪئي وئي.</span></td></tr>
         @endforelse
     </table>
 
@@ -61,7 +61,7 @@
                     @csrf @method('DELETE')<button type="submit">Delete</button></form></td>
             </tr>
         @empty
-            <tr><td colspan="4">Koi feedback nahi.</td></tr>
+            <tr><td colspan="4"><span class="sd">اڃا تائين ڪو فيڊبيڪ جمع نه ٿيو آهي.</span></td></tr>
         @endforelse
     </table>
 @endsection

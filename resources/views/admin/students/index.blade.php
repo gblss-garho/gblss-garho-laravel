@@ -37,7 +37,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="6">Koi student nahi mila.</td></tr>
+            <tr><td colspan="6"><span class="sd">اڃا ڪو اسٽوڊنٽ رڪارڊ ناهي.</span></td></tr>
         @endforelse
     </table>
 

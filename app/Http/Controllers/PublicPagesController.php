@@ -35,6 +35,6 @@ class PublicPagesController extends Controller
             'id' => Str::random(10), 'name' => $d['name'] ?: 'Anonymous', 'rating' => $d['rating'] ?? null,
             'message' => $d['message'], 'created_at' => now(), 'updated_at' => now(),
         ]);
-        return redirect()->route('public.feedback')->with('ok', 'Shukriya! Aap ki feedback mil gayi.');
+        return redirect()->route('public.feedback')->with('ok', 'شڪريو! توهان جو فيڊبيڪ جمع ٿي ويو.');
     }
 }

@@ -24,6 +24,13 @@
     <div class="stat"><b>6 - 8</b><span>Classes</span></div>
     <div class="stat"><b>{{ $info->established_year ?? '—' }}</b><span>Established</span></div>
 </div>
+    <div class="highlights sd">
+        <div>سنڌ ٽيڪسٽ بڪ بورڊ نصاب سان تجربيڪار استاد</div>
+        <div>هر ٻار لاءِ محفوظ ۽ دوستيءَ ڀريو ماحول</div>
+        <div>راند روند، فن ۽ اضافي سرگرميون</div>
+        <div>سنڌ حڪومت جي تحت مفت تعليم</div>
+    </div>
+
     <h2>Class-wise Strength</h2>
 <div class="card">
     @php($max = max(1, $classCounts->max()))

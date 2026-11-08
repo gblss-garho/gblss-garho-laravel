@@ -23,7 +23,7 @@ class LoginController extends Controller
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
             return back()->withErrors([
-                'email' => 'Ye credentials hamare records se match nahi karte.',
+                'email' => 'لاگ ان ٿي نه سگهيو. اي ميل/پاسورڊ چيڪ ڪريو.',
             ])->onlyInput('email');
         }
 

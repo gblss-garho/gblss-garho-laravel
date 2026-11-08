@@ -14,6 +14,6 @@
             @endforeach
         </div>
     @else
-        <div class="card">Abhi koi photo nahi.</div>
+        <div class="card sd">اڃا ڪا فوٽو ناهي.</div>
     @endif
 @endsection
