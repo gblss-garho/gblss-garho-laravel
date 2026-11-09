@@ -7,7 +7,7 @@
     <div class="ticker" style="margin:0 -16px"><div>@foreach ($notices as $n)&#9733; {{ str($n->text ?? '')->limit(120) }} &nbsp;&nbsp;@endforeach</div></div>
 @endif
 
-<div class="hero-card">
+<div class="hero-card"@if (!empty($info->school_photo_url)) style="background-image:linear-gradient(160deg,rgba(15,81,50,.88),rgba(10,58,36,.92)),url('{{ $info->school_photo_url }}');background-size:cover;background-position:center"@endif>
     <img src="{{ file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg') }}" alt="" style="width:96px;height:96px;border:0;background:transparent">
     <h2>{{ $info->name ?? 'GBLSS Garho' }}</h2>
     @if (!empty($info->urdu_name))<div class="ur">{{ $info->urdu_name }}</div>@endif

@@ -15,7 +15,7 @@
     <div class="card">
         @if (!empty($info->established_year))<div class="row"><b>Qayam:</b> {{ $info->established_year }}</div>@endif
         @if (!empty($info->semis_code))<div class="row"><b>SEMIS Code:</b> {{ $info->semis_code }}</div>@endif
-        @php($summer = now()->month >= 4 && now()->month <= 10)
+        @php $summer = now()->month >= 4 && now()->month <= 10; @endphp
         <div class="row"><b>School ka waqt:</b>
             {{ $summer ? 'Monday–Thursday & Saturday: 8:00 AM – 1:30 PM, Friday: 8:00 AM – 12:00 PM (1 April – 31 October)' : 'Monday–Thursday & Saturday: 8:30 AM – 2:00 PM, Friday: 8:30 AM – 12:30 PM (1 November – 31 March)' }}
         </div>
@@ -27,7 +27,18 @@
         @endif
     </div>
 
-    @foreach ([['deo_name', 'deo_message', 'deo_photo_url', 'DEO'], ['teo_name', 'teo_message', 'teo_photo_url', 'TEO']] as [$n, $m, $p, $label])
+    @php
+        $mapQ = trim((string) ($info->map_location ?? ''));
+        if ($mapQ === '' && !empty($info->school_lat) && !empty($info->school_lng)) { $mapQ = $info->school_lat.','.$info->school_lng; }
+    @endphp
+    @if ($mapQ !== '' && !str_starts_with($mapQ, 'http'))
+        <h2>Location</h2>
+        <div class="card" style="padding:0;overflow:hidden">
+            <iframe title="School location" src="https://www.google.com/maps?q={{ urlencode($mapQ) }}&output=embed" style="border:0;width:100%;height:260px" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+    @endif
+
+    @foreach ([['principal_name', 'principal_message', 'principal_photo_url', 'Head Master'], ['teo_name', 'teo_message', 'teo_photo_url', 'TEO'], ['deo_name', 'deo_message', 'deo_photo_url', 'DEO']] as [$n, $m, $p, $label])
         @if (!empty($info->$m))
             <h2>{{ $label }} ka paigham</h2>
             <div class="card">

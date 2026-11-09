@@ -13,7 +13,8 @@ class SchoolInfo extends Model
         'semis_code', 'about_text', 'school_lat', 'school_lng', 'map_location',
         'deo_name', 'deo_message', 'deo_photo_url',
         'teo_name', 'teo_message', 'teo_photo_url',
-        'current_exam_year',
+        'current_exam_year', 'urdu_name', 'school_photo_url', 'about_text',
+        'principal_name', 'principal_photo_url', 'principal_message',
     ];
 
     /** Always work with the single settings row. */
