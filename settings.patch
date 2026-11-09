@@ -1,0 +1,328 @@
+diff --git a/app/Http/Controllers/AdminSettingsController.php b/app/Http/Controllers/AdminSettingsController.php
+index 6905013..0af1747 100644
+--- a/app/Http/Controllers/AdminSettingsController.php
++++ b/app/Http/Controllers/AdminSettingsController.php
+@@ -7,40 +7,66 @@ use Illuminate\Support\Facades\DB;
+ 
+ class AdminSettingsController extends Controller
+ {
++    /** Text fields saved as-is (the school timing windows now follow the Sindh season rule, see SchoolScheduleService). */
+     private array $fields = [
+-        'name', 'urdu_name', 'motto', 'address', 'phone', 'email', 'semis_code',
+-        'established_year', 'total_classes', 'current_exam_title', 'current_exam_year',
++        'name', 'urdu_name', 'school_photo_url', 'motto', 'about_text',
++        'established_year', 'semis_code', 'address', 'map_location', 'phone', 'email', 'total_classes',
+         'school_lat', 'school_lng', 'attendance_radius',
+-        'time_in_window_start', 'time_in_window_end',
+-        'time_out_window_start', 'time_out_window_end', 'weekly_off_days', 'friday_time_out_window_start', 'friday_time_out_window_end',
++        'principal_name', 'principal_photo_url', 'principal_message',
++        'teo_name', 'teo_photo_url', 'teo_message',
++        'deo_name', 'deo_photo_url', 'deo_message',
++        'current_exam_title', 'current_exam_year',
+     ];
+ 
+     public function edit()
+     {
+         $s = DB::table('school_info')->where('id', 1)->first();
+-        return view('admin.settings', ['s' => $s, 'fields' => $this->fields]);
++        $off = array_map('intval', array_filter(explode(',', (string) ($s->weekly_off_days ?? '0,6')), fn ($x) => trim($x) !== ''));
++
++        return view('admin.settings', ['s' => $s, 'off' => $off]);
+     }
+ 
+     public function update(Request $r)
+     {
+         $r->validate([
+             'name' => 'required|string|max:150',
+-            'time_in_window_start' => ['required', 'regex:/^\d{2}:\d{2}$/'],
+-            'time_in_window_end' => ['required', 'regex:/^\d{2}:\d{2}$/'],
+-            'time_out_window_start' => ['required', 'regex:/^\d{2}:\d{2}$/'],
+-            'time_out_window_end' => ['required', 'regex:/^\d{2}:\d{2}$/'],
+-            'weekly_off_days' => ['required', 'regex:/^[0-6](,[0-6])*$/'],
++            'urdu_name' => 'nullable|string|max:200',
++            'motto' => 'nullable|string|max:300',
++            'about_text' => 'nullable|string|max:5000',
++            'school_photo_url' => 'nullable|string|max:500',
++            'principal_photo_url' => 'nullable|string|max:500',
++            'teo_photo_url' => 'nullable|string|max:500',
++            'deo_photo_url' => 'nullable|string|max:500',
++            'principal_message' => 'nullable|string|max:3000',
++            'teo_message' => 'nullable|string|max:3000',
++            'deo_message' => 'nullable|string|max:3000',
++            'established_year' => 'nullable|digits:4',
++            'total_classes' => 'nullable|string|max:60',
++            'school_lat' => 'nullable|numeric|between:-90,90',
++            'school_lng' => 'nullable|numeric|between:-180,180',
++            'attendance_radius' => 'nullable|integer|min:20|max:5000',
++            'email' => 'nullable|email|max:150',
++            'off' => 'required|array|min:1',
++            'off.*' => 'integer|between:0,6',
++        ], [
++            'off.required' => 'Kam az kam ek haftawar chhutti ka din chunein.',
++            'off.min' => 'Kam az kam ek haftawar chhutti ka din chunein.',
+         ]);
++
+         $data = [];
+         foreach ($this->fields as $f) {
+-            $data[$f] = $r->input($f);
++            $v = $r->input($f);
++            $data[$f] = ($v === null || trim((string) $v) === '') ? null : trim((string) $v);
+         }
++        $data['weekly_off_days'] = implode(',', collect($r->input('off', []))->map(fn ($d) => (int) $d)->unique()->sort()->values()->all());
+         $data['updated_at'] = now();
++
+         if (DB::table('school_info')->where('id', 1)->exists()) {
+             DB::table('school_info')->where('id', 1)->update($data);
+         } else {
+             DB::table('school_info')->insert($data + ['id' => 1, 'created_at' => now()]);
+         }
++
+         return redirect()->route('admin.settings.edit')->with('ok', 'Settings save ho gayin.');
+     }
+ }
+diff --git a/app/Models/SchoolInfo.php b/app/Models/SchoolInfo.php
+index 6657d98..dea64d0 100644
+--- a/app/Models/SchoolInfo.php
++++ b/app/Models/SchoolInfo.php
+@@ -13,7 +13,8 @@ class SchoolInfo extends Model
+         'semis_code', 'about_text', 'school_lat', 'school_lng', 'map_location',
+         'deo_name', 'deo_message', 'deo_photo_url',
+         'teo_name', 'teo_message', 'teo_photo_url',
+-        'current_exam_year',
++        'current_exam_year', 'urdu_name', 'school_photo_url', 'about_text',
++        'principal_name', 'principal_photo_url', 'principal_message',
+     ];
+ 
+     /** Always work with the single settings row. */
+diff --git a/database/migrations/2026_11_09_100000_add_head_master_and_photo_to_school_info.php b/database/migrations/2026_11_09_100000_add_head_master_and_photo_to_school_info.php
+new file mode 100644
+index 0000000..db7a5bb
+--- /dev/null
++++ b/database/migrations/2026_11_09_100000_add_head_master_and_photo_to_school_info.php
+@@ -0,0 +1,29 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        $cols = [
++            'school_photo_url' => 'string',
++            'principal_name' => 'string',
++            'principal_photo_url' => 'string',
++            'principal_message' => 'text',
++        ];
++        foreach ($cols as $name => $type) {
++            if (! Schema::hasColumn('school_info', $name)) {
++                Schema::table('school_info', function (Blueprint $t) use ($name, $type) {
++                    $t->{$type}($name)->nullable();
++                });
++            }
++        }
++    }
++
++    public function down(): void
++    {
++    }
++};
+diff --git a/resources/views/admin/settings.blade.php b/resources/views/admin/settings.blade.php
+index 702f617..de979a9 100644
+--- a/resources/views/admin/settings.blade.php
++++ b/resources/views/admin/settings.blade.php
+@@ -4,31 +4,91 @@
+ 
+ @section('content')
+     @php
+-        $labels = [
+-            'name' => 'School ka naam (English)', 'urdu_name' => 'School ka naam (Urdu/Sindhi)',
+-            'motto' => 'Motto', 'address' => 'Address', 'phone' => 'Phone', 'email' => 'Email',
+-            'semis_code' => 'SEMIS code', 'established_year' => 'Qaim hone ka saal',
+-            'total_classes' => 'Total classes', 'current_exam_title' => 'Maujooda exam ka naam',
+-            'current_exam_year' => 'Exam year (jaise 2026-2027)',
+-            'school_lat' => 'School latitude', 'school_lng' => 'School longitude',
+-            'attendance_radius' => 'Attendance radius (meter)',
+-            'time_in_window_start' => 'Check-in shuru (HH:MM)', 'time_in_window_end' => 'Check-in khatam (HH:MM)',
+-            'time_out_window_start' => 'Check-out shuru (HH:MM)', 'time_out_window_end' => 'Check-out khatam (HH:MM)',
+-            'friday_time_out_window_start' => 'Friday check-out shuru (HH:MM)', 'friday_time_out_window_end' => 'Friday check-out khatam (HH:MM)',
+-            'weekly_off_days' => 'Haftawar chhutti (0=Sunday ... 6=Saturday, comma se, jaise 0,6)',
+-        ];
++        $v = fn ($k) => old($k, $s->$k ?? '');
++        $field = function ($name, $label, $sd = '', $type = 'text', $ph = '') use ($v) {
++            $out = '<label for="'.$name.'">'.e($label).($sd ? ' <span class="sd">'.$sd.'</span>' : '').'</label>';
++            if ($type === 'textarea') {
++                $out .= '<textarea id="'.$name.'" name="'.$name.'" rows="4" dir="auto">'.e($v($name)).'</textarea>';
++            } else {
++                $out .= '<input id="'.$name.'" name="'.$name.'" type="'.$type.'" value="'.e($v($name)).'" placeholder="'.e($ph).'"'.($type === 'number' ? ' step="any"' : '').'>';
++            }
++            return new \Illuminate\Support\HtmlString($out);
++        };
++        $days = [0 => 'Sun', 1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat'];
++        $checked = old('off', $off);
+     @endphp
+-    <h1>School Settings</h1>
+-    <p><a href="{{ route('admin.dashboard', [], false) }}">&larr; Dashboard</a></p>
+-    @if (session('ok'))<p style="color:green">{{ session('ok') }}</p>@endif
+-    @if ($errors->any())<p style="color:red">{{ $errors->first() }}</p>@endif
++
++    <div class="page-title"><h1>School Settings</h1></div>
++    <p class="sd sd-note">اسڪول جي تفصيل هتان تبديل ڪريو. تبديليون Home، About ۽ ڪارڊن تي فوري نظر ايندا.</p>
++    @if (session('ok'))<div class="ok"><p>{{ session('ok') }}</p></div>@endif
++    @if ($errors->any())<div class="err">@foreach ($errors->all() as $e)<p>{{ $e }}</p>@endforeach</div>@endif
+ 
+     <form method="POST" action="{{ route('admin.settings.update', [], false) }}">
+         @csrf
+-        @foreach ($fields as $f)
+-            <p>{{ $labels[$f] ?? $f }}<br>
+-                <input name="{{ $f }}" value="{{ old($f, $s->$f ?? '') }}" size="40"></p>
+-        @endforeach
+-        <p><button type="submit">Save karein</button></p>
++
++        <div class="card">
++            <h2>School Details</h2>
++            {{ $field('name', 'School Name') }}
++            {{ $field('urdu_name', 'School Name (Sindhi)') }}
++            {{ $field('school_photo_url', 'School Photo URL', '(Home page بينر لاءِ)', 'text', 'https://...') }}
++            {{ $field('motto', 'Motto') }}
++            {{ $field('about_text', 'About Us / School Description', "(Home page جي 'About Us' ٽيب لاءِ)", 'textarea') }}
++            {{ $field('established_year', 'Established Year', '', 'number') }}
++            {{ $field('semis_code', 'SEMIS Code') }}
++            {{ $field('total_classes', 'Classes Offered') }}
++        </div>
++
++        <div class="card">
++            <h2>Contact &amp; Location</h2>
++            {{ $field('address', 'Address') }}
++            {{ $field('map_location', 'Map Location', '(Google Plus Code يا جڳهه جو نالو، صحيح نقشي لاءِ)') }}
++            {{ $field('phone', 'Phone') }}
++            {{ $field('email', 'Email', '', 'email') }}
++        </div>
++
++        <div class="card">
++            <h2>Time Clock &amp; Weekly Off Days</h2>
++            <p class="sd sd-note">ٽيچر رڳو اسڪول جي ويجهو (radius اندر) Time In/Out ڪري سگهندو. Google Maps ۾ اسڪول پن تي دٻائي رکي coordinates ڪاپي ڪريو.</p>
++            {{ $field('school_lat', 'School Latitude (e.g. 25.1234)', '', 'number') }}
++            {{ $field('school_lng', 'School Longitude (e.g. 68.1234)', '', 'number') }}
++            {{ $field('attendance_radius', 'Allowed Radius in Meters (default 200)', '', 'number') }}
++            <p class="who" style="margin-top:12px">School ka waqt Sindh Government ke mutabiq khud lagta hai (sardi 1 Nov&ndash;31 Mar: 8:30 AM&ndash;2:00 PM, Jumma 12:30 PM tak; garmi 1 Apr&ndash;31 Oct: 8:00 AM&ndash;1:30 PM, Jumma 12:00 PM tak). Check-in pehle 30 minute, check-out aakhri 20 minute mein hota hai.</p>
++            <label>Weekly Off Days</label>
++            <div style="display:flex;flex-wrap:wrap;gap:8px">
++                @foreach ($days as $n => $d)
++                    <label style="text-transform:none;letter-spacing:0;font-family:inherit;font-size:15px;margin:0;color:var(--ink)"><input type="checkbox" name="off[]" value="{{ $n }}" @checked(in_array($n, array_map('intval', (array) $checked)))> {{ $d }}</label>
++                @endforeach
++            </div>
++        </div>
++
++        <div class="card">
++            <h2>Head Master</h2>
++            {{ $field('principal_name', 'Head Master Name') }}
++            {{ $field('principal_photo_url', 'Head Master Photo URL', '', 'text', 'https://...') }}
++            {{ $field('principal_message', "Head Master's Message", '', 'textarea') }}
++        </div>
++
++        <div class="card">
++            <h2>Taluka Education Officer</h2>
++            {{ $field('teo_name', 'Taluka Education Officer — Name') }}
++            {{ $field('teo_photo_url', 'Taluka Education Officer — Photo URL', '', 'text', 'https://...') }}
++            {{ $field('teo_message', 'Taluka Education Officer — Message', '', 'textarea') }}
++        </div>
++
++        <div class="card">
++            <h2>District Education Officer</h2>
++            {{ $field('deo_name', 'District Education Officer — Name') }}
++            {{ $field('deo_photo_url', 'District Education Officer — Photo URL', '', 'text', 'https://...') }}
++            {{ $field('deo_message', 'District Education Officer — Message', '', 'textarea') }}
++        </div>
++
++        <div class="card">
++            <h2>Current Exam</h2>
++            {{ $field('current_exam_title', 'Current Exam Title (e.g. Annual Examination)') }}
++            {{ $field('current_exam_year', 'Current Exam Year / Session (e.g. 2026-2027)') }}
++        </div>
++
++        <button type="submit">Save Changes</button>
++        <a class="btn ghost" href="{{ route('admin.dashboard', [], false) }}">Cancel</a>
+     </form>
+ @endsection
+diff --git a/resources/views/pages/about.blade.php b/resources/views/pages/about.blade.php
+index c45b3fd..60eb77b 100644
+--- a/resources/views/pages/about.blade.php
++++ b/resources/views/pages/about.blade.php
+@@ -15,7 +15,7 @@
+     <div class="card">
+         @if (!empty($info->established_year))<div class="row"><b>Qayam:</b> {{ $info->established_year }}</div>@endif
+         @if (!empty($info->semis_code))<div class="row"><b>SEMIS Code:</b> {{ $info->semis_code }}</div>@endif
+-        @php($summer = now()->month >= 4 && now()->month <= 10)
++        @php $summer = now()->month >= 4 && now()->month <= 10; @endphp
+         <div class="row"><b>School ka waqt:</b>
+             {{ $summer ? 'Monday–Thursday & Saturday: 8:00 AM – 1:30 PM, Friday: 8:00 AM – 12:00 PM (1 April – 31 October)' : 'Monday–Thursday & Saturday: 8:30 AM – 2:00 PM, Friday: 8:30 AM – 12:30 PM (1 November – 31 March)' }}
+         </div>
+@@ -27,7 +27,18 @@
+         @endif
+     </div>
+ 
+-    @foreach ([['deo_name', 'deo_message', 'deo_photo_url', 'DEO'], ['teo_name', 'teo_message', 'teo_photo_url', 'TEO']] as [$n, $m, $p, $label])
++    @php
++        $mapQ = trim((string) ($info->map_location ?? ''));
++        if ($mapQ === '' && !empty($info->school_lat) && !empty($info->school_lng)) { $mapQ = $info->school_lat.','.$info->school_lng; }
++    @endphp
++    @if ($mapQ !== '' && !str_starts_with($mapQ, 'http'))
++        <h2>Location</h2>
++        <div class="card" style="padding:0;overflow:hidden">
++            <iframe title="School location" src="https://www.google.com/maps?q={{ urlencode($mapQ) }}&output=embed" style="border:0;width:100%;height:260px" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
++        </div>
++    @endif
++
++    @foreach ([['principal_name', 'principal_message', 'principal_photo_url', 'Head Master'], ['teo_name', 'teo_message', 'teo_photo_url', 'TEO'], ['deo_name', 'deo_message', 'deo_photo_url', 'DEO']] as [$n, $m, $p, $label])
+         @if (!empty($info->$m))
+             <h2>{{ $label }} ka paigham</h2>
+             <div class="card">
+diff --git a/resources/views/pages/home.blade.php b/resources/views/pages/home.blade.php
+index 3c8ad8a..3cc4ce1 100644
+--- a/resources/views/pages/home.blade.php
++++ b/resources/views/pages/home.blade.php
+@@ -7,7 +7,7 @@
+     <div class="ticker" style="margin:0 -16px"><div>@foreach ($notices as $n)&#9733; {{ str($n->text ?? '')->limit(120) }} &nbsp;&nbsp;@endforeach</div></div>
+ @endif
+ 
+-<div class="hero-card">
++<div class="hero-card"@if (!empty($info->school_photo_url)) style="background-image:linear-gradient(160deg,rgba(15,81,50,.88),rgba(10,58,36,.92)),url('{{ $info->school_photo_url }}');background-size:cover;background-position:center"@endif>
+     <img src="{{ file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg') }}" alt="" style="width:96px;height:96px;border:0;background:transparent">
+     <h2>{{ $info->name ?? 'GBLSS Garho' }}</h2>
+     @if (!empty($info->urdu_name))<div class="ur">{{ $info->urdu_name }}</div>@endif
+diff --git a/tests/Feature/IdAdmitCardTest.php b/tests/Feature/IdAdmitCardTest.php
+index 3c50fdb..446c62b 100644
+--- a/tests/Feature/IdAdmitCardTest.php
++++ b/tests/Feature/IdAdmitCardTest.php
+@@ -55,4 +55,28 @@ class IdAdmitCardTest extends TestCase
+         $this->actingAs($this->admin());
+         $this->get(route('admin.admit-cards.index', [], false))->assertOk()->assertSee('Class VII');
+     }
++
++    public function test_settings_page_saves_new_fields_and_off_days(): void
++    {
++        $this->actingAs($this->admin());
++        $this->get(route('admin.settings.edit', [], false))->assertOk()->assertSee('Head Master Name')->assertSee('Weekly Off Days');
++
++        $this->post(route('admin.settings.update', [], false), [
++            'name' => 'Test School', 'principal_name' => 'Head Sahib', 'principal_message' => 'Welcome',
++            'school_lat' => '24.30', 'school_lng' => '67.60', 'attendance_radius' => '150',
++            'off' => [0, 5],
++        ])->assertRedirect();
++
++        $row = \Illuminate\Support\Facades\DB::table('school_info')->where('id', 1)->first();
++        $this->assertSame('Head Sahib', $row->principal_name);
++        $this->assertSame('0,5', $row->weekly_off_days);
++
++        $this->get('/about')->assertOk()->assertSee('Head Master ka paigham')->assertSee('Head Sahib');
++    }
++
++    public function test_settings_requires_an_off_day(): void
++    {
++        $this->actingAs($this->admin());
++        $this->from('/admin/settings')->post(route('admin.settings.update', [], false), ['name' => 'X'])->assertSessionHasErrors('off');
++    }
+ }
