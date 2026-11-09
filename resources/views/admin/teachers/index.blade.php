@@ -5,6 +5,7 @@
 @section('content')
     <p><a href="{{ route('admin.dashboard') }}">&larr; Dashboard</a></p>
     <h1>Teachers</h1>
+    <p class="sd sd-note">اسٽاف جو رڪارڊ ۽ پورٽل PIN.</p>
     @if (session('ok'))<p style="color:green">{{ session('ok') }}</p>@endif
     <p><a href="{{ route('admin.teachers.create') }}">+ Naya teacher</a></p>
 

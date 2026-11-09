@@ -17,7 +17,7 @@
 
         <form method="POST" action="{{ route('public.lookup.check') }}">
             @csrf
-            <label for="gr_number">GR number</label>
+            <label for="gr_number">GR number <span class="sd">(GR نمبر داخل ڪريو)</span></label>
             <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric">
 
             <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span> &mdash; jaise 2013-05-21</label>

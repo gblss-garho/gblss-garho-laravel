@@ -4,6 +4,7 @@
 
 @section('content')
     <h1>Student ID Cards</h1>
+    <p class="sd sd-note">ID ڪارڊ ٺاهڻ لاءِ ڪو اسٽوڊنٽ چونڊيو. Front ۽ Back — ٻئي پاسا ڪٽي هڪ ٻئي پويان لڳايو (double-sided card).</p>
 
     <form method="GET" action="{{ route('admin.id-cards.index', [], false) }}">
         <input type="text" name="q" value="{{ $q }}" placeholder="Naam ya GR number" style="width:70%">
@@ -11,7 +12,7 @@
     </form>
 
     @if ($students->isEmpty())
-        <p>Koi student nahi mila.</p>
+        <p class="sd">ڪو اسٽوڊنٽ نه مليو.</p>
     @else
         <table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;margin-top:12px">
             <tr><th>GR</th><th>Name</th><th>Class</th><th>ID Card</th></tr>

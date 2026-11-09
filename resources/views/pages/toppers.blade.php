@@ -4,6 +4,7 @@
 
 @section('content')
     <h1>Toppers</h1>
+    <p class="sd sd-note">هر ڪلاس جا اعلي نمبر وٺندڙ شاگرد.</p>
     <p>Annual Exam &mdash; Session {{ $year }}</p>
     @foreach ($byClass as $cls => $list)
         <h2>Class {{ $cls }}</h2>

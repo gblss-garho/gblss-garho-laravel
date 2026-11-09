@@ -4,12 +4,13 @@
 
 @section('content')
     <h1>Absentees</h1>
+    <p class="sd sd-note">هن ڪلاس جا غير حاضر شاگرد.</p>
         <p><a href="{{ route('teacher.dashboard', [], false) }}">Dashboard</a></p>
 
             @if (! $teacher)
-                    <p style="color: red;">Aapke account se koi teacher record linked nahi hai.</p>
+                    <p style="color: red;">توهان جو لاگ ان ڪنهن ٽيچر رڪارڊ سان لنڪ ٿيل ناهي. ايڊمن کان پنهنجو AUTH EMAIL فيلڊ سيٽ ڪرايو.</p>
                         @elseif (count($classes) === 0)
-                                <p style="color: red;">Aapko koi class assign nahi hai.</p>
+                                <p style="color: red;">توهان جي ٽيچر رڪارڊ ۾ اڃا ڪا ڪلاس مقرر ناهي ٿيل.</p>
                                     @else
                                             <form method="GET" action="{{ route('teacher.absentees', [], false) }}">
                                                         <label>Class

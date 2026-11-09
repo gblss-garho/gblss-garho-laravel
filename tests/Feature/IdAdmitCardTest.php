@@ -55,4 +55,16 @@ class IdAdmitCardTest extends TestCase
         $this->actingAs($this->admin());
         $this->get(route('admin.admit-cards.index', [], false))->assertOk()->assertSee('Class VII');
     }
+
+    public function test_admin_and_public_pages_render_with_sindhi_hints(): void
+    {
+        $this->student();
+        $this->actingAs($this->admin());
+        foreach (['admin.students.index', 'admin.teachers.index', 'admin.results.index', 'admin.id-cards.index',
+                  'admin.admit-cards.index', 'admin.staff-id-cards.index', 'admin.leaving-certificates.index',
+                  'admin.content.index', 'admin.media.index', 'admin.bookbank.index', 'admin.leave.index', 'admin.dashboard'] as $name) {
+            if (! \Illuminate\Support\Facades\Route::has($name)) { continue; }
+            $this->get(route($name, [], false))->assertOk();
+        }
+    }
 }

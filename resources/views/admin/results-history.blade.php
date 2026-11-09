@@ -4,6 +4,7 @@
 
 @section('content')
     <h1>Results History</h1>
+    <p class="sd sd-note">پراڻن سالن جا نتيجا GR نمبر سان ڏسو.</p>
     <p><a href="{{ route('admin.dashboard', [], false) }}">&larr; Dashboard</a></p>
 
     <form method="GET" action="{{ route('admin.results.history', [], false) }}">
@@ -11,7 +12,7 @@
         <button type="submit">Dekhein</button>
     </form>
 
-    @if ($notFound)<p style="color:red">Is GR number ka student nahi mila.</p>@endif
+    @if ($notFound)<p class="err sd">هن GR نمبر سان ڪو اسٽوڊنٽ رڪارڊ نه مليو.</p>@endif
 
     @if ($student)
         <h2>{{ $student->name }} (GR {{ $student->gr_number }})</h2>

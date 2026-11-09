@@ -4,6 +4,7 @@
 
 @section('content')
     <h1>Leaving Certificates</h1>
+    <p class="sd sd-note">Leaving Certificate ٺاهڻ لاءِ اسٽوڊنٽ چونڊيو.</p>
     <p><a href="{{ route('admin.dashboard', [], false) }}">&larr; Dashboard</a></p>
 
     @if (session('status'))
@@ -12,7 +13,7 @@
 
     <h2>Certificate baaqi hai (passed out, certificate nahi bana)</h2>
     @if ($eligible->isEmpty())
-        <p>Koi student baaqi nahi.</p>
+        <p class="sd">ڪو اسٽوڊنٽ نه مليو.</p>
     @else
         <table border="1" cellpadding="4">
             <tr><th>GR Number</th><th>Name</th><th>Class</th><th>Pass-out Year</th><th>Action</th></tr>
@@ -30,7 +31,7 @@
 
     <h2>Jari kiye gaye certificates</h2>
     @if ($certificates->isEmpty())
-        <p>Abhi koi certificate jari nahi hua.</p>
+        <p class="sd">هن سال ۾ ڪو رڪارڊ نه مليو.</p>
     @else
         <table border="1" cellpadding="4">
             <tr><th>LC No.</th><th>Name</th><th>GR Number</th><th>Class Passed</th><th>Year</th><th>Issue Date</th><th>PDF</th></tr>

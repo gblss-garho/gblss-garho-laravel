@@ -42,7 +42,7 @@ class PublicLookupController extends Controller
         $fail = fn (string $m) => view('pages.lookup', ['student' => null, 'exams' => [], 'error' => $m]);
 
         if (! $dob) {
-            return $fail('Date of birth sahi format mein likhein (jaise 2013-05-21).');
+            return $fail('تاريخ پيدائش صحيح فارميٽ ۾ لکو (مثال 2013-05-21).');
         }
 
         $tries = DB::table('lookup_attempts')->where('scope', 'student')->where('identifier', $gr)
@@ -56,7 +56,7 @@ class PublicLookupController extends Controller
 
         $student = Student::where('gr_number', $gr)->whereDate('dob', $dob)->first();
         if (! $student) {
-            return $fail('GR number ya date of birth match nahi hui.');
+            return $fail('GR نمبر ۽ تاريخ پيدائش نه ملي.');
         }
 
         $published = DB::table('result_publish_status')

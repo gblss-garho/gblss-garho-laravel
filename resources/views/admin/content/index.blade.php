@@ -5,6 +5,7 @@
 @section('content')
     <p><a href="{{ route('admin.dashboard') }}">&larr; Dashboard</a></p>
     <h1>Notices &amp; Calendar</h1>
+    <p class="sd sd-note">نوٽيس بورڊ سنڀاليو.</p>
     @if (session('ok'))<p style="color:green">{{ session('ok') }}</p>@endif
     @if ($errors->any())
         <ul style="color:red">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
@@ -13,7 +14,7 @@
     <h2>Notices</h2>
     <form method="POST" action="{{ route('admin.content.notice.add') }}">
         @csrf
-        <p><textarea name="text" rows="3" style="width:90%" placeholder="Notice likhein" required></textarea></p>
+        <p><textarea name="text" rows="3" style="width:90%" placeholder="مثال: سڀاڻي اسڪول بند رهندو" required></textarea></p>
         <input name="type" list="ntypes" placeholder="Type (info)" value="info">
         <datalist id="ntypes"><option value="info"><option value="urgent"><option value="holiday"></datalist>
         <input type="date" name="date">

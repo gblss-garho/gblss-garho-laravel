@@ -4,6 +4,7 @@
 
 @section('content')
     <div class="page-title"><h1>Gallery</h1></div>
+    <p class="sd sd-note">اسڪول جون فوٽو.</p>
     @if (count($items))
         <div class="photos">
             @foreach ($items as $g)

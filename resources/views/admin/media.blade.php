@@ -4,6 +4,7 @@
 
 @section('content')
     <h1>Gallery, Textbooks &amp; Feedback</h1>
+    <p class="sd sd-note">اسڪول جي فوٽو، ڪتاب (Sindh Textbook Board) ۽ فيڊبيڪ سنڀاليو.</p>
     <p><a href="{{ route('admin.dashboard', [], false) }}">&larr; Dashboard</a></p>
     @if (session('ok'))<p style="color:green">{{ session('ok') }}</p>@endif
     @if ($errors->any())<p style="color:red">{{ $errors->first() }}</p>@endif
@@ -34,7 +35,7 @@
         <input name="class_name" placeholder="Class (jaise VIII)" size="10" required>
         <input name="subject" placeholder="Subject" required>
         <input name="book_name" placeholder="Kitaab ka naam" required>
-        <input name="book_url" placeholder="Link https://..." required>
+        <input name="book_url" placeholder="https://drive.google.com/... يا ڪو به PDF لنڪ" required>
         <button type="submit">Add karein</button>
     </form>
     <table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;margin-top:10px">

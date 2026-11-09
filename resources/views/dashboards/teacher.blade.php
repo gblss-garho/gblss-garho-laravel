@@ -4,6 +4,7 @@
 
 @section('content')
     <div class="page-title"><h1>Teacher Dashboard</h1></div>
+    <p class="sd sd-note">پنهنجي ڪلاس جي حاضري، Homework ۽ موڪل جون درخواستون هتان سنڀاليو.</p>
     <p class="who">Logged in as: {{ auth()->user()->name }} ({{ auth()->user()->email }})</p>
 
     <div class="tiles">

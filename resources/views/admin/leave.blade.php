@@ -28,7 +28,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="5">Koi darkhwast nahi.</td></tr>
+            <tr><td colspan="5"><span class="sd">اڃا ڪا درخواست موصول نه ٿي آهي.</span></td></tr>
         @endforelse
     </table>
 @endsection

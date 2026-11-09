@@ -4,6 +4,7 @@
 
 @section('content')
     <h1>Homework</h1>
+    <p class="sd sd-note">پنهنجي ڪلاس جو Homework / Diary لکو.</p>
     <p><a href="{{ route('teacher.dashboard', [], false) }}">&larr; Dashboard</a></p>
     @if (session('ok'))<p style="color:green">{{ session('ok') }}</p>@endif
     @if ($errors->any())<p style="color:red">{{ $errors->first() }}</p>@endif
@@ -18,7 +19,7 @@
         </select></p>
         <p><input name="subject" placeholder="Subject" required></p>
         <p><input type="date" name="date" value="{{ now()->toDateString() }}" required></p>
-        <p><textarea name="text" rows="4" cols="40" placeholder="Homework likhein" required></textarea></p>
+        <p><textarea name="text" rows="4" cols="40" placeholder="مثال: Exercise 3, Q1-10 حل ڪريو؛ سڀاڻي quiz ٿيندو." required></textarea></p>
         <p>File (optional, 5MB tak): <input type="file" name="file"></p>
         <p><button type="submit">Homework save karein</button></p>
     </form>

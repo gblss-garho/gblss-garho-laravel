@@ -21,7 +21,7 @@
         @forelse ($items as $i)
             <tr><td>{{ substr($i->date, 0, 10) }}</td><td>{{ $i->reason }}</td><td>{{ ucfirst($i->status) }}</td></tr>
         @empty
-            <tr><td colspan="3">Koi darkhwast nahi.</td></tr>
+            <tr><td colspan="3"><span class="sd">اڃا ڪا درخواست موصول نه ٿي آهي.</span></td></tr>
         @endforelse
     </table>
 @endsection

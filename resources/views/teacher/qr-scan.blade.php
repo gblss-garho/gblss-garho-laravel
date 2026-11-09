@@ -4,10 +4,11 @@
 
 @section('content')
     <h1>QR Attendance</h1>
+    <p class="sd sd-note">شاگرد جي ID ڪارڊ جو QR اسڪين ڪري حاضري لڳايو.</p>
     <p><a href="{{ route('teacher.dashboard', [], false) }}">Dashboard</a></p>
 
     @if (! $teacher)
-        <p style="color: red;">Aapke account se koi teacher record linked nahi hai.</p>
+        <p style="color: red;">توهان جو لاگ ان ڪنهن ٽيچر رڪارڊ سان لنڪ ٿيل ناهي. ايڊمن کان پنهنجو AUTH EMAIL فيلڊ سيٽ ڪرايو.</p>
     @elseif (! $canScan)
         <p style="color: red;">QR attendance sirf school ke din aur waqt mein ho sakti hai.</p>
     @else

@@ -4,6 +4,7 @@
 
 @section('content')
     <h1>Hamara Staff ({{ count($teachers) }})</h1>
+    <p class="sd sd-note">اسان جا تجربيڪار استاد.</p>
     <div class="grid">
         @foreach ($teachers as $t)
             <div class="card flex">

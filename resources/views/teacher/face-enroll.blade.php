@@ -4,6 +4,7 @@
 
 @section('content')
     <h1>Chehra Enroll Karen</h1>
+    <p class="sd sd-note">Time In/Out لاءِ پهريان اڄ جو پنهنجو چهرو enroll ڪريو.</p>
 
     @if (session('status'))
         <p style="color:green">{{ session('status') }}</p>
@@ -50,7 +51,7 @@
                 statusText.textContent = 'Camera taiyar hai. Seedha camera mein dekhen aur capture karen.';
                 captureBtn.disabled = false;
             } catch (err) {
-                statusText.textContent = 'Camera ya models load nahi ho sake: ' + err.message;
+                statusText.textContent = 'ڪئميرا access نه ملي سگهيو: ' + err.message;
             }
         }
 
@@ -62,7 +63,7 @@
                 .withFaceDescriptor();
 
             if (! detection) {
-                statusText.textContent = 'Koi chehra nazar nahi aaya. Seedha camera mein dekhen aur dobara try karen.';
+                statusText.textContent = 'چهرو نه پئي مليو — ڪئميرا اڳيان اچو';
                 return;
             }
 

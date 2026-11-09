@@ -4,6 +4,7 @@
 
 @section('content')
     <h1>Promotion History</h1>
+    <p class="sd sd-note">ڪلاس پروموشن جو رڪارڊ.</p>
     <p><a href="{{ route('admin.dashboard') }}">&larr; Dashboard</a></p>
 
     @if (session('status'))

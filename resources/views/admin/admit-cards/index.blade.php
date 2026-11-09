@@ -4,6 +4,7 @@
 
 @section('content')
     <h1>Student Admit Cards</h1>
+    <p class="sd sd-note">امتحان لاءِ ايڊمٽ ڪارڊ ڏسو ۽ پرنٽ ڪريو. پوري ڪلاس لاءِ "Print All" استعمال ڪريو.</p>
 
     <form method="GET" action="{{ route('admin.admit-cards.index', [], false) }}">
         <input type="text" name="q" value="{{ $q }}" placeholder="Naam ya GR number" style="width:70%">
@@ -19,7 +20,7 @@
     @endif
 
     @if ($students->isEmpty())
-        <p>Koi student nahi mila.</p>
+        <p class="sd">هن ڪلاس لاءِ ڪو اسٽوڊنٽ نه مليو.</p>
     @else
         <table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;margin-top:12px">
             <tr><th>GR</th><th>Name</th><th>Class</th><th>Admit Card</th></tr>

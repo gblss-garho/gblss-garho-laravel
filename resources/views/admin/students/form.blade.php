@@ -27,7 +27,7 @@
         <p>Class<br><input name="class" value="{{ $f('class') }}" required></p>
         <p>Section<br><input name="section" value="{{ $f('section') }}"></p>
         <p>Address<br><input name="address" value="{{ $f('address') }}"></p>
-        <p>Guardian phone<br><input name="guardian_phone" value="{{ $f('guardian_phone') }}" placeholder="03xx xxxxxxx"></p>
+        <p>Guardian phone <span class="sd">(مثال 923001234567، WhatsApp رپورٽ لاءِ)</span><br><input name="guardian_phone" value="{{ $f('guardian_phone') }}" placeholder="923001234567" ></p>
         <p>Admission date<br><input type="date" name="admission_date" value="{{ $f('admission_date') }}"></p>
         <button type="submit">Save</button>
     </form>

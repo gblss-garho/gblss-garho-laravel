@@ -5,6 +5,7 @@
 @section('content')
     <p><a href="{{ route('admin.dashboard') }}">&larr; Dashboard</a></p>
     <h1>Students</h1>
+    <p class="sd sd-note">جنرل رجسٽر مطابق اسٽوڊنٽ رڪارڊ. GR نمبر سان ڳوليو.</p>
     @if (session('ok'))<p style="color:green">{{ session('ok') }}</p>@endif
 
     <form method="GET" action="{{ route('admin.students.index') }}">

@@ -5,6 +5,7 @@
 @section('content')
     <p><a href="{{ route('admin.dashboard') }}">&larr; Dashboard</a></p>
     <h1>Results</h1>
+    <p class="sd sd-note">نمبر لکو يا "A" (غير حاضر) لاءِ فيلڊ خالي ڇڏيو. "Total" حاصل ٿيل مارڪس جو مجموعو آهي (صرف اهي مضمون جن ۾ نمبر ڏنا ويا آهن).</p>
 
     <form method="GET" action="{{ route('admin.results.index') }}">
         <select name="year">
@@ -37,7 +38,7 @@
     @if ($class === '')
         <p>Class chun kar "Dikhayen" dabayein.</p>
     @elseif ($rows->isEmpty())
-        <p>Is class ka result nahi mila.</p>
+        <p class="sd">هن ڪلاس لاءِ ڪو اسٽوڊنٽ رڪارڊ ناهي.</p>
     @else
         <div style="overflow-x:auto">
         <table border="1" cellpadding="6" style="border-collapse:collapse;margin-top:12px">

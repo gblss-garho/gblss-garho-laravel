@@ -4,6 +4,7 @@
 
 @section('content')
     <h1>Book Bank</h1>
+    <p class="sd sd-note">مٿي مان ڪلاس چونڊيو ته رجسٽر نظر اچي — ڪاغذي بوڪ بينڪ رجسٽر وانگر، هر ڪلاس جو رڪارڊ الڳ ڏٺو ويندو آهي.</p>
     <p><a href="{{ route('admin.dashboard', [], false) }}">&larr; Dashboard</a></p>
     @if (session('ok'))<p style="color:green">{{ session('ok') }}</p>@endif
     @foreach ($errors->all() as $e)<p style="color:red">{{ $e }}</p>@endforeach
@@ -38,7 +39,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="5">Koi kitaab issue nahi.</td></tr>
+            <tr><td colspan="5"><span class="sd">اڃا ڪا ڪتاب ڪيٽلاگ ۾ شامل نه ڪئي وئي.</span></td></tr>
         @endforelse
     </table>
 

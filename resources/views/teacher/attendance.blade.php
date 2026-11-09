@@ -4,6 +4,7 @@
 
 @section('content')
     <h1>Teacher Attendance</h1>
+    <p class="sd sd-note">Time In/Out لاءِ پهريان اڄ جو پنهنجو چهرو enroll ڪريو.</p>
 
     @if (session('status'))
         <p style="color:green">{{ session('status') }}</p>

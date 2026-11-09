@@ -22,7 +22,7 @@
             $cls = old('classes', $teacher ? $teacher->classes->pluck('class_name')->implode(', ') : '');
         @endphp
         <p>Naam<br><input name="name" value="{{ $f('name') }}" required></p>
-        <p>Login email<br><input type="email" name="auth_email" value="{{ $f('auth_email') }}" required></p>
+        <p>Login email <span class="sd">(ٽيچر جو لاگ ان اي ميل، پورٽل رسائي لاءِ)</span><br><input type="email" name="auth_email" value="{{ $f('auth_email') }}" required></p>
         <p>Login PIN (4 digit){{ $teacher ? ' - khali chhorein to purana PIN rahega' : '' }}<br>
             <input name="pin" inputmode="numeric" maxlength="4" autocomplete="off" {{ $teacher ? '' : 'required' }}></p>
         <p>Classes (comma se, jaise VI, VII)<br><input name="classes" value="{{ $cls }}"></p>
