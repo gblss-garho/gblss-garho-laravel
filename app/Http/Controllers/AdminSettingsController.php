@@ -10,7 +10,7 @@ class AdminSettingsController extends Controller
     /** Text fields saved as-is (the school timing windows now follow the Sindh season rule, see SchoolScheduleService). */
     private array $fields = [
         'name', 'urdu_name', 'school_photo_url', 'motto', 'about_text',
-        'established_year', 'semis_code', 'address', 'map_location', 'phone', 'email', 'total_classes',
+        'established_year', 'semis_code', 'address', 'map_location', 'phone', 'email', 'total_classes', 'shifts',
         'school_lat', 'school_lng', 'attendance_radius',
         'principal_name', 'principal_photo_url', 'principal_message',
         'teo_name', 'teo_photo_url', 'teo_message',
@@ -42,6 +42,7 @@ class AdminSettingsController extends Controller
             'deo_message' => 'nullable|string|max:3000',
             'established_year' => 'nullable|digits:4',
             'total_classes' => 'nullable|string|max:60',
+            'shifts' => 'nullable|string|max:60',
             'school_lat' => 'nullable|numeric|between:-90,90',
             'school_lng' => 'nullable|numeric|between:-180,180',
             'attendance_radius' => 'nullable|integer|min:20|max:5000',

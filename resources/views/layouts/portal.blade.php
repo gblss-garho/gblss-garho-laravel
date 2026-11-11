@@ -5,14 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', config('app.name')) &middot; GBLSS Garho</title>
     <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@500;600;700&family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         @font-face { font-family: 'CustomSindhi'; src: url('{{ asset('fonts/CustomSindhi.ttf') }}') format('truetype'); font-display: swap; }
         :root { --g:#0F5132; --g2:#1B7A4D; --g3:#0a3a24; --gold:#DBB43C; --gold2:#c9a22c; --bg:#F7F5EE; --ink:#2b2b2b; --muted:#6b6b6b; --red:#9b2c2c; }
         * { box-sizing: border-box; }
         html { -webkit-text-size-adjust: 100%; }
-        body { margin:0; background:var(--bg); color:var(--ink); font-family: 'Noto Serif', Georgia, 'Times New Roman', 'CustomSindhi', serif; line-height:1.55; min-height:100vh; display:flex; flex-direction:column; }
+        body { margin:0; background:var(--bg); color:var(--ink); font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'CustomSindhi', sans-serif; line-height:1.55; min-height:100vh; display:flex; flex-direction:column; }
         a { color: var(--g2); }
+        h1, h2, h3, .brand b { font-family: 'Noto Serif', Georgia, serif; }
+        body.has-bg::before { content:""; position:fixed; inset:0; z-index:-1; background: linear-gradient(#F7F5EFF2,#F7F5EFF2), var(--bgimg) center/cover no-repeat; }
         .wrap { width:100%; max-width: 1000px; margin: 0 auto; padding: 0 16px; }
 
         /* Sindhi / Urdu text: browser shapes it, CustomSindhi supplies the letters */
@@ -24,18 +29,48 @@
         .highlights div { background:#fff; border-radius:12px; padding:12px 14px; border-right:4px solid var(--gold); box-shadow:0 2px 10px rgba(0,0,0,.06); text-align:right; }
 
         /* header */
-        .site-head { background: linear-gradient(160deg, var(--g), var(--g3)); color:#fff; border-bottom: 4px solid var(--gold); }
-        .brand { display:flex; align-items:center; gap:12px; padding: 12px 0 8px; text-decoration:none; color:#fff; }
-        .brand img { width:46px; height:46px; border-radius:50%; background:#fff; object-fit:cover; border:2px solid var(--gold); flex:none; }
-        .brand b { display:block; font-size: 17px; line-height:1.2; }
-        .brand small { display:block; opacity:.8; font-size: 12px; font-family: ui-monospace, Menlo, Consolas, monospace; }
-        .nav { display:flex; gap:8px; overflow-x:auto; padding: 4px 0 12px; scrollbar-width:none; }
+        .site-head { background: linear-gradient(160deg, #12613F, #0B3D26); color:#fff; position:sticky; top:0; z-index:40; box-shadow:0 6px 20px rgba(11,61,38,.25); }
+        .site-head .top { display:flex; align-items:center; justify-content:space-between; gap:12px; padding: 12px 0 10px; }
+        .brand { display:flex; align-items:center; gap:12px; text-decoration:none; color:#fff; min-width:0; }
+        .brand img { width:46px; height:46px; border-radius:50%; background:#ffffff14; object-fit:cover; border:2px solid rgba(201,162,39,.55); flex:none; padding:2px; }
+        .brand b { display:block; font-size: 15px; line-height:1.2; font-weight:700; }
+        .brand small { display:block; opacity:.72; font-size: 11px; font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; line-height:1.35; }
+        .brand .dev { display:block; opacity:.55; font-size: 9px; letter-spacing:.5px; margin-top:2px; font-family:'JetBrains Mono', ui-monospace, monospace; }
+        .head-right { display:flex; align-items:center; gap:8px; flex:none; }
+        .flag { width:44px; height:44px; border-radius:50%; background:#0b3d26; border:1.5px solid rgba(201,162,39,.5); display:flex; align-items:center; justify-content:center; }
+        .head-btn { display:inline-block; font: inherit; font-size:12px; font-weight:700; padding:8px 14px; border-radius:999px; background: linear-gradient(135deg,#DBB43C,#C9A227); color:#1F2A24; border:0; text-decoration:none; margin:0; box-shadow:0 3px 10px rgba(201,162,39,.4); cursor:pointer; }
+        .head-btn:hover { background: linear-gradient(135deg,#DBB43C,#C9A227); transform: translateY(-1px); }
+        .head-form { margin:0; }
+        .ajrak { height:5px; background: linear-gradient(90deg,#C9A227,#0F5132 50%,#C9A227); }
+        .nav { display:flex; gap:6px; overflow-x:auto; padding: 0 0 10px; scrollbar-width:none; }
         .nav::-webkit-scrollbar { display:none; }
-        .nav a, .nav button { flex:none; white-space:nowrap; text-decoration:none; color:#fff; font: inherit; font-size:14px; font-weight:bold; padding: 7px 14px; border-radius:999px; border:1px solid transparent; background:transparent; cursor:pointer; }
-        .nav a:hover, .nav button:hover { background: rgba(255,255,255,.12); }
-        .nav a.on { background: var(--gold); color:#222; }
-        .nav form { margin:0; flex:none; }
-        .nav .out { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.25); }
+        .nav a { flex:none; white-space:nowrap; text-decoration:none; color:#FAF6ECBB; font: inherit; font-size:14px; font-weight:500; padding: 6px 14px; border-radius:999px; }
+        .nav a:hover { background: rgba(255,255,255,.12); color:#fff; }
+        .nav a.on { background: linear-gradient(135deg,#DBB43C,#C9A227); color:#1F2A24; font-weight:600; }
+
+        /* mobile bottom nav + More sheet (as in the old site) */
+        .m-nav, .more-sheet, .more-backdrop { display:none; }
+        @media (max-width:768px) {
+            .nav { display:none; }
+            .m-nav { display:flex; position:fixed; left:10px; right:10px; bottom:10px; z-index:70; background:rgba(6,63,49,.96); backdrop-filter:blur(14px); border:1px solid rgba(217,169,26,.22); border-radius:18px; padding:6px; box-shadow:0 14px 36px rgba(0,0,0,.22); justify-content:space-around; }
+            .m-nav a, .m-nav button { color:#fff; font: inherit; font-size:10px; font-weight:600; padding:7px 9px; border-radius:12px; min-width:58px; text-align:center; text-decoration:none; background:transparent; border:0; margin:0; cursor:pointer; }
+            .m-nav a.on, .m-nav button.on { background:#D9A91A; color:#17231F; }
+            .m-nav i { display:block; font-style:normal; font-size:17px; line-height:1; margin-bottom:2px; }
+            .more-backdrop.open { display:block; position:fixed; inset:0; background:rgba(11,44,84,.45); z-index:68; }
+            .more-sheet.open { display:flex; flex-direction:column; position:fixed; left:10px; right:10px; bottom:78px; z-index:69; background:#fff; border:1px solid #E3DCC7; border-radius:18px; box-shadow:0 18px 44px rgba(0,0,0,.28); max-height:65vh; overflow:hidden; }
+            .more-head { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:linear-gradient(135deg,#0F5132,#0B3D26); color:#FAF6EC; font-weight:800; font-size:14px; letter-spacing:.4px; flex-shrink:0; }
+            .more-head button { background:rgba(255,255,255,.12); color:#FAF6EC; border-radius:999px; width:30px; height:30px; font-size:14px; line-height:1; padding:0; margin:0; }
+            .more-list { overflow-y:auto; padding:8px; }
+            .more-list a { display:flex; align-items:center; gap:12px; padding:11px 10px; border-radius:12px; font-size:13.5px; font-weight:600; color:#1F2A24; text-decoration:none; border-bottom:1px solid #F1EDE0; }
+            .more-list a:last-child { border-bottom:0; }
+            .more-list a.on { background:linear-gradient(135deg,#FCEFC0,#F3DFA0); color:#0B3D26; }
+            .more-list .ic { width:30px; height:30px; flex:none; border-radius:9px; background:#EAF3EF; display:flex; align-items:center; justify-content:center; font-size:15px; }
+            .more-list .lb { flex:1; } .more-list .ar { color:#B9AF98; font-size:16px; }
+            .m-nav button:hover, .more-head button:hover { background:transparent; }
+            .m-nav button.on:hover { background:#D9A91A; }
+            main { padding-bottom: 86px; }
+            .site-foot { padding-bottom: 90px; }
+        }
 
         /* page */
         main { flex:1; padding-bottom: 20px; }
@@ -79,7 +114,6 @@
         button:disabled { opacity:.55; cursor:not-allowed; }
         .btn.gold, button.gold { background: var(--gold); color:#222; } .btn.gold:hover, button.gold:hover { background: var(--gold2); }
         .btn.ghost, button.ghost { background: transparent; color: var(--g); border:1.5px solid var(--g); }
-        .nav button { margin-top:0; }
 
         /* tables */
         table { border-collapse: collapse; width:100%; background:#fff; border-radius:10px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.06); margin: 8px 0 14px; }
@@ -101,9 +135,11 @@
 
 
         /* public pages */
-        .ticker { background: var(--gold); color:#222; overflow:hidden; white-space:nowrap; border-bottom:2px solid var(--gold2); }
-        .ticker div { display:inline-block; padding: 7px 0; padding-left:100%; animation: tick 40s linear infinite; font-size:14px; font-weight:bold; }
-        .ticker:hover div { animation-play-state: paused; }
+        .notice-bar { display:flex; align-items:center; background:#7A1226; color:#fff; height:46px; border-radius:12px; overflow:hidden; margin: 18px 0 20px; }
+        .notice-bar .lbl { flex:none; background:#5A0D1B; height:100%; display:flex; align-items:center; padding:0 12px; font-weight:700; font-size:12px; letter-spacing:1px; font-family:'JetBrains Mono', ui-monospace, monospace; }
+        .notice-bar .run { flex:1; overflow:hidden; white-space:nowrap; height:100%; display:flex; align-items:center; }
+        .notice-bar .run div { display:inline-block; padding-left:100%; animation: tick 40s linear infinite; font-size:14px; font-weight:600; }
+        .notice-bar:hover .run div { animation-play-state: paused; }
         @keyframes tick { to { transform: translateX(-100%); } }
         .hero-card .ur { font-size:22px; opacity:.92; }
         .hero-card .motto { color: var(--gold); font-style:italic; margin: 6px 0 14px; }
@@ -130,7 +166,8 @@
         .site-foot { background: var(--g3); color:#cfd8d2; text-align:center; padding: 18px 12px; font-size: 13px; font-family: ui-monospace, Menlo, Consolas, monospace; border-top: 4px solid var(--gold); }
     </style>
 </head>
-<body>
+@php $info = \Illuminate\Support\Facades\DB::table('school_info')->first(); @endphp
+<body class="{{ !empty($info->school_photo_url) ? 'has-bg' : '' }}"@if (!empty($info->school_photo_url)) style="--bgimg:url('{{ $info->school_photo_url }}')"@endif>
 @php
     $u = auth()->user();
     $role = $u->role ?? null;
@@ -169,32 +206,119 @@
             ['Textbooks', route('public.textbooks', [], false), 'textbooks*'],
             ['About', route('public.about', [], false), 'about*'],
             ['Feedback', route('public.feedback', [], false), 'feedback*'],
-            ['Staff Login', route('login', [], false), 'login'],
         ];
     }
 @endphp
+@php
+    $dash = $role === 'teacher' ? route('teacher.dashboard', [], false) : ($role === 'admin' ? route('admin.dashboard', [], false) : route('login', [], false));
+    $pub = [
+        ['Staff', route('public.staff', [], false), 'staff*', '🧑‍🏫'],
+        ['Toppers', route('public.toppers', [], false), 'toppers*', '🏆'],
+        ['Gallery', route('public.gallery', [], false), 'gallery*', '🖼️'],
+        ['Text Books', route('public.textbooks', [], false), 'textbooks*', '📚'],
+        ['About', route('public.about', [], false), 'about*', 'ℹ️'],
+        ['Feedback', route('public.feedback', [], false), 'feedback*', '📝'],
+    ];
+    if ($role === 'admin') {
+        $bottom = [
+            ['Home', route('home', [], false), '/', '⌂'],
+            ['Dashboard', $dash, 'admin/dashboard*', '▦'],
+            ['Students', route('admin.students.index', [], false), 'admin/students*', '👥'],
+            ['Results', route('admin.results.index', [], false), 'admin/results*', '🏆'],
+        ];
+        $more = [
+            ['Teachers', route('admin.teachers.index', [], false), 'admin/teachers*', '🧑‍🏫'],
+            ['ID Cards', route('admin.id-cards.index', [], false), 'admin/id-cards*', '🪪'],
+            ['Staff ID Cards', route('admin.staff-id-cards.index', [], false), 'admin/staff-id-cards*', '🪪'],
+            ['Admit Cards', route('admin.admit-cards.index', [], false), 'admin/admit-cards*', '🎫'],
+            ['Results History', route('admin.results.history', [], false), 'admin/results-history*', '📊'],
+            ['Notices & Calendar', route('admin.content.index', [], false), 'admin/content*', '📅'],
+            ['Leaving Certificates', route('admin.leaving-certificates.index', [], false), 'admin/leaving-certificates*', '📄'],
+            ['Promotions', route('admin.promotions.history', [], false), 'admin/promotions*', '🎓'],
+            ['Book Bank', route('admin.bookbank.index', [], false), 'admin/bookbank*', '📖'],
+            ['Teacher Leave', route('admin.leave.index', [], false), 'admin/leave*', '🏖️'],
+            ['Gallery & Textbooks', route('admin.media.index', [], false), 'admin/media*', '🖼️'],
+            ['School Settings', route('admin.settings.edit', [], false), 'admin/settings*', '⚙️'],
+            ['Security Logs', route('admin.security.index', [], false), 'admin/security*', '🔐'],
+        ];
+    } else {
+        $bottom = [
+            ['Home', route('home', [], false), '/', '⌂'],
+            ['Dashboard', $dash, 'teacher/dashboard*', '▦'],
+            ['Homework', $role === 'teacher' ? route('teacher.homework.index', [], false) : route('login', [], false), 'teacher/homework*', '▤'],
+            ['Parents', route('public.lookup', [], false), 'parent-lookup*', '♧'],
+        ];
+        $more = [];
+        if ($role === 'teacher') {
+            $more = [
+                ['Attendance', route('teacher.attendance.index', [], false), 'teacher/attendance*', '⏱️'],
+                ['Chehra Enroll', route('teacher.face.enroll', [], false), 'teacher/face*', '🔒'],
+                ['QR Attendance', route('teacher.qr.scan', [], false), 'teacher/qr*', '📷'],
+                ['Absentees', route('teacher.absentees', [], false), 'teacher/absentees*', '📋'],
+                ['Chhutti', route('teacher.leave.index', [], false), 'teacher/leave*', '🏖️'],
+            ];
+        }
+    }
+    $more = array_merge($more, $pub);
+    if (! $u) { $more[] = ['Staff Login', route('login', [], false), 'login', '🔑']; }
+    $moreActive = collect($more)->contains(fn ($m) => request()->is($m[2]));
+@endphp
 <header class="site-head">
     <div class="wrap">
-        <a class="brand" href="{{ route('home', [], false) }}">
-            <img src="{{ $logo }}" alt="">
-            <span>
-                <b>{{ $schoolName }}</b>
-                <small>Town Committee Garho, Taluka Ghorabari, District Thatta</small>
-            </span>
-        </a>
+        <div class="top">
+            <a class="brand" href="{{ route('home', [], false) }}">
+                <img src="{{ $logo }}" alt="">
+                <span>
+                    <b>{{ $schoolName }}</b>
+                    <small>Town Committee Garho, Taluka Ghorabari, District Thatta</small>
+                    <small class="dev">Designed &amp; Developed by Sir Waris Ghafoor</small>
+                </span>
+            </a>
+            <div class="head-right">
+                <span class="flag" aria-hidden="true"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M15.5 4.2a8 8 0 1 0 0 15.6A9.2 9.2 0 0 1 15.5 4.2z" fill="#F7F5EE"/><path d="M18.2 8.6l.7 1.6 1.7.2-1.3 1.2.4 1.7-1.5-.9-1.5.9.4-1.7-1.3-1.2 1.7-.2z" fill="#F7F5EE"/></svg></span>
+                @auth
+                    <form class="head-form" method="POST" action="{{ route('logout', [], false) }}">
+                        @csrf
+                        <button type="submit" class="head-btn">&#10003; Staff &mdash; Logout</button>
+                    </form>
+                @else
+                    <a class="head-btn" href="{{ route('login', [], false) }}">Staff Login</a>
+                @endauth
+            </div>
+        </div>
         <nav class="nav">
             @foreach ($nav as [$label, $url, $pattern])
                 <a href="{{ $url }}" class="{{ request()->is($pattern) ? 'on' : '' }}">{{ $label }}</a>
             @endforeach
-            @auth
-                <form method="POST" action="{{ route('logout', [], false) }}">
-                    @csrf
-                    <button type="submit" class="out">Logout</button>
-                </form>
-            @endauth
         </nav>
     </div>
+    <div class="ajrak"></div>
 </header>
+
+<div class="more-backdrop" id="moreBackdrop"></div>
+<div class="more-sheet" id="moreSheet" role="dialog" aria-label="More">
+    <div class="more-head"><span>More</span><button type="button" id="moreClose" aria-label="Close">&#10005;</button></div>
+    <div class="more-list">
+        @foreach ($more as [$label, $url, $pattern, $icon])
+            <a href="{{ $url }}" class="{{ request()->is($pattern) ? 'on' : '' }}"><span class="ic">{{ $icon }}</span><span class="lb">{{ $label }}</span><span class="ar">&rsaquo;</span></a>
+        @endforeach
+    </div>
+</div>
+<nav class="m-nav" aria-label="Main">
+    @foreach ($bottom as [$label, $url, $pattern, $icon])
+        <a href="{{ $url }}" class="{{ request()->is($pattern) ? 'on' : '' }}"><i>{{ $icon }}</i>{{ $label }}</a>
+    @endforeach
+    <button type="button" id="moreBtn" class="{{ $moreActive ? 'on' : '' }}"><i>&#8943;</i>More</button>
+</nav>
+<script>
+(function () {
+    var sheet = document.getElementById('moreSheet'), back = document.getElementById('moreBackdrop');
+    function set(open) { sheet.classList.toggle('open', open); back.classList.toggle('open', open); }
+    document.getElementById('moreBtn').addEventListener('click', function () { set(!sheet.classList.contains('open')); });
+    document.getElementById('moreClose').addEventListener('click', function () { set(false); });
+    back.addEventListener('click', function () { set(false); });
+})();
+</script>
 
 <main>
     <div class="wrap">

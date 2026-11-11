@@ -13,11 +13,30 @@
 
     <h2>School ki maloomat</h2>
     <div class="card">
+        @php
+            $shift = trim((string) ($info->shifts ?? ''), " \t\n\r\"[]");
+            $off = array_filter(array_map('trim', explode(',', (string) ($info->weekly_off_days ?? '0,6'))), 'strlen');
+            $dn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            $summer = now()->month >= 4 && now()->month <= 10;
+            $work = array_values(array_diff(range(0, 6), array_map('intval', $off)));
+            $normal = array_values(array_filter($work, fn ($d) => $d !== 5));
+            $normalLbl = count($normal) ? implode(', ', array_map(fn ($d) => $dn[$d], $normal)) : '';
+        @endphp
+        @if (!empty($info->name))<div class="row"><b>School Name:</b> {{ $info->name }}</div>@endif
+        @if (!empty($info->urdu_name))<div class="row"><b>School Name (Sindhi):</b> <span class="sd">{{ $info->urdu_name }}</span></div>@endif
         @if (!empty($info->established_year))<div class="row"><b>Qayam:</b> {{ $info->established_year }}</div>@endif
         @if (!empty($info->semis_code))<div class="row"><b>SEMIS Code:</b> {{ $info->semis_code }}</div>@endif
-        @php $summer = now()->month >= 4 && now()->month <= 10; @endphp
+        @if (!empty($info->total_classes))<div class="row"><b>Classes Offered:</b> {{ $info->total_classes }}</div>@endif
+        @if ($shift !== '')<div class="row"><b>Shift:</b> {{ $shift }}</div>@endif
+        @if (!empty($info->principal_name))<div class="row"><b>Head Master:</b> {{ $info->principal_name }}</div>@endif
         <div class="row"><b>School ka waqt:</b>
-            {{ $summer ? 'Monday–Thursday & Saturday: 8:00 AM – 1:30 PM, Friday: 8:00 AM – 12:00 PM (1 April – 31 October)' : 'Monday–Thursday & Saturday: 8:30 AM – 2:00 PM, Friday: 8:30 AM – 12:30 PM (1 November – 31 March)' }}
+            @if ($summer)
+                {{ $normalLbl }}: 8:00 AM – 1:30 PM@if (in_array(5, $work)), Friday: 8:00 AM – 12:00 PM @endif
+                (1 April – 31 October)
+            @else
+                {{ $normalLbl }}: 8:30 AM – 2:00 PM@if (in_array(5, $work)), Friday: 8:30 AM – 12:30 PM @endif
+                (1 November – 31 March)
+            @endif
         </div>
         @if (!empty($info->address))<div class="row"><b>Pata:</b> {{ $info->address }}</div>@endif
         @if (!empty($info->phone))<div class="row"><b>Phone:</b> {{ $info->phone }}</div>@endif

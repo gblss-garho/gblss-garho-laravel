@@ -36,6 +36,7 @@
             {{ $field('established_year', 'Established Year', '', 'number') }}
             {{ $field('semis_code', 'SEMIS Code') }}
             {{ $field('total_classes', 'Classes Offered') }}
+            {{ $field('shifts', 'Shift (e.g. Morning)') }}
         </div>
 
         <div class="card">

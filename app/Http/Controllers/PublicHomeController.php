@@ -16,6 +16,7 @@ class PublicHomeController extends Controller
             'info' => DB::table('school_info')->where('id', 1)->first(),
             'students' => DB::table('students')->where('passed_out', false)->count(),
             'teachers' => DB::table('teachers')->count(),
+            'team' => DB::table('teachers')->select('name', 'designation', 'subject', 'photo_url', 'intro_line')->orderBy('name')->limit(6)->get(),
             'classCounts' => collect($classes)->mapWithKeys(fn ($c) => [$c => (int) ($counts[$c] ?? 0)]),
             'notices' => DB::table('notices')->orderByDesc('date')->limit(4)->get(),
             'events' => DB::table('calendar_events')->whereDate('date', '>=', now()->toDateString())->orderBy('date')->limit(4)->get(),

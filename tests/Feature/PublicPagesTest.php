@@ -16,6 +16,21 @@ class PublicPagesTest extends TestCase
         }
     }
 
+    public function test_about_shows_shift_and_classes(): void
+    {
+        \App\Models\SchoolInfo::create(['name' => 'GBLSS Garho', 'shifts' => 'Morning', 'total_classes' => 'I to VIII']);
+        $this->get('/about')->assertOk()->assertSee('Shift:')->assertSee('Morning')->assertSee('Classes Offered:');
+    }
+
+    public function test_home_has_old_site_layout_pieces(): void
+    {
+        $this->get('/')->assertOk()
+            ->assertSee('WHY CHOOSE US')
+            ->assertSee('id="moreSheet"', false)
+            ->assertSee('class="m-nav"', false)
+            ->assertSee('Designed &amp; Developed by Sir Waris Ghafoor', false);
+    }
+
     public function test_feedback_has_star_rating(): void
     {
         $this->get('/feedback')->assertSee('class="stars"', false);
