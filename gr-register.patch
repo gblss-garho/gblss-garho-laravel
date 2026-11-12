@@ -1,0 +1,428 @@
+diff --git a/app/Console/Commands/ImportGrRegister.php b/app/Console/Commands/ImportGrRegister.php
+new file mode 100644
+index 0000000..d57023f
+--- /dev/null
++++ b/app/Console/Commands/ImportGrRegister.php
+@@ -0,0 +1,125 @@
++<?php
++
++namespace App\Console\Commands;
++
++use Illuminate\Console\Command;
++use Illuminate\Support\Facades\DB;
++use Illuminate\Support\Facades\Http;
++
++class ImportGrRegister extends Command
++{
++    protected $signature = 'register:import {--csv= : optional GR register CSV (kept OUT of git) with removal details} {--dry : only count, write nothing}';
++    protected $description = 'Fill the General Register (GR 1..latest) from live Supabase and/or a CSV. Re-running is safe.';
++
++    private function date($v): ?string
++    {
++        $v = trim((string) $v);
++        if ($v === '') {
++            return null;
++        }
++        if (preg_match('/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/', $v, $m)) {
++            return sprintf('%04d-%02d-%02d', $m[3], $m[2], $m[1]);
++        }
++        return preg_match('/^\d{4}-\d{2}-\d{2}/', $v) ? substr($v, 0, 10) : null;
++    }
++
++    public function handle()
++    {
++        $rows = [];
++
++        $key = env('SUPABASE_SERVICE_KEY');
++        $url = env('SUPABASE_URL');
++        if ($key && $url) {
++            $r = Http::withHeaders(['apikey' => $key, 'Authorization' => 'Bearer ' . $key])
++                ->get($url . '/rest/v1/students', ['select' => '*', 'limit' => 2000]);
++            if (! $r->ok()) {
++                $this->error('Supabase HTTP ' . $r->status());
++                return 1;
++            }
++            foreach ($r->json() as $s) {
++                $n = (int) ($s['gr_number'] ?? 0);
++                if ($n < 1) {
++                    continue;
++                }
++                $rows[$n] = [
++                    'name' => $s['name'] ?? '',
++                    'father_name' => $s['father_name'] ?? null,
++                    'dob' => $this->date($s['dob'] ?? null),
++                    'address' => $s['address'] ?? null,
++                    'admission_date' => $this->date($s['admission_date'] ?? null),
++                    'removal_class' => ! empty($s['passed_out']) ? ($s['class'] ?? null) : null,
++                    'status' => $s['status'] ?? (empty($s['passed_out']) ? 'active' : null),
++                ];
++            }
++            $this->info('Supabase rows: ' . count($rows));
++        } elseif (! $this->option('csv')) {
++            $this->error('SUPABASE_URL / SUPABASE_SERVICE_KEY missing in .env — give --csv=path instead.');
++            return 1;
++        }
++
++        if ($path = $this->option('csv')) {
++            if (! is_file($path)) {
++                $this->error("CSV not found: $path");
++                return 1;
++            }
++            $fh = fopen($path, 'r');
++            $head = fgetcsv($fh);
++            $head[0] = ltrim((string) $head[0], "\xEF\xBB\xBF");
++            $map = [
++                'Reg No' => 'reg', 'Name' => 'name', "Father's Name" => 'father_name', 'Religion' => 'religion',
++                'Surname' => 'surname', 'Date of Birth' => 'dob', 'Address' => 'address',
++                'Last Institution Attended' => 'last_institution', 'Date of Admission' => 'admission_date',
++                'Class in which admitted' => 'admission_class', 'Date of Removal' => 'removal_date',
++                'Class at time of removal' => 'removal_class', 'Cause of removal' => 'removal_cause', 'Remarks' => 'remarks',
++            ];
++            $c = 0;
++            while (($line = fgetcsv($fh)) !== false) {
++                $rec = [];
++                foreach ($head as $i => $h) {
++                    if (isset($map[trim($h)])) {
++                        $rec[$map[trim($h)]] = trim((string) ($line[$i] ?? ''));
++                    }
++                }
++                $n = (int) ($rec['reg'] ?? 0);
++                if ($n < 1) {
++                    continue;
++                }
++                unset($rec['reg']);
++                foreach (['dob', 'admission_date', 'removal_date'] as $d) {
++                    if (isset($rec[$d])) {
++                        $rec[$d] = $this->date($rec[$d]);
++                    }
++                }
++                foreach ($rec as $k => $v) {
++                    if ($v === '' || $v === null) {
++                        unset($rec[$k]);
++                    }
++                }
++                $rows[$n] = array_merge($rows[$n] ?? [], $rec);
++                $c++;
++            }
++            fclose($fh);
++            $this->info("CSV rows: $c");
++        }
++
++        ksort($rows);
++        $this->info('Total register rows: ' . count($rows) . ' (GR ' . array_key_first($rows) . ' to ' . array_key_last($rows) . ')');
++        if ($this->option('dry')) {
++            return 0;
++        }
++
++        $now = now();
++        foreach ($rows as $n => $v) {
++            $v = array_filter($v, fn ($x) => $x !== null && $x !== '');
++            $v['name'] = $v['name'] ?? ('GR ' . $n);
++            $exists = DB::table('gr_register')->where('reg_no', $n)->exists();
++            if ($exists) {
++                DB::table('gr_register')->where('reg_no', $n)->update($v + ['updated_at' => $now]);
++            } else {
++                DB::table('gr_register')->insert($v + ['reg_no' => $n, 'created_at' => $now, 'updated_at' => $now]);
++            }
++        }
++        $this->info('Done.');
++        return 0;
++    }
++}
+diff --git a/app/Http/Controllers/AdminGrRegisterController.php b/app/Http/Controllers/AdminGrRegisterController.php
+new file mode 100644
+index 0000000..2e7e250
+--- /dev/null
++++ b/app/Http/Controllers/AdminGrRegisterController.php
+@@ -0,0 +1,72 @@
++<?php
++
++namespace App\Http\Controllers;
++
++use App\Models\Student;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\DB;
++use Illuminate\Support\Facades\Schema;
++
++class AdminGrRegisterController extends Controller
++{
++    private const PER_PAGE = 50;
++
++    public function index(Request $request)
++    {
++        $q = trim((string) $request->query('q', ''));
++        $f = in_array($request->query('f'), ['active', 'left'], true) ? $request->query('f') : 'all';
++
++        $reg = Schema::hasTable('gr_register') ? DB::table('gr_register')->get()->keyBy('reg_no') : collect();
++        $stu = Student::all()->keyBy(fn ($s) => (int) $s->gr_number);
++
++        $rows = collect();
++        foreach ($reg as $n => $x) {
++            $s = $stu->get($n);
++            $rows->put($n, (object) [
++                'reg' => $n, 'name' => $s->name ?? $x->name, 'father' => $s->father_name ?? $x->father_name,
++                'surname' => $x->surname, 'dob' => $s->dob ?? $x->dob, 'address' => $s->address ?? $x->address,
++                'adm_date' => $s->admission_date ?? $x->admission_date, 'adm_class' => $x->admission_class,
++                'rem_date' => $x->removal_date, 'rem_class' => $x->removal_class, 'cause' => $x->removal_cause,
++                'remarks' => $x->remarks, 'status' => $x->status,
++                'current' => ($s && ! $s->passed_out) ? $s->class.($s->section ? '-'.$s->section : '') : null,
++                'active' => (bool) ($s && ! $s->passed_out),
++            ]);
++        }
++        foreach ($stu as $n => $s) {
++            if ($n > 0 && ! $rows->has($n)) {
++                $rows->put($n, (object) [
++                    'reg' => $n, 'name' => $s->name, 'father' => $s->father_name, 'surname' => null, 'dob' => $s->dob,
++                    'address' => $s->address, 'adm_date' => $s->admission_date, 'adm_class' => null, 'rem_date' => null,
++                    'rem_class' => null, 'cause' => null, 'remarks' => null, 'status' => $s->status,
++                    'current' => $s->passed_out ? null : $s->class.($s->section ? '-'.$s->section : ''),
++                    'active' => ! $s->passed_out,
++                ]);
++            }
++        }
++        $rows = $rows->sortKeys();
++
++        $total = $rows->count();
++        $activeCount = $rows->where('active', true)->count();
++        $last = $rows->keys()->last() ?? 0;
++
++        $rows = $rows->filter(function ($r) use ($q, $f) {
++            if ($f === 'active' && ! $r->active) {
++                return false;
++            }
++            if ($f === 'left' && $r->active) {
++                return false;
++            }
++            return $q === '' || str_contains(mb_strtolower($r->name.' '.$r->father.' '.$r->reg), mb_strtolower($q));
++        })->values();
++
++        $pages = max(1, (int) ceil($rows->count() / self::PER_PAGE));
++        $page = min($pages, max(1, (int) $request->query('page', 1)));
++
++        return view('admin.gr-register', [
++            'rows' => $rows->slice(($page - 1) * self::PER_PAGE, self::PER_PAGE),
++            'q' => $q, 'f' => $f, 'page' => $page, 'pages' => $pages, 'shown' => $rows->count(),
++            'total' => $total, 'activeCount' => $activeCount, 'last' => $last,
++            'empty' => $reg->isEmpty(),
++        ]);
++    }
++}
+diff --git a/database/migrations/2026_11_12_100000_create_gr_register_table.php b/database/migrations/2026_11_12_100000_create_gr_register_table.php
+new file mode 100644
+index 0000000..fab9f7c
+--- /dev/null
++++ b/database/migrations/2026_11_12_100000_create_gr_register_table.php
+@@ -0,0 +1,36 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::create('gr_register', function (Blueprint $t) {
++            $t->id();
++            $t->unsignedInteger('reg_no')->unique();
++            $t->string('name');
++            $t->string('father_name')->nullable();
++            $t->string('religion', 40)->nullable();
++            $t->string('surname', 80)->nullable();
++            $t->date('dob')->nullable();
++            $t->string('address')->nullable();
++            $t->string('last_institution')->nullable();
++            $t->date('admission_date')->nullable();
++            $t->string('admission_class', 20)->nullable();
++            $t->date('removal_date')->nullable();
++            $t->string('removal_class', 20)->nullable();
++            $t->string('removal_cause')->nullable();
++            $t->string('remarks')->nullable();
++            $t->string('status', 40)->nullable();
++            $t->timestamps();
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::dropIfExists('gr_register');
++    }
++};
+diff --git a/resources/views/admin/gr-register.blade.php b/resources/views/admin/gr-register.blade.php
+new file mode 100644
+index 0000000..1b109a0
+--- /dev/null
++++ b/resources/views/admin/gr-register.blade.php
+@@ -0,0 +1,63 @@
++@extends('layouts.portal')
++
++@section('title', 'GR Register')
++
++@section('content')
++    <p><a href="{{ route('admin.dashboard', [], false) }}">&larr; Dashboard</a></p>
++    <div class="page-title" data-n="03"><h1>General Register (GR)</h1></div>
++    <p class="sd sd-note">جنرل رجسٽر: GR نمبر 1 کان وٺي تازو داخلا تائين سمورا شاگرد.</p>
++
++    <div class="fb-sum" style="flex-wrap:wrap">
++        <span>Total: <b>{{ $total }}</b></span>
++        <span>&middot; Active: <b>{{ $activeCount }}</b></span>
++        <span>&middot; Left / Passed out: <b>{{ $total - $activeCount }}</b></span>
++        <span>&middot; Last GR: <b>{{ $last }}</b></span>
++    </div>
++
++    @if ($empty)
++        <div class="card">Purana register abhi import nahi hua, is liye sirf maujooda students dikh rahe hain. Server par <code>php84 artisan register:import</code> chalayein.</div>
++    @endif
++
++    <form method="GET" action="{{ route('admin.gr-register', [], false) }}">
++        <input type="text" name="q" value="{{ $q }}" placeholder="Naam, father ya GR number" style="width:55%">
++        <select name="f">
++            <option value="all" @selected($f === 'all')>Sab (1 &ndash; {{ $last }})</option>
++            <option value="active" @selected($f === 'active')>Active</option>
++            <option value="left" @selected($f === 'left')>Left / Passed out</option>
++        </select>
++        <button type="submit">Talaash</button>
++        <button type="button" onclick="window.print()">Print</button>
++    </form>
++    <p style="color:#6b6b5c;font-size:14px">{{ $shown }} record &middot; page {{ $page }} / {{ $pages }}</p>
++
++    <div class="scroll"><table>
++        <tr><th>GR</th><th>Name</th><th>Father</th><th>DOB</th><th>Address</th><th>Admitted</th><th>Removed</th><th>Status</th></tr>
++        @forelse ($rows as $r)
++            <tr>
++                <td><b>{{ $r->reg }}</b></td>
++                <td>{{ $r->name }}@if ($r->surname) <small>({{ $r->surname }})</small>@endif</td>
++                <td>{{ $r->father }}</td>
++                <td>{{ $r->dob ? \Illuminate\Support\Carbon::parse($r->dob)->format('d-m-Y') : '' }}</td>
++                <td>{{ $r->address }}</td>
++                <td>{{ $r->adm_date ? \Illuminate\Support\Carbon::parse($r->adm_date)->format('d-m-Y') : '' }}{{ $r->adm_class ? ' · '.$r->adm_class : '' }}</td>
++                <td>
++                    @if ($r->active)
++                        &mdash;
++                    @else
++                        {{ $r->rem_date ? \Illuminate\Support\Carbon::parse($r->rem_date)->format('d-m-Y') : '' }}{{ $r->rem_class ? ' · '.$r->rem_class : '' }}
++                        @if ($r->cause)<br><small>{{ $r->cause }}</small>@endif
++                    @endif
++                    @if ($r->remarks)<br><small>{{ $r->remarks }}</small>@endif
++                </td>
++                <td>{{ $r->active ? 'Active '.$r->current : ($r->status ?: 'Left') }}</td>
++            </tr>
++        @empty
++            <tr><td colspan="8">Koi record nahi mila.</td></tr>
++        @endforelse
++    </table></div>
++
++    <p>
++        @if ($page > 1)<a href="{{ request()->fullUrlWithQuery(['page' => $page - 1]) }}">&larr; Pichla</a>@endif
++        @if ($page < $pages) <a href="{{ request()->fullUrlWithQuery(['page' => $page + 1]) }}">Agla &rarr;</a>@endif
++    </p>
++@endsection
+diff --git a/resources/views/admin/students/index.blade.php b/resources/views/admin/students/index.blade.php
+index a96f37b..737f054 100644
+--- a/resources/views/admin/students/index.blade.php
++++ b/resources/views/admin/students/index.blade.php
+@@ -18,6 +18,7 @@
+         </select>
+         <button type="submit">Talaash</button>
+         <a href="{{ route('admin.students.create') }}">+ Naya student</a>
++        <a href="{{ route('admin.gr-register', [], false) }}">General Register (GR 1 se)</a>
+     </form>
+ 
+     <div class="scroll"><table>
+diff --git a/resources/views/dashboards/admin.blade.php b/resources/views/dashboards/admin.blade.php
+index c1dd49f..43d652c 100644
+--- a/resources/views/dashboards/admin.blade.php
++++ b/resources/views/dashboards/admin.blade.php
+@@ -9,6 +9,7 @@
+ 
+     <div class="tiles">
+         <a class="tile" href="{{ route('admin.students.index', [], false) }}"><b>Students</b><span>Register, edit, add</span></a>
++        <a class="tile" href="{{ route('admin.gr-register', [], false) }}"><b>General Register (GR)</b><span>GR 1 se aakhri tak, purane bhi</span></a>
+         <a class="tile" href="{{ route('admin.teachers.index', [], false) }}"><b>Teachers</b><span>Staff records aur PIN</span></a>
+         <a class="tile" href="{{ route('admin.results.index', [], false) }}"><b>Results</b><span>Marks aur publish</span></a>
+         <a class="tile" href="{{ route('admin.results.history', [], false) }}"><b>Results History</b><span>Purane saalon ke natije</span></a>
+diff --git a/resources/views/layouts/portal.blade.php b/resources/views/layouts/portal.blade.php
+index f968fd2..5326698 100644
+--- a/resources/views/layouts/portal.blade.php
++++ b/resources/views/layouts/portal.blade.php
+@@ -280,6 +280,7 @@
+             ['Results', route('admin.results.index', [], false), 'admin/results*', '🏆'],
+         ];
+         $more = [
++            ['GR Register', route('admin.gr-register', [], false), 'admin/gr-register*', '📒'],
+             ['Teachers', route('admin.teachers.index', [], false), 'admin/teachers*', '🧑‍🏫'],
+             ['ID Cards', route('admin.id-cards.index', [], false), 'admin/id-cards*', '🪪'],
+             ['Staff ID Cards', route('admin.staff-id-cards.index', [], false), 'admin/staff-id-cards*', '🪪'],
+diff --git a/resources/views/pages/about.blade.php b/resources/views/pages/about.blade.php
+index fade70d..0761c60 100644
+--- a/resources/views/pages/about.blade.php
++++ b/resources/views/pages/about.blade.php
+@@ -15,6 +15,7 @@
+     <div class="card">
+         @php
+             $shift = trim((string) ($info->shifts ?? ''), " \t\n\r\"[]");
++            $shift = preg_replace_callback('/\\\\u([0-9a-fA-F]{4})/', fn ($m) => mb_convert_encoding(pack('H*', $m[1]), 'UTF-8', 'UTF-16BE'), $shift);
+             $off = array_filter(array_map('trim', explode(',', (string) ($info->weekly_off_days ?? '0,6'))), 'strlen');
+             $dn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+             $summer = now()->month >= 4 && now()->month <= 10;
+diff --git a/routes/web.php b/routes/web.php
+index 782e88e..e6b0298 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -20,6 +20,7 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+ 
+ Route::middleware(['auth', 'role:admin'])->group(function () {
+     Route::get('/admin/dashboard', fn () => view('dashboards.admin'))->name('admin.dashboard');
++    Route::get('/admin/gr-register', [\App\Http\Controllers\AdminGrRegisterController::class, 'index'])->name('admin.gr-register');
+     Route::get('/admin/promotions', [AdminPromotionController::class, 'history'])->name('admin.promotions.history');
+     Route::get('/admin/promotions/{batch}/review', [AdminPromotionController::class, 'review'])->name('admin.promotions.review');
+     Route::post('/admin/promotions/{batch}/undo', [AdminPromotionController::class, 'undo'])->name('admin.promotions.undo');
+diff --git a/tests/Feature/GrRegisterTest.php b/tests/Feature/GrRegisterTest.php
+new file mode 100644
+index 0000000..91faa31
+--- /dev/null
++++ b/tests/Feature/GrRegisterTest.php
+@@ -0,0 +1,42 @@
++<?php
++
++namespace Tests\Feature;
++
++use App\Models\User;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Illuminate\Support\Facades\DB;
++use Tests\TestCase;
++
++class GrRegisterTest extends TestCase
++{
++    use RefreshDatabase;
++
++    private function admin(): User
++    {
++        return User::forceCreate([
++            'name' => 'Admin Test', 'email' => 'admin@example.test', 'password' => bcrypt('secret-pass'),
++            'role' => 'admin', 'is_active' => 1,
++        ]);
++    }
++
++    public function test_register_lists_old_and_current_students_from_gr_one(): void
++    {
++        DB::table('gr_register')->insert([
++            ['reg_no' => 1, 'name' => 'Old Student One', 'father_name' => 'Old Father', 'removal_cause' => 'to join elsewhere', 'created_at' => now(), 'updated_at' => now()],
++            ['reg_no' => 2, 'name' => 'Old Student Two', 'father_name' => 'Old Father 2', 'created_at' => now(), 'updated_at' => now()],
++        ]);
++
++        $this->actingAs($this->admin());
++        $this->get('/admin/gr-register')
++            ->assertOk()
++            ->assertSee('General Register')
++            ->assertSee('Old Student One')
++            ->assertSee('Old Student Two');
++        $this->get('/admin/dashboard')->assertSee('General Register (GR)');
++    }
++
++    public function test_register_requires_admin_login(): void
++    {
++        $this->get('/admin/gr-register')->assertRedirect();
++    }
++}
