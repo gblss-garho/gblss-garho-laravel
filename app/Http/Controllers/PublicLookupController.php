@@ -15,7 +15,7 @@ class PublicLookupController extends Controller
         return view('pages.lookup', ['student' => null, 'exams' => [], 'error' => null]);
     }
 
-    private function parseDob(string $raw): ?string
+    protected function parseDob(string $raw): ?string
     {
         $raw = trim($raw);
         foreach (['Y-m-d', 'd-m-Y', 'd/m/Y', 'M d, Y'] as $fmt) {
@@ -31,7 +31,8 @@ class PublicLookupController extends Controller
         return null;
     }
 
-    public function check(Request $request)
+    /** GR + date of birth check with the 15-minute attempt limit. Sets $error and returns null on failure. */
+    protected function lookupStudent(Request $request, ?string &$error): ?Student
     {
         $data = $request->validate([
             'gr_number' => ['required', 'string', 'max:50'],
@@ -39,16 +40,19 @@ class PublicLookupController extends Controller
         ]);
         $gr = trim($data['gr_number']);
         $dob = $this->parseDob($data['dob']);
-        $fail = fn (string $m) => view('pages.lookup', ['student' => null, 'exams' => [], 'error' => $m]);
 
         if (! $dob) {
-            return $fail('تاريخ پيدائش صحيح فارميٽ ۾ لکو (مثال 2013-05-21).');
+            $error = 'تاريخ پيدائش صحيح فارميٽ ۾ لکو (مثال 2013-05-21).';
+
+            return null;
         }
 
         $tries = DB::table('lookup_attempts')->where('scope', 'student')->where('identifier', $gr)
             ->where('created_at', '>', now()->subMinutes(15)->toDateTimeString())->count();
         if ($tries >= 8) {
-            return $fail('Bohat zyada koshishein ho gayi hain. 15 minute baad dobara try karein.');
+            $error = 'Bohat zyada koshishein ho gayi hain. 15 minute baad dobara try karein.';
+
+            return null;
         }
         DB::table('lookup_attempts')->insert([
             'scope' => 'student', 'identifier' => $gr, 'created_at' => now()->toDateTimeString(),
@@ -56,15 +60,31 @@ class PublicLookupController extends Controller
 
         $student = Student::where('gr_number', $gr)->whereDate('dob', $dob)->first();
         if (! $student) {
-            return $fail('GR نمبر ۽ تاريخ پيدائش نه ملي.');
+            $error = 'GR نمبر ۽ تاريخ پيدائش نه ملي.';
         }
 
+        return $student;
+    }
+
+    /** Published results of a student, grouped by exam type. */
+    protected function publishedExams(Student $student)
+    {
         $published = DB::table('result_publish_status')
             ->where('class_name', $student->results_class)->where('status', 'published')->pluck('exam_type');
-        $exams = StudentResult::where('student_id', $student->id)->whereIn('exam_type', $published)
-            ->orderBy('subject')->get()->groupBy('exam_type');
 
-        return view('pages.lookup', ['student' => $student, 'exams' => $exams, 'homework' => \App\Models\Homework::where('class_name', $student->class)->where('status', 'published')->orderByDesc('date')->limit(15)->get(), 'error' => null] + $this->extras($student));
+        return StudentResult::where('student_id', $student->id)->whereIn('exam_type', $published)
+            ->orderBy('subject')->get()->groupBy('exam_type');
+    }
+
+    public function check(Request $request)
+    {
+        $error = null;
+        $student = $this->lookupStudent($request, $error);
+        if (! $student) {
+            return view('pages.lookup', ['student' => null, 'exams' => [], 'error' => $error]);
+        }
+
+        return view('pages.lookup', ['student' => $student, 'exams' => $this->publishedExams($student), 'homework' => \App\Models\Homework::where('class_name', $student->class)->where('status', 'published')->orderByDesc('date')->limit(15)->get(), 'error' => null] + $this->extras($student));
     }
 
     private function extras($student): array

@@ -106,6 +106,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/leave')->name('admin.le
 
 Route::get('/gallery', [\App\Http\Controllers\PublicPagesController::class, 'gallery'])->name('public.gallery');
 Route::get('/textbooks', [\App\Http\Controllers\PublicPagesController::class, 'textbooks'])->name('public.textbooks');
+Route::get('/results', [\App\Http\Controllers\PublicResultsController::class, 'show'])->name('public.results');
+Route::post('/results', [\App\Http\Controllers\PublicResultsController::class, 'check'])->middleware('throttle:30,1')->name('public.results.check');
+Route::get('/id-cards', [\App\Http\Controllers\PublicCardsController::class, 'show'])->name('public.id-cards');
+Route::post('/id-cards', [\App\Http\Controllers\PublicCardsController::class, 'download'])->middleware('throttle:30,1')->name('public.id-cards.download');
 Route::get('/feedback', [\App\Http\Controllers\PublicPagesController::class, 'feedbackForm'])->name('public.feedback');
 Route::post('/feedback', [\App\Http\Controllers\PublicPagesController::class, 'feedbackStore'])->middleware('throttle:5,10')->name('public.feedback.store');
 

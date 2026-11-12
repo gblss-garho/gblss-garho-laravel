@@ -4,7 +4,7 @@
 
 @section('content')
     <p><a href="{{ route('admin.dashboard') }}">&larr; Dashboard</a></p>
-    <h1>Students</h1>
+    <div class="page-title" data-n="02"><h1>Register / Students</h1></div>
     <p class="sd sd-note">جنرل رجسٽر مطابق اسٽوڊنٽ رڪارڊ. GR نمبر سان ڳوليو.</p>
     @if (session('ok'))<p style="color:green">{{ session('ok') }}</p>@endif
 
@@ -20,7 +20,7 @@
         <a href="{{ route('admin.students.create') }}">+ Naya student</a>
     </form>
 
-    <table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;margin-top:12px">
+    <div class="scroll"><table>
         <tr><th>GR</th><th>Name</th><th>Father</th><th>Class</th><th>Phone</th><th></th></tr>
         @forelse ($students as $s)
             <tr>
@@ -40,7 +40,7 @@
         @empty
             <tr><td colspan="6"><span class="sd">اڃا ڪو اسٽوڊنٽ رڪارڊ ناهي.</span></td></tr>
         @endforelse
-    </table>
+    </table></div>
 
     <p>
         @if ($students->previousPageUrl())<a href="{{ $students->previousPageUrl() }}">&larr; Pichla</a>@endif

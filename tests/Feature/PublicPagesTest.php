@@ -37,6 +37,14 @@ class PublicPagesTest extends TestCase
         $this->get('/feedback')->assertOk()->assertSee('hero-lk', false)->assertSee('Submit Feedback');
     }
 
+    public function test_results_and_id_card_pages_open_and_reject_unknown_students(): void
+    {
+        $this->get('/results')->assertOk()->assertSee('Exam Results')->assertSee('Mid Term');
+        $this->get('/id-cards')->assertOk()->assertSee('Student ID Card');
+        $this->post('/results', ['gr_number' => '99999', 'dob' => '2013-05-21'])->assertOk()->assertSee('GR نمبر ۽ تاريخ پيدائش نه ملي');
+        $this->post('/id-cards', ['gr_number' => '99999', 'dob' => '2013-05-21'])->assertOk()->assertSee('GR نمبر ۽ تاريخ پيدائش نه ملي');
+    }
+
     public function test_feedback_has_star_rating(): void
     {
         $this->get('/feedback')->assertSee('class="stars"', false);

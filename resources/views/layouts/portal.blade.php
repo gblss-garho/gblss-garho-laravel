@@ -250,7 +250,9 @@
             ['Home', route('home', [], false), '/'],
             ['Parents Corner', route('public.lookup', [], false), 'parent-lookup*'],
             ['Staff', route('public.staff', [], false), 'staff*'],
+            ['Results', route('public.results', [], false), 'results*'],
             ['Toppers', route('public.toppers', [], false), 'toppers*'],
+            ['ID Card', route('public.id-cards', [], false), 'id-cards*'],
             ['Gallery', route('public.gallery', [], false), 'gallery*'],
             ['Textbooks', route('public.textbooks', [], false), 'textbooks*'],
             ['About', route('public.about', [], false), 'about*'],
@@ -262,7 +264,9 @@
     $dash = $role === 'teacher' ? route('teacher.dashboard', [], false) : ($role === 'admin' ? route('admin.dashboard', [], false) : route('login', [], false));
     $pub = [
         ['Staff', route('public.staff', [], false), 'staff*', '🧑‍🏫'],
+        ['Results', route('public.results', [], false), 'results*', '📊'],
         ['Toppers', route('public.toppers', [], false), 'toppers*', '🏆'],
+        ['ID Card', route('public.id-cards', [], false), 'id-cards*', '🪪'],
         ['Gallery', route('public.gallery', [], false), 'gallery*', '🖼️'],
         ['Text Books', route('public.textbooks', [], false), 'textbooks*', '📚'],
         ['About', route('public.about', [], false), 'about*', 'ℹ️'],
