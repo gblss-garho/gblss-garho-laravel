@@ -15,6 +15,7 @@
     <div class="card">
         @php
             $shift = trim((string) ($info->shifts ?? ''), " \t\n\r\"[]");
+            $shift = preg_replace_callback('/\\\\u([0-9a-fA-F]{4})/', fn ($m) => mb_convert_encoding(pack('H*', $m[1]), 'UTF-8', 'UTF-16BE'), $shift);
             $off = array_filter(array_map('trim', explode(',', (string) ($info->weekly_off_days ?? '0,6'))), 'strlen');
             $dn = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             $summer = now()->month >= 4 && now()->month <= 10;

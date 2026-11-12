@@ -280,6 +280,7 @@
             ['Results', route('admin.results.index', [], false), 'admin/results*', '🏆'],
         ];
         $more = [
+            ['GR Register', route('admin.gr-register', [], false), 'admin/gr-register*', '📒'],
             ['Teachers', route('admin.teachers.index', [], false), 'admin/teachers*', '🧑‍🏫'],
             ['ID Cards', route('admin.id-cards.index', [], false), 'admin/id-cards*', '🪪'],
             ['Staff ID Cards', route('admin.staff-id-cards.index', [], false), 'admin/staff-id-cards*', '🪪'],

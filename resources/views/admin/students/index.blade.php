@@ -18,6 +18,7 @@
         </select>
         <button type="submit">Talaash</button>
         <a href="{{ route('admin.students.create') }}">+ Naya student</a>
+        <a href="{{ route('admin.gr-register', [], false) }}">General Register (GR 1 se)</a>
     </form>
 
     <div class="scroll"><table>
