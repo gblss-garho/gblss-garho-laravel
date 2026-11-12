@@ -3,39 +3,43 @@
 @section('title', 'Parents Corner')
 
 @section('content')
-    <div class="hero-card">
-        <img src="{{ file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg') }}" alt="">
-        <h2>Parents Corner</h2>
-        <span class="pill">GR number aur date of birth</span>
+    <div class="hero-lk">
+        <div class="ring"><img src="{{ file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg') }}" alt=""></div>
+        <h2>{{ $schoolName ?? 'Government Boys Lower Secondary School Garho' }}</h2>
+        <span class="pill">Parent's Corner &mdash; <span class="sd">GR نمبر ۽ تاريخ پيدائش سان ڏسو</span></span>
+        <span class="dev">Designed &amp; Developed by Sir Waris Ghafoor</span>
     </div>
 
-    <div class="card narrow">
-        <p class="sd">پنهنجي ٻار جي تفصيل ڏسو</p>
+    <div class="lk-card">
+        <div class="lk-title sd">پنهنجي ٻار جي تفصيل ڏسو</div>
         <p>Apne bachay ka GR number aur date of birth likh kar result dekhein.</p>
 
         @if ($error)<div class="err"><p>{{ $error }}</p></div>@endif
 
         <form method="POST" action="{{ route('public.lookup.check') }}">
             @csrf
-            <label for="gr_number">GR number <span class="sd">(GR نمبر داخل ڪريو)</span></label>
-            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric">
+            <label for="gr_number">GR / Roll number <span class="sd">(GR نمبر داخل ڪريو)</span></label>
+            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="105">
 
-            <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span> &mdash; jaise 2013-05-21</label>
-            <input id="dob" name="dob" value="{{ old('dob') }}" required>
+            <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span></label>
+            <input id="dob" name="dob" type="date" value="{{ old('dob') }}" required>
 
-            <button type="submit">Dekhein</button>
+            <div class="btn-row">
+                <button type="submit">Search</button>
+                <a class="btn ghost" href="{{ route('public.lookup', [], false) }}">Reset</a>
+            </div>
         </form>
     </div>
 
     @if ($student)
-        <div class="card">
-            <h2>{{ $student->name }}</h2>
+        <div class="lk-card">
+            <h2 style="margin-top:0">{{ $student->name }}</h2>
             <p>Walid: {{ $student->father_name }} &middot; Class: {{ $student->class }}{{ $student->section ? '-'.$student->section : '' }} &middot; GR: {{ $student->gr_number }}</p>
         </div>
 
         @forelse ($exams as $exam => $rows)
-            <div class="card">
-                <h3>{{ ucfirst($exam) }}</h3>
+            <div class="lk-card">
+                <h3 style="margin-top:0">{{ ucfirst($exam) }}</h3>
                 <div class="scroll">
                     <table>
                         <tr><th>Subject</th><th>Marks</th></tr>

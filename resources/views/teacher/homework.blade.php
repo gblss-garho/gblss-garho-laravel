@@ -3,7 +3,7 @@
 @section('title', 'Homework')
 
 @section('content')
-    <h1>Homework</h1>
+    <div class="page-title" data-n="14"><h1>E-Homework / Daily Diary</h1></div>
     <p class="sd sd-note">پنهنجي ڪلاس جو Homework / Diary لکو.</p>
     <p><a href="{{ route('teacher.dashboard', [], false) }}">&larr; Dashboard</a></p>
     @if (session('ok'))<p style="color:green">{{ session('ok') }}</p>@endif

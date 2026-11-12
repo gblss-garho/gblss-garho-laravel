@@ -3,13 +3,13 @@
 @section('title', 'Toppers')
 
 @section('content')
-    <h1>Toppers</h1>
+    <div class="page-title"><h1>Toppers</h1></div>
     <p class="sd sd-note">هر ڪلاس جا اعلي نمبر وٺندڙ شاگرد.</p>
     <p>Annual Exam &mdash; Session {{ $year }}</p>
     @foreach ($byClass as $cls => $list)
         <h2>Class {{ $cls }}</h2>
         @forelse ($list as $i => $t)
-            <div class="card flex">
+            <div class="tp">
                 @if (!empty($t->photo_url))
                     <img class="pic" src="{{ $t->photo_url }}" alt="{{ $t->name }}" loading="lazy">
                 @else
@@ -21,7 +21,7 @@
                 </div>
             </div>
         @empty
-            <div class="card">Is class ka annual result abhi publish nahi hua.</div>
+            <div class="lk-card">Is class ka annual result abhi publish nahi hua.</div>
         @endforelse
     @endforeach
 @endsection

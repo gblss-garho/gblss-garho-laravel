@@ -3,7 +3,7 @@
 @section('title', 'Gallery')
 
 @section('content')
-    <div class="page-title"><h1>Gallery</h1></div>
+    <div class="page-title" data-n="08"><h1>Gallery</h1></div>
     <p class="sd sd-note">اسڪول جون فوٽو.</p>
     @if (count($items))
         <div class="photos">

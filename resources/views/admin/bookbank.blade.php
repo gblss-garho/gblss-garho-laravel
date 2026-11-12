@@ -3,7 +3,7 @@
 @section('title', 'Book Bank')
 
 @section('content')
-    <h1>Book Bank</h1>
+    <div class="page-title" data-n="10"><h1>Book Bank</h1></div>
     <p class="sd sd-note">مٿي مان ڪلاس چونڊيو ته رجسٽر نظر اچي — ڪاغذي بوڪ بينڪ رجسٽر وانگر، هر ڪلاس جو رڪارڊ الڳ ڏٺو ويندو آهي.</p>
     <p><a href="{{ route('admin.dashboard', [], false) }}">&larr; Dashboard</a></p>
     @if (session('ok'))<p style="color:green">{{ session('ok') }}</p>@endif

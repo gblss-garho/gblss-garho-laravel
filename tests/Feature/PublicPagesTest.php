@@ -31,6 +31,12 @@ class PublicPagesTest extends TestCase
             ->assertSee('Designed &amp; Developed by Sir Waris Ghafoor', false);
     }
 
+    public function test_parents_corner_and_feedback_have_hero(): void
+    {
+        $this->get('/parent-lookup')->assertOk()->assertSee('hero-lk', false)->assertSee('GR / Roll number');
+        $this->get('/feedback')->assertOk()->assertSee('hero-lk', false)->assertSee('Submit Feedback');
+    }
+
     public function test_feedback_has_star_rating(): void
     {
         $this->get('/feedback')->assertSee('class="stars"', false);

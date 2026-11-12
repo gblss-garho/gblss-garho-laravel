@@ -21,7 +21,10 @@ class PublicPagesController extends Controller
 
     public function feedbackForm()
     {
-        return view('pages.feedback');
+        $reviews = DB::table('feedback')->orderByDesc('created_at')->limit(20)->get();
+        $rated = $reviews->whereNotNull('rating');
+
+        return view('pages.feedback', ['reviews' => $reviews, 'avg' => $rated->count() ? $rated->avg('rating') : 0]);
     }
 
     public function feedbackStore(Request $r)
