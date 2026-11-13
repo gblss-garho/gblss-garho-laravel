@@ -22,16 +22,39 @@ class AdminIdCardController extends Controller
             ->limit(50)
             ->get();
 
-        return view('admin.id-cards.index', compact('students', 'q'));
+        $classes = Student::query()->where('passed_out', false)->whereNotNull('class')->distinct()->orderBy('class')->pluck('class');
+
+        return view('admin.id-cards.index', compact('students', 'q', 'classes'));
     }
 
     public function pdf(Student $student)
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(120);
         $school = $this->schoolHeader();
 
         return Pdf::loadView('admin.id-cards.student', compact('student', 'school'))
             ->setPaper('a4')
             ->stream('id-card-'.($student->gr_number ?: $student->id).'.pdf');
+    }
+
+    /** All ID cards of one class on one PDF ("Print All"). */
+    public function classPdf(string $class)
+    {
+        @ini_set('memory_limit', '768M');
+        @set_time_limit(180);
+
+        $students = Student::query()
+            ->where('passed_out', false)
+            ->where('class', $class)
+            ->orderByRaw('CAST(gr_number AS UNSIGNED)')
+            ->get();
+        abort_if($students->isEmpty(), 404);
+        $school = $this->schoolHeader();
+
+        return Pdf::loadView('admin.id-cards.class', compact('students', 'school', 'class'))
+            ->setPaper('a4')
+            ->stream('id-cards-class-'.$class.'.pdf');
     }
 
     private function schoolHeader(): array

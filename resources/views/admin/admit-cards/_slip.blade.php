@@ -1,10 +1,13 @@
 @php
+    $logoFile = public_path('images/logo.png');
+    $logo = is_file($logoFile) ? $logoFile : public_path('images/lc/emblem.jpg');
+    $logoOk = is_file($logo);
     $examTitle = $school['exam_title'] ?? null;
     $examYear = $school['exam_year'] ?? null;
     $examLine = ($examTitle ?: '—').($examYear ? ' ('.$examYear.')' : '');
     $class = $student->class.($student->section ? '-'.$student->section : '');
-    $photo = (string) $student->photo_url;
-    $photoOk = preg_match('#^data:image/jpe?g;base64,#i', $photo) === 1;
+    $photo = (string) \App\Support\PdfPhoto::small($student->photo_url);
+    $photoOk = $photo !== '';
     $rows = [
         ['Exam', $examLine],
         ['Student Name', $student->name],
@@ -16,6 +19,7 @@
 @endphp
 <div class="slip">
     <div class="hdr">
+        @if ($logoOk)<div style="margin-bottom:6px;"><img src="{{ $logo }}" height="48" style="background:#fff;border:2px solid #DBB43C;padding:2px;"></div>@endif
         <div style="font-weight:bold;font-size:14px;">{{ $school['name'] }}</div>
         <div style="font-size:9px;opacity:0.85;margin-top:2px;">{{ $school['address'] }}</div>
         <div class="badge">ADMIT CARD</div>

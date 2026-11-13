@@ -4,7 +4,8 @@
     $logoFile = public_path('images/logo.png');
     $logo = is_file($logoFile) ? $logoFile : public_path('images/lc/emblem.jpg');
     $logoOk = is_file($logo);
-    $photoOk = preg_match('#^data:image/jpe?g;base64,#i', (string) ($person->photo_url ?? '')) === 1;
+    $smallPhoto = \App\Support\PdfPhoto::small($person->photo_url ?? null);
+    $photoOk = $smallPhoto !== null;
     $fmt = fn ($d) => $d ? \Carbon\Carbon::parse($d)->format('M d, Y') : '—';
     $session = app(\App\Services\SchoolScheduleService::class)->academicYearFor(now());
     $validUpTo = '30 Jun '.explode('-', $session)[1];
@@ -48,7 +49,7 @@
     table { border-collapse: collapse; }
     td { padding: 0; vertical-align: top; }
     .w { width: 100%; }
-    .card { width: 458px; height: 288px; border: 1px solid #DDC77A; margin: 0 auto 26px; overflow: hidden; background: #fff; }
+    .card { width: 458px; height: 288px; border: 1px solid #DDC77A; margin: 0 auto 26px; overflow: hidden; background: #fff; page-break-inside: avoid; }
     .lb { width: 86px; white-space: nowrap; color: #8B7B1E; font-weight: bold; font-size: 9.5px; padding-bottom: 3px; }
     .vl { color: #123B7A; font-weight: bold; font-size: 9.5px; padding-bottom: 3px; }
     .lb2 { width: 74px; color: #8B7B1E; font-weight: bold; font-size: 9px; padding-bottom: 6px; }
@@ -71,7 +72,7 @@
         <td style="width:108px;padding:12px 0 0 16px;">
             <div style="background:#DBB43C;padding:3px;width:96px;height:96px;">
                 @if ($photoOk)
-                    <img src="{{ $person->photo_url }}" width="96" height="96">
+                    <img src="{{ $smallPhoto }}" width="96" height="96">
                 @else
                     <div style="width:96px;height:70px;padding-top:26px;background:#EDE7D3;text-align:center;font-size:38px;color:#123B7A;">{{ $initial }}</div>
                 @endif

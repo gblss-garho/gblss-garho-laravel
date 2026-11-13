@@ -27,6 +27,8 @@ class AdminAdmitCardController extends Controller
 
     public function pdf(Student $student)
     {
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(120);
         $school = $this->schoolHeader();
         return Pdf::loadView('admin.admit-cards.student', compact('student', 'school'))
             ->setPaper('a4')
@@ -36,6 +38,8 @@ class AdminAdmitCardController extends Controller
     /** All admit cards of one class on one PDF (old site: "Print All"). */
     public function classPdf(string $class)
     {
+        @ini_set('memory_limit', '768M');
+        @set_time_limit(180);
         $school = $this->schoolHeader();
         $students = Student::query()
             ->where('passed_out', false)
