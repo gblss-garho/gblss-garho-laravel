@@ -32,7 +32,8 @@ class AdminAdmitCardController extends Controller
         $school = $this->schoolHeader();
         return Pdf::loadView('admin.admit-cards.student', compact('student', 'school'))
             ->setPaper('a4')
-            ->stream('admit-card-'.($student->gr_number ?: $student->id).'.pdf');
+            ->stream('admit-card-'.($student->gr_number ?: $student->id).'.pdf')
+            ->header('Cache-Control', 'no-store, max-age=0');
     }
 
     /** All admit cards of one class on one PDF (old site: "Print All"). */
@@ -50,7 +51,8 @@ class AdminAdmitCardController extends Controller
 
         return Pdf::loadView('admin.admit-cards.class', compact('students', 'school', 'class'))
             ->setPaper('a4')
-            ->stream('admit-cards-class-'.$class.'.pdf');
+            ->stream('admit-cards-class-'.$class.'.pdf')
+            ->header('Cache-Control', 'no-store, max-age=0');
     }
 
     private function schoolHeader(): array

@@ -35,7 +35,8 @@ class AdminIdCardController extends Controller
 
         return Pdf::loadView('admin.id-cards.student', compact('student', 'school'))
             ->setPaper('a4')
-            ->stream('id-card-'.($student->gr_number ?: $student->id).'.pdf');
+            ->stream('id-card-'.($student->gr_number ?: $student->id).'.pdf')
+            ->header('Cache-Control', 'no-store, max-age=0');
     }
 
     /** All ID cards of one class on one PDF ("Print All"). */
@@ -54,7 +55,8 @@ class AdminIdCardController extends Controller
 
         return Pdf::loadView('admin.id-cards.class', compact('students', 'school', 'class'))
             ->setPaper('a4')
-            ->stream('id-cards-class-'.$class.'.pdf');
+            ->stream('id-cards-class-'.$class.'.pdf')
+            ->header('Cache-Control', 'no-store, max-age=0');
     }
 
     private function schoolHeader(): array

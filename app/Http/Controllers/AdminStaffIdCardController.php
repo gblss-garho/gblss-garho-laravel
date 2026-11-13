@@ -33,7 +33,8 @@ class AdminStaffIdCardController extends Controller
 
         $name = $teacher->pid ?: $teacher->id;
 
-        return $pdf->stream("staff-id-card-{$name}.pdf");
+        return $pdf->stream("staff-id-card-{$name}.pdf")
+            ->header('Cache-Control', 'no-store, max-age=0');
     }
 
     private function schoolHeader(): array

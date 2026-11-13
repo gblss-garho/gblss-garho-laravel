@@ -109,7 +109,8 @@ class AdminLeavingCertificateController extends Controller
             'school' => $this->schoolHeader(),
         ])->setPaper('a4');
 
-        return $pdf->stream(sprintf('LC-%04d.pdf', $certificate->serial_no));
+        return $pdf->stream(sprintf('LC-%04d.pdf', $certificate->serial_no))
+            ->header('Cache-Control', 'no-store, max-age=0');
     }
 
     private function schoolHeader(): array
