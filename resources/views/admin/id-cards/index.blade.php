@@ -14,7 +14,7 @@
     @if ($classes->isNotEmpty())
         <p style="margin-top:12px"><b>Poori class ke ID cards ek sath (Print All):</b><br>
             @foreach ($classes as $c)
-                <a class="btn ghost" href="{{ route('admin.id-cards.class-pdf', ['class' => $c], false) }}" target="_blank">Class {{ $c }}</a>
+                <a class="btn ghost" href="{{ route('admin.id-cards.class-pdf', ['class' => $c], false) }}">Class {{ $c }}</a>
             @endforeach
         </p>
         <p class="sd sd-note">پوري ڪلاس جا ڪارڊ هڪ PDF ۾ — هر صفحي تي ٽي ڪارڊ (Front ۽ Back). وڏي ڪلاس لاءِ PDF ٺهڻ ۾ ڪجهه وقت لڳندو.</p>
@@ -30,7 +30,7 @@
                     <td>{{ $s->gr_number }}</td>
                     <td>{{ $s->name }}</td>
                     <td>{{ $s->class }}{{ $s->section ? '-'.$s->section : '' }}</td>
-                    <td><a href="{{ route('admin.id-cards.pdf', ['student' => $s->id], false) }}" target="_blank">PDF</a></td>
+                    <td><a href="{{ route('admin.id-cards.pdf', ['student' => $s->id], false) }}">PDF</a></td>
                 </tr>
             @endforeach
         </table>

@@ -18,7 +18,7 @@
                 <td>{{ $teacher->name }}</td>
                 <td>{{ $teacher->designation }}</td>
                 <td>{{ $teacher->pid }}</td>
-                <td><a href="{{ route('admin.staff-id-cards.pdf', $teacher->id) }}" target="_blank">PDF</a></td>
+                <td><a href="{{ route('admin.staff-id-cards.pdf', $teacher->id) }}">PDF</a></td>
             </tr>
         @empty
             <tr><td colspan="4"><span class="sd">ڪو ٽيچر نه مليو.</span></td></tr>

@@ -43,7 +43,7 @@
                     <td>{{ $c->passed_class }}</td>
                     <td>{{ $c->year }}</td>
                     <td>{{ $c->issue_date?->format('d M Y') }}</td>
-                    <td><a href="{{ route('admin.leaving-certificates.pdf', ['certificate' => $c->id], false) }}" target="_blank">PDF</a></td>
+                    <td><a href="{{ route('admin.leaving-certificates.pdf', ['certificate' => $c->id], false) }}">PDF</a></td>
                 </tr>
             @endforeach
         </table>
