@@ -1,0 +1,83 @@
+diff --git a/app/Http/Controllers/AdminGrRegisterController.php b/app/Http/Controllers/AdminGrRegisterController.php
+index 2e7e250..13ffc3e 100644
+--- a/app/Http/Controllers/AdminGrRegisterController.php
++++ b/app/Http/Controllers/AdminGrRegisterController.php
+@@ -11,6 +11,17 @@ class AdminGrRegisterController extends Controller
+ {
+     private const PER_PAGE = 50;
+ 
++    public function import(Request $request)
++    {
++        $request->validate(['csv' => ['required', 'file', 'max:2048']]);
++
++        $tmp = $request->file('csv')->getRealPath();
++        $code = \Illuminate\Support\Facades\Artisan::call('register:import', ['--csv' => $tmp]);
++        $out = trim(\Illuminate\Support\Facades\Artisan::output());
++
++        return redirect()->route('admin.gr-register', [], false)->with('ok', ($code === 0 ? 'Import mukammal. ' : 'Import fail: ').$out);
++    }
++
+     public function index(Request $request)
+     {
+         $q = trim((string) $request->query('q', ''));
+diff --git a/resources/views/admin/gr-register.blade.php b/resources/views/admin/gr-register.blade.php
+index 1b109a0..4ce1cea 100644
+--- a/resources/views/admin/gr-register.blade.php
++++ b/resources/views/admin/gr-register.blade.php
+@@ -15,9 +15,21 @@
+     </div>
+ 
+     @if ($empty)
+-        <div class="card">Purana register abhi import nahi hua, is liye sirf maujooda students dikh rahe hain. Server par <code>php84 artisan register:import</code> chalayein.</div>
++        <div class="card">Purana register abhi import nahi hua, is liye sirf maujooda students dikh rahe hain. Neeche diye gaye CSV import se bharein.</div>
+     @endif
+ 
++    @if (session('ok'))<div class="ok">{{ session('ok') }}</div>@endif
++    @if ($errors->any())<div class="err">{{ $errors->first() }}</div>@endif
++    <details class="card" @if ($empty) open @endif>
++        <summary><b>Purana register CSV se import karein</b></summary>
++        <form method="POST" action="{{ route('admin.gr-register.import', [], false) }}" enctype="multipart/form-data" style="margin-top:10px">
++            @csrf
++            <input type="file" name="csv" accept=".csv,text/csv" required>
++            <button type="submit">Import</button>
++            <p style="color:#6b6b5c;font-size:13px;margin:6px 0 0">CSV dobara import karna mehfooz hai: maujooda GR number update hote hain, kuch delete nahi hota.</p>
++        </form>
++    </details>
++
+     <form method="GET" action="{{ route('admin.gr-register', [], false) }}">
+         <input type="text" name="q" value="{{ $q }}" placeholder="Naam, father ya GR number" style="width:55%">
+         <select name="f">
+diff --git a/routes/web.php b/routes/web.php
+index e6b0298..8c0b083 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -21,6 +21,7 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+ Route::middleware(['auth', 'role:admin'])->group(function () {
+     Route::get('/admin/dashboard', fn () => view('dashboards.admin'))->name('admin.dashboard');
+     Route::get('/admin/gr-register', [\App\Http\Controllers\AdminGrRegisterController::class, 'index'])->name('admin.gr-register');
++    Route::post('/admin/gr-register/import', [\App\Http\Controllers\AdminGrRegisterController::class, 'import'])->name('admin.gr-register.import');
+     Route::get('/admin/promotions', [AdminPromotionController::class, 'history'])->name('admin.promotions.history');
+     Route::get('/admin/promotions/{batch}/review', [AdminPromotionController::class, 'review'])->name('admin.promotions.review');
+     Route::post('/admin/promotions/{batch}/undo', [AdminPromotionController::class, 'undo'])->name('admin.promotions.undo');
+diff --git a/tests/Feature/GrRegisterTest.php b/tests/Feature/GrRegisterTest.php
+index 91faa31..7d3bfce 100644
+--- a/tests/Feature/GrRegisterTest.php
++++ b/tests/Feature/GrRegisterTest.php
+@@ -35,6 +35,17 @@ class GrRegisterTest extends TestCase
+         $this->get('/admin/dashboard')->assertSee('General Register (GR)');
+     }
+ 
++    public function test_admin_can_import_csv(): void
++    {
++        $this->actingAs($this->admin());
++        $csv = "Reg No,Name,Father's Name,Date of Birth,Cause of removal\n1,Csv Old One,Csv Father,10-02-2006,to join elsewhere\n2,Csv Old Two,Csv Father2,,\n";
++        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('gr.csv', $csv);
++
++        $this->post('/admin/gr-register/import', ['csv' => $file])->assertRedirect();
++        $this->assertDatabaseHas('gr_register', ['reg_no' => 1, 'name' => 'Csv Old One', 'dob' => '2006-02-10']);
++        $this->get('/admin/gr-register')->assertSee('Csv Old Two');
++    }
++
+     public function test_register_requires_admin_login(): void
+     {
+         $this->get('/admin/gr-register')->assertRedirect();
