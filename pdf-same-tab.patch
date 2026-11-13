@@ -1,0 +1,70 @@
+diff --git a/resources/views/admin/admit-cards/index.blade.php b/resources/views/admin/admit-cards/index.blade.php
+index 95058ec..6d770a3 100644
+--- a/resources/views/admin/admit-cards/index.blade.php
++++ b/resources/views/admin/admit-cards/index.blade.php
+@@ -14,7 +14,7 @@
+     @if ($classes->isNotEmpty())
+         <p style="margin-top:12px"><b>Poori class ke admit cards (Print All):</b><br>
+             @foreach ($classes as $c)
+-                <a class="btn ghost" href="{{ route('admin.admit-cards.class-pdf', ['class' => $c], false) }}" target="_blank">Class {{ $c }}</a>
++                <a class="btn ghost" href="{{ route('admin.admit-cards.class-pdf', ['class' => $c], false) }}">Class {{ $c }}</a>
+             @endforeach
+         </p>
+     @endif
+@@ -29,7 +29,7 @@
+                     <td>{{ $s->gr_number }}</td>
+                     <td>{{ $s->name }}</td>
+                     <td>{{ $s->class }}{{ $s->section ? '-'.$s->section : '' }}</td>
+-                    <td><a href="{{ route('admin.admit-cards.pdf', ['student' => $s->id], false) }}" target="_blank">PDF</a></td>
++                    <td><a href="{{ route('admin.admit-cards.pdf', ['student' => $s->id], false) }}">PDF</a></td>
+                 </tr>
+             @endforeach
+         </table>
+diff --git a/resources/views/admin/id-cards/index.blade.php b/resources/views/admin/id-cards/index.blade.php
+index 01b52b2..bf73ea6 100644
+--- a/resources/views/admin/id-cards/index.blade.php
++++ b/resources/views/admin/id-cards/index.blade.php
+@@ -14,7 +14,7 @@
+     @if ($classes->isNotEmpty())
+         <p style="margin-top:12px"><b>Poori class ke ID cards ek sath (Print All):</b><br>
+             @foreach ($classes as $c)
+-                <a class="btn ghost" href="{{ route('admin.id-cards.class-pdf', ['class' => $c], false) }}" target="_blank">Class {{ $c }}</a>
++                <a class="btn ghost" href="{{ route('admin.id-cards.class-pdf', ['class' => $c], false) }}">Class {{ $c }}</a>
+             @endforeach
+         </p>
+         <p class="sd sd-note">پوري ڪلاس جا ڪارڊ هڪ PDF ۾ — هر صفحي تي ٽي ڪارڊ (Front ۽ Back). وڏي ڪلاس لاءِ PDF ٺهڻ ۾ ڪجهه وقت لڳندو.</p>
+@@ -30,7 +30,7 @@
+                     <td>{{ $s->gr_number }}</td>
+                     <td>{{ $s->name }}</td>
+                     <td>{{ $s->class }}{{ $s->section ? '-'.$s->section : '' }}</td>
+-                    <td><a href="{{ route('admin.id-cards.pdf', ['student' => $s->id], false) }}" target="_blank">PDF</a></td>
++                    <td><a href="{{ route('admin.id-cards.pdf', ['student' => $s->id], false) }}">PDF</a></td>
+                 </tr>
+             @endforeach
+         </table>
+diff --git a/resources/views/admin/leaving-certificates/index.blade.php b/resources/views/admin/leaving-certificates/index.blade.php
+index 8118271..6efb35a 100644
+--- a/resources/views/admin/leaving-certificates/index.blade.php
++++ b/resources/views/admin/leaving-certificates/index.blade.php
+@@ -43,7 +43,7 @@
+                     <td>{{ $c->passed_class }}</td>
+                     <td>{{ $c->year }}</td>
+                     <td>{{ $c->issue_date?->format('d M Y') }}</td>
+-                    <td><a href="{{ route('admin.leaving-certificates.pdf', ['certificate' => $c->id], false) }}" target="_blank">PDF</a></td>
++                    <td><a href="{{ route('admin.leaving-certificates.pdf', ['certificate' => $c->id], false) }}">PDF</a></td>
+                 </tr>
+             @endforeach
+         </table>
+diff --git a/resources/views/admin/staff-id-cards/index.blade.php b/resources/views/admin/staff-id-cards/index.blade.php
+index cf7816b..8e3a3ea 100644
+--- a/resources/views/admin/staff-id-cards/index.blade.php
++++ b/resources/views/admin/staff-id-cards/index.blade.php
+@@ -18,7 +18,7 @@
+                 <td>{{ $teacher->name }}</td>
+                 <td>{{ $teacher->designation }}</td>
+                 <td>{{ $teacher->pid }}</td>
+-                <td><a href="{{ route('admin.staff-id-cards.pdf', $teacher->id) }}" target="_blank">PDF</a></td>
++                <td><a href="{{ route('admin.staff-id-cards.pdf', $teacher->id) }}">PDF</a></td>
+             </tr>
+         @empty
+             <tr><td colspan="4"><span class="sd">ڪو ٽيچر نه مليو.</span></td></tr>
