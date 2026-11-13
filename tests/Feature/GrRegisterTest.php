@@ -35,6 +35,17 @@ class GrRegisterTest extends TestCase
         $this->get('/admin/dashboard')->assertSee('General Register (GR)');
     }
 
+    public function test_admin_can_import_csv(): void
+    {
+        $this->actingAs($this->admin());
+        $csv = "Reg No,Name,Father's Name,Date of Birth,Cause of removal\n1,Csv Old One,Csv Father,10-02-2006,to join elsewhere\n2,Csv Old Two,Csv Father2,,\n";
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('gr.csv', $csv);
+
+        $this->post('/admin/gr-register/import', ['csv' => $file])->assertRedirect();
+        $this->assertDatabaseHas('gr_register', ['reg_no' => 1, 'name' => 'Csv Old One', 'dob' => '2006-02-10']);
+        $this->get('/admin/gr-register')->assertSee('Csv Old Two');
+    }
+
     public function test_register_requires_admin_login(): void
     {
         $this->get('/admin/gr-register')->assertRedirect();

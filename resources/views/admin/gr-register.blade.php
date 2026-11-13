@@ -15,8 +15,20 @@
     </div>
 
     @if ($empty)
-        <div class="card">Purana register abhi import nahi hua, is liye sirf maujooda students dikh rahe hain. Server par <code>php84 artisan register:import</code> chalayein.</div>
+        <div class="card">Purana register abhi import nahi hua, is liye sirf maujooda students dikh rahe hain. Neeche diye gaye CSV import se bharein.</div>
     @endif
+
+    @if (session('ok'))<div class="ok">{{ session('ok') }}</div>@endif
+    @if ($errors->any())<div class="err">{{ $errors->first() }}</div>@endif
+    <details class="card" @if ($empty) open @endif>
+        <summary><b>Purana register CSV se import karein</b></summary>
+        <form method="POST" action="{{ route('admin.gr-register.import', [], false) }}" enctype="multipart/form-data" style="margin-top:10px">
+            @csrf
+            <input type="file" name="csv" accept=".csv,text/csv" required>
+            <button type="submit">Import</button>
+            <p style="color:#6b6b5c;font-size:13px;margin:6px 0 0">CSV dobara import karna mehfooz hai: maujooda GR number update hote hain, kuch delete nahi hota.</p>
+        </form>
+    </details>
 
     <form method="GET" action="{{ route('admin.gr-register', [], false) }}">
         <input type="text" name="q" value="{{ $q }}" placeholder="Naam, father ya GR number" style="width:55%">

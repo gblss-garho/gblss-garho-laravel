@@ -11,6 +11,17 @@ class AdminGrRegisterController extends Controller
 {
     private const PER_PAGE = 50;
 
+    public function import(Request $request)
+    {
+        $request->validate(['csv' => ['required', 'file', 'max:2048']]);
+
+        $tmp = $request->file('csv')->getRealPath();
+        $code = \Illuminate\Support\Facades\Artisan::call('register:import', ['--csv' => $tmp]);
+        $out = trim(\Illuminate\Support\Facades\Artisan::output());
+
+        return redirect()->route('admin.gr-register', [], false)->with('ok', ($code === 0 ? 'Import mukammal. ' : 'Import fail: ').$out);
+    }
+
     public function index(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
