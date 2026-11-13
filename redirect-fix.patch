@@ -1,0 +1,35 @@
+diff --git a/app/Http/Controllers/AdminGrRegisterController.php b/app/Http/Controllers/AdminGrRegisterController.php
+index 13ffc3e..9a863ef 100644
+--- a/app/Http/Controllers/AdminGrRegisterController.php
++++ b/app/Http/Controllers/AdminGrRegisterController.php
+@@ -19,7 +19,7 @@ class AdminGrRegisterController extends Controller
+         $code = \Illuminate\Support\Facades\Artisan::call('register:import', ['--csv' => $tmp]);
+         $out = trim(\Illuminate\Support\Facades\Artisan::output());
+ 
+-        return redirect()->route('admin.gr-register', [], false)->with('ok', ($code === 0 ? 'Import mukammal. ' : 'Import fail: ').$out);
++        return redirect(route('admin.gr-register', [], false))->with('ok', ($code === 0 ? 'Import mukammal. ' : 'Import fail: ').$out);
+     }
+ 
+     public function index(Request $request)
+diff --git a/app/Http/Controllers/TeacherAttendanceController.php b/app/Http/Controllers/TeacherAttendanceController.php
+index 10dfeca..77840eb 100644
+--- a/app/Http/Controllers/TeacherAttendanceController.php
++++ b/app/Http/Controllers/TeacherAttendanceController.php
+@@ -47,7 +47,7 @@ class TeacherAttendanceController extends Controller
+         }
+ 
+         if (empty($teacher->face_descriptor)) {
+-            return redirect()->route('teacher.face.enroll', [], false)
++            return redirect(route('teacher.face.enroll', [], false))
+                 ->withErrors(['attendance' => 'Pehle apna chehra enroll karen.']);
+         }
+ 
+@@ -88,7 +88,7 @@ class TeacherAttendanceController extends Controller
+         }
+ 
+         if (empty($teacher->face_descriptor)) {
+-            return redirect()->route('teacher.face.enroll', [], false)
++            return redirect(route('teacher.face.enroll', [], false))
+                 ->withErrors(['attendance' => 'Pehle apna chehra enroll karen.']);
+         }
+ 
