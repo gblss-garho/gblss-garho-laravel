@@ -1,0 +1,128 @@
+diff --git a/app/Http/Controllers/AdminAdmitCardController.php b/app/Http/Controllers/AdminAdmitCardController.php
+index 5a1b178..c7f4097 100644
+--- a/app/Http/Controllers/AdminAdmitCardController.php
++++ b/app/Http/Controllers/AdminAdmitCardController.php
+@@ -27,6 +27,8 @@ class AdminAdmitCardController extends Controller
+ 
+     public function pdf(Student $student)
+     {
++        @ini_set('memory_limit', '512M');
++        @set_time_limit(120);
+         $school = $this->schoolHeader();
+         return Pdf::loadView('admin.admit-cards.student', compact('student', 'school'))
+             ->setPaper('a4')
+@@ -36,6 +38,8 @@ class AdminAdmitCardController extends Controller
+     /** All admit cards of one class on one PDF (old site: "Print All"). */
+     public function classPdf(string $class)
+     {
++        @ini_set('memory_limit', '768M');
++        @set_time_limit(180);
+         $school = $this->schoolHeader();
+         $students = Student::query()
+             ->where('passed_out', false)
+diff --git a/app/Http/Controllers/AdminIdCardController.php b/app/Http/Controllers/AdminIdCardController.php
+index 96bb1ac..acd9746 100644
+--- a/app/Http/Controllers/AdminIdCardController.php
++++ b/app/Http/Controllers/AdminIdCardController.php
+@@ -27,6 +27,8 @@ class AdminIdCardController extends Controller
+ 
+     public function pdf(Student $student)
+     {
++        @ini_set('memory_limit', '512M');
++        @set_time_limit(120);
+         $school = $this->schoolHeader();
+ 
+         return Pdf::loadView('admin.id-cards.student', compact('student', 'school'))
+diff --git a/app/Support/PdfPhoto.php b/app/Support/PdfPhoto.php
+new file mode 100644
+index 0000000..543a002
+--- /dev/null
++++ b/app/Support/PdfPhoto.php
+@@ -0,0 +1,49 @@
++<?php
++
++namespace App\Support;
++
++/**
++ * Shrinks a photo (data URI) before it goes into a DomPDF page.
++ * Phone photos can be 10+ megapixels; DomPDF decodes them in full and
++ * runs out of memory, which makes the web server return a bare error page.
++ */
++class PdfPhoto
++{
++    public static function small(?string $src, int $max = 220): ?string
++    {
++        $src = (string) $src;
++        if (! preg_match('#^data:image/(?:jpe?g|png);base64,(.+)$#is', $src, $m) || ! function_exists('imagecreatefromstring')) {
++            return null;
++        }
++        $bin = base64_decode($m[1], true);
++        if ($bin === false) {
++            return null;
++        }
++        $info = @getimagesizefromstring($bin);
++        if (! $info || $info[0] < 1 || $info[1] < 1 || $info[0] * $info[1] > 60000000) {
++            return null;
++        }
++        $ratio = min(1, $max / max($info[0], $info[1]));
++        if ($ratio === 1 && strlen($bin) < 150000) {
++            return $src;
++        }
++        @ini_set('memory_limit', '512M');
++        $im = @imagecreatefromstring($bin);
++        unset($bin);
++        if (! $im) {
++            return null;
++        }
++        $w = max(1, (int) round($info[0] * $ratio));
++        $h = max(1, (int) round($info[1] * $ratio));
++        $out = imagecreatetruecolor($w, $h);
++        imagefill($out, 0, 0, imagecolorallocate($out, 255, 255, 255));
++        imagecopyresampled($out, $im, 0, 0, 0, 0, $w, $h, $info[0], $info[1]);
++        imagedestroy($im);
++        ob_start();
++        imagejpeg($out, null, 80);
++        $jpg = ob_get_clean();
++        imagedestroy($out);
++
++        return 'data:image/jpeg;base64,'.base64_encode($jpg);
++    }
++}
+diff --git a/resources/views/admin/admit-cards/_slip.blade.php b/resources/views/admin/admit-cards/_slip.blade.php
+index 43cd586..72093f1 100644
+--- a/resources/views/admin/admit-cards/_slip.blade.php
++++ b/resources/views/admin/admit-cards/_slip.blade.php
+@@ -3,8 +3,8 @@
+     $examYear = $school['exam_year'] ?? null;
+     $examLine = ($examTitle ?: '—').($examYear ? ' ('.$examYear.')' : '');
+     $class = $student->class.($student->section ? '-'.$student->section : '');
+-    $photo = (string) $student->photo_url;
+-    $photoOk = preg_match('#^data:image/jpe?g;base64,#i', $photo) === 1;
++    $photo = (string) \App\Support\PdfPhoto::small($student->photo_url);
++    $photoOk = $photo !== '';
+     $rows = [
+         ['Exam', $examLine],
+         ['Student Name', $student->name],
+diff --git a/resources/views/admin/id-cards/_card.blade.php b/resources/views/admin/id-cards/_card.blade.php
+index d32cc7a..8ef594a 100644
+--- a/resources/views/admin/id-cards/_card.blade.php
++++ b/resources/views/admin/id-cards/_card.blade.php
+@@ -4,7 +4,8 @@
+     $logoFile = public_path('images/logo.png');
+     $logo = is_file($logoFile) ? $logoFile : public_path('images/lc/emblem.jpg');
+     $logoOk = is_file($logo);
+-    $photoOk = preg_match('#^data:image/jpe?g;base64,#i', (string) ($person->photo_url ?? '')) === 1;
++    $smallPhoto = \App\Support\PdfPhoto::small($person->photo_url ?? null);
++    $photoOk = $smallPhoto !== null;
+     $fmt = fn ($d) => $d ? \Carbon\Carbon::parse($d)->format('M d, Y') : '—';
+     $session = app(\App\Services\SchoolScheduleService::class)->academicYearFor(now());
+     $validUpTo = '30 Jun '.explode('-', $session)[1];
+@@ -71,7 +72,7 @@
+         <td style="width:108px;padding:12px 0 0 16px;">
+             <div style="background:#DBB43C;padding:3px;width:96px;height:96px;">
+                 @if ($photoOk)
+-                    <img src="{{ $person->photo_url }}" width="96" height="96">
++                    <img src="{{ $smallPhoto }}" width="96" height="96">
+                 @else
+                     <div style="width:96px;height:70px;padding-top:26px;background:#EDE7D3;text-align:center;font-size:38px;color:#123B7A;">{{ $initial }}</div>
+                 @endif
