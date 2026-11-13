@@ -47,7 +47,7 @@ class TeacherAttendanceController extends Controller
         }
 
         if (empty($teacher->face_descriptor)) {
-            return redirect()->route('teacher.face.enroll', [], false)
+            return redirect(route('teacher.face.enroll', [], false))
                 ->withErrors(['attendance' => 'Pehle apna chehra enroll karen.']);
         }
 
@@ -88,7 +88,7 @@ class TeacherAttendanceController extends Controller
         }
 
         if (empty($teacher->face_descriptor)) {
-            return redirect()->route('teacher.face.enroll', [], false)
+            return redirect(route('teacher.face.enroll', [], false))
                 ->withErrors(['attendance' => 'Pehle apna chehra enroll karen.']);
         }
 

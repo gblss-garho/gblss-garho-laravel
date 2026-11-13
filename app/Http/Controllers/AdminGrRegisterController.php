@@ -19,7 +19,7 @@ class AdminGrRegisterController extends Controller
         $code = \Illuminate\Support\Facades\Artisan::call('register:import', ['--csv' => $tmp]);
         $out = trim(\Illuminate\Support\Facades\Artisan::output());
 
-        return redirect()->route('admin.gr-register', [], false)->with('ok', ($code === 0 ? 'Import mukammal. ' : 'Import fail: ').$out);
+        return redirect(route('admin.gr-register', [], false))->with('ok', ($code === 0 ? 'Import mukammal. ' : 'Import fail: ').$out);
     }
 
     public function index(Request $request)
