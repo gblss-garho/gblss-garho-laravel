@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="hero-lk">
-        <div class="ring"><img src="{{ file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg') }}" alt=""></div>
+        <div class="ring"><img src="{{ file_exists(public_path('images/logo-glow.png')) ? asset('images/logo-glow.png') : (file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg')) }}" alt=""></div>
         <h2>{{ $schoolName ?? 'Government Boys Lower Secondary School Garho' }}</h2>
         <span class="pill">Parent's Corner &mdash; <span class="sd">GR نمبر ۽ تاريخ پيدائش سان ڏسو</span></span>
         <span class="dev">Designed &amp; Developed by Sir Waris Ghafoor</span>

@@ -4,7 +4,7 @@
 
 @section('content')
     <div class="hero-lk">
-        <div class="ring"><img src="{{ file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg') }}" alt=""></div>
+        <div class="ring"><img src="{{ file_exists(public_path('images/logo-glow.png')) ? asset('images/logo-glow.png') : (file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg')) }}" alt=""></div>
         <h2>Staff Login</h2>
         <span class="pill">Teachers &amp; Admin</span>
         <span class="dev">Designed &amp; Developed by Sir Waris Ghafoor</span>

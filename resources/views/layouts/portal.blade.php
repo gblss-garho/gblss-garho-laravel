@@ -32,7 +32,7 @@
         .site-head { background: linear-gradient(160deg, #12613F, #0B3D26); color:#fff; position:sticky; top:0; z-index:40; box-shadow:0 6px 20px rgba(11,61,38,.25); }
         .site-head .top { display:flex; align-items:center; justify-content:space-between; gap:12px; padding: 12px 0 10px; }
         .brand { display:flex; align-items:center; gap:12px; text-decoration:none; color:#fff; min-width:0; }
-        .brand img { width:46px; height:46px; border-radius:50%; background:#ffffff14; object-fit:cover; border:2px solid rgba(201,162,39,.55); flex:none; padding:2px; }
+        .brand img { width:52px; height:52px; border-radius:0; background:none; object-fit:contain; border:0; flex:none; padding:0; }
         .brand b { display:block; font-size: 15px; line-height:1.2; font-weight:700; }
         .brand small { display:block; opacity:.72; font-size: 11px; font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace; line-height:1.35; }
         .brand .dev { display:block; opacity:.55; font-size: 9px; letter-spacing:.5px; margin-top:2px; font-family:'JetBrains Mono', ui-monospace, monospace; }
@@ -75,8 +75,8 @@
         .page-title[data-n]:before { content:attr(data-n); flex:none; width:40px; height:40px; border-radius:50%; background:#0a3a24; color:#D9A91A; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:13px; font-weight:700; box-shadow:0 4px 12px rgba(10,58,36,.3); }
         .hero-lk { position:relative; overflow:hidden; text-align:center; color:#fff; border-radius:24px; margin: 22px 0 22px; padding: 34px 18px 38px; background: linear-gradient(160deg,#12613F,#0B3D26); box-shadow:0 12px 30px rgba(10,58,36,.25); }
         .hero-lk:after { content:""; position:absolute; left:0; right:0; bottom:0; height:6px; background:linear-gradient(90deg,#C9A227,#0F5132 50%,#C9A227); }
-        .hero-lk .ring { width:94px; height:94px; margin:0 auto 14px; border-radius:50%; border:3px solid #C9A227; background:#ffffff14; padding:4px; display:flex; }
-        .hero-lk .ring img { width:100%; height:100%; border-radius:50%; object-fit:cover; background:transparent; border:0; }
+        .hero-lk .ring { width:112px; height:105px; margin:0 auto 12px; border-radius:0; border:0; background:none; padding:0; display:flex; }
+        .hero-lk .ring img { width:100%; height:100%; border-radius:0; object-fit:contain; background:transparent; border:0; }
         .hero-lk h2 { font-family:'Noto Serif',Georgia,serif; color:#fff; font-size:30px; line-height:1.3; margin:0 0 14px; font-weight:700; }
         .hero-lk .pill { display:inline-block; background:rgba(255,255,255,.14); border-radius:999px; padding:10px 22px; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; font-weight:600; }
         .hero-lk .dev { display:block; margin-top:20px; opacity:.55; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:13px; letter-spacing:.12em; }
@@ -223,7 +223,7 @@
     $info = \Illuminate\Support\Facades\DB::table('school_info')->first();
     $schoolName = $info->name ?? 'Government Boys Lower Secondary School Garho';
     // Put the school logo at public/images/logo.png to use it here; otherwise the emblem is shown.
-    $logo = file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg');
+    $logo = file_exists(public_path('images/logo-glow.png')) ? asset('images/logo-glow.png') : (file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg'));
     $nav = [];
     if ($role === 'teacher') {
         $nav = [

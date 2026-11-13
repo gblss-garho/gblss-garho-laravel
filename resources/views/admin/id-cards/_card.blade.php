@@ -1,8 +1,7 @@
 {{-- Shared GBLSS ID card (front + back) for students and staff. DomPDF-safe: tables only. --}}
 @php
     $isTeacher = $type === 'teacher';
-    $logoFile = public_path('images/logo.png');
-    $logo = is_file($logoFile) ? $logoFile : public_path('images/lc/emblem.jpg');
+    $logo = collect([public_path('images/logo-glow.png'), public_path('images/logo.png'), public_path('images/lc/emblem.jpg')])->first(fn ($f) => is_file($f)) ?: public_path('images/logo.png');
     $logoOk = is_file($logo);
     $smallPhoto = \App\Support\PdfPhoto::small($person->photo_url ?? null);
     $photoOk = $smallPhoto !== null;
@@ -65,7 +64,7 @@
             <div style="font-size:8px;color:#F0D989;margin-top:3px;">{{ $motto }}</div>
         </td>
         <td style="width:58px;text-align:right;vertical-align:middle;padding-right:10px;">
-            @if ($logoOk)<img src="{{ $logo }}" height="46" style="background:#fff;border:2px solid #DBB43C;padding:1px;">@endif
+            @if ($logoOk)<img src="{{ $logo }}" height="56">@endif
         </td>
     </tr></table>
     <table class="w"><tr>
@@ -117,7 +116,7 @@
 <div class="card">
     <table class="w" style="background:#123B7A;"><tr>
         <td style="width:46px;height:46px;padding-left:14px;vertical-align:middle;">
-            @if ($logoOk)<img src="{{ $logo }}" height="30" style="background:#fff;padding:1px;">@endif
+            @if ($logoOk)<img src="{{ $logo }}" height="36">@endif
         </td>
         <td style="text-align:center;vertical-align:middle;color:#FAF6EC;font-size:10px;font-weight:bold;">{{ $sname }}</td>
         <td style="width:46px;"></td>

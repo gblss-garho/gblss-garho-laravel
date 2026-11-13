@@ -1,6 +1,5 @@
 @php
-    $logoFile = public_path('images/logo.png');
-    $logo = is_file($logoFile) ? $logoFile : public_path('images/lc/emblem.jpg');
+    $logo = collect([public_path('images/logo-glow.png'), public_path('images/logo.png'), public_path('images/lc/emblem.jpg')])->first(fn ($f) => is_file($f)) ?: public_path('images/logo.png');
     $logoOk = is_file($logo);
     $examTitle = $school['exam_title'] ?? null;
     $examYear = $school['exam_year'] ?? null;
@@ -26,8 +25,8 @@
     <div class="hdr">
         <table style="width:100%;"><tr>
             @if ($logoOk)
-                <td style="width:66px;vertical-align:middle;text-align:left;">
-                    <img src="{{ $logo }}" height="56" style="background:#fff;border:2px solid #DBB43C;padding:2px;">
+                <td style="width:70px;vertical-align:middle;text-align:left;">
+                    <img src="{{ $logo }}" height="64">
                 </td>
             @endif
             <td style="vertical-align:middle;text-align:center;">
