@@ -1,0 +1,31 @@
+diff --git a/resources/views/admin/admit-cards/_slip.blade.php b/resources/views/admin/admit-cards/_slip.blade.php
+index 7ae7dee..6c48915 100644
+--- a/resources/views/admin/admit-cards/_slip.blade.php
++++ b/resources/views/admin/admit-cards/_slip.blade.php
+@@ -18,10 +18,23 @@
+     ];
+ @endphp
+ <div class="slip">
++    @php
++        $nameWords = preg_split('/\s+/', trim($school['name']));
++        $nameL1 = count($nameWords) >= 4 ? implode(' ', array_slice($nameWords, 0, -2)) : $school['name'];
++        $nameL2 = count($nameWords) >= 4 ? implode(' ', array_slice($nameWords, -2)) : '';
++    @endphp
+     <div class="hdr">
+-        @if ($logoOk)<div style="margin-bottom:6px;"><img src="{{ $logo }}" height="48" style="background:#fff;border:2px solid #DBB43C;padding:2px;"></div>@endif
+-        <div style="font-weight:bold;font-size:14px;">{{ $school['name'] }}</div>
+-        <div style="font-size:9px;opacity:0.85;margin-top:2px;">{{ $school['address'] }}</div>
++        <table style="width:100%;"><tr>
++            @if ($logoOk)
++                <td style="width:66px;vertical-align:middle;text-align:left;">
++                    <img src="{{ $logo }}" height="56" style="background:#fff;border:2px solid #DBB43C;padding:2px;">
++                </td>
++            @endif
++            <td style="vertical-align:middle;text-align:center;">
++                <div style="font-weight:bold;font-size:13px;line-height:1.35;">{{ $nameL1 }}@if ($nameL2)<br>{{ $nameL2 }}@endif</div>
++                <div style="font-size:8.5px;opacity:0.85;margin-top:3px;">{{ $school['address'] }}</div>
++            </td>
++        </tr></table>
+         <div class="badge">ADMIT CARD</div>
+     </div>
+     <table style="width:100%;padding:14px 16px;">
