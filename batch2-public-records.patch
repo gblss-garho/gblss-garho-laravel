@@ -1,0 +1,279 @@
+diff --git a/app/Http/Controllers/PublicRecordsController.php b/app/Http/Controllers/PublicRecordsController.php
+new file mode 100644
+index 0000000..d4e2702
+--- /dev/null
++++ b/app/Http/Controllers/PublicRecordsController.php
+@@ -0,0 +1,78 @@
++<?php
++
++namespace App\Http\Controllers;
++
++use App\Models\LeavingCertificate;
++use App\Models\Student;
++use Illuminate\Http\Request;
++
++/** Old-site public tabs: Admit Card, Leaving Certificate, Alumni. */
++class PublicRecordsController extends PublicLookupController
++{
++    public function admitShow()
++    {
++        return view('pages.admit-card', ['error' => null]);
++    }
++
++    public function admitDownload(Request $request)
++    {
++        $error = null;
++        $student = $this->lookupStudent($request, $error);
++        $class = trim((string) $request->input('class', ''));
++        if ($student && $class !== '' && $student->class !== $class) {
++            $student = null;
++            $error = 'GR نمبر ۽ تاريخ پيدائش نه ملي، يا هي ڪلاس ۾ ناهي.';
++        }
++        if (! $student) {
++            return view('pages.admit-card', ['error' => $error]);
++        }
++
++        return app(AdminAdmitCardController::class)->pdf($student);
++    }
++
++    public function lcShow()
++    {
++        return view('pages.leaving-certificate', ['error' => null]);
++    }
++
++    public function lcDownload(Request $request)
++    {
++        $error = null;
++        $student = $this->lookupStudent($request, $error);
++        $certificate = null;
++        if ($student) {
++            $year = trim((string) $request->input('year', ''));
++            $certificate = LeavingCertificate::query()
++                ->where(fn ($q) => $q->where('student_id', $student->id)->orWhere('gr_number', $student->gr_number))
++                ->when($year !== '', fn ($q) => $q->where('year', $year))
++                ->orderByDesc('issue_date')->first();
++            if (! $certificate) {
++                $error = 'اڃا تائين هن GR لاءِ Leaving Certificate جاري نه ٿيو آهي.';
++            }
++        }
++        if (! $certificate) {
++            return view('pages.leaving-certificate', ['error' => $error]);
++        }
++
++        return app(AdminLeavingCertificateController::class)->pdf($certificate);
++    }
++
++    public function alumni(Request $request)
++    {
++        $q = trim((string) $request->query('q', ''));
++        $results = null;
++        if ($q !== '') {
++            $results = mb_strlen($q) < 2 ? collect() : Student::query()
++                ->where('passed_out', true)
++                ->where(function ($w) use ($q) {
++                    $w->where('gr_number', $q)->orWhere('name', 'like', "%{$q}%")->orWhere('father_name', 'like', "%{$q}%");
++                })
++                ->orderByDesc('pass_out_year')->orderBy('name')->limit(30)
++                ->get(['id', 'gr_number', 'name', 'father_name', 'pass_out_year', 'photo_url']);
++            $lc = LeavingCertificate::whereIn('gr_number', $results->pluck('gr_number'))->pluck('last_school', 'gr_number');
++            $results->each(fn ($s) => $s->previous_school = $lc[$s->gr_number] ?? null);
++        }
++
++        return view('pages.alumni', ['q' => $q, 'results' => $results]);
++    }
++}
+diff --git a/resources/views/layouts/portal.blade.php b/resources/views/layouts/portal.blade.php
+index 908cec4..e0a595a 100644
+--- a/resources/views/layouts/portal.blade.php
++++ b/resources/views/layouts/portal.blade.php
+@@ -253,6 +253,9 @@
+             ['Results', route('public.results', [], false), 'results*'],
+             ['Toppers', route('public.toppers', [], false), 'toppers*'],
+             ['ID Card', route('public.id-cards', [], false), 'id-cards*'],
++            ['Admit Card', route('public.admit-card', [], false), 'admit-card*'],
++            ['Leaving Cert.', route('public.leaving-certificate', [], false), 'leaving-certificate*'],
++            ['Alumni', route('public.alumni', [], false), 'alumni*'],
+             ['Gallery', route('public.gallery', [], false), 'gallery*'],
+             ['Textbooks', route('public.textbooks', [], false), 'textbooks*'],
+             ['Calendar', route('public.calendar', [], false), 'calendar*'],
+@@ -269,6 +272,9 @@
+         ['Results', route('public.results', [], false), 'results*', '📊'],
+         ['Toppers', route('public.toppers', [], false), 'toppers*', '🏆'],
+         ['ID Card', route('public.id-cards', [], false), 'id-cards*', '🪪'],
++        ['Admit Card', route('public.admit-card', [], false), 'admit-card*', '🎫'],
++        ['Leaving Certificate', route('public.leaving-certificate', [], false), 'leaving-certificate*', '📜'],
++        ['Alumni', route('public.alumni', [], false), 'alumni*', '🎓'],
+         ['Gallery', route('public.gallery', [], false), 'gallery*', '🖼️'],
+         ['Text Books', route('public.textbooks', [], false), 'textbooks*', '📚'],
+         ['Calendar', route('public.calendar', [], false), 'calendar*', '📅'],
+diff --git a/resources/views/pages/_hero.blade.php b/resources/views/pages/_hero.blade.php
+new file mode 100644
+index 0000000..2798a9c
+--- /dev/null
++++ b/resources/views/pages/_hero.blade.php
+@@ -0,0 +1,9 @@
++@php
++    $logo = file_exists(public_path('images/logo-glow.png')) ? asset('images/logo-glow.png') : (file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg'));
++@endphp
++<div class="hero-lk">
++    <div class="ring"><img src="{{ $logo }}" alt=""></div>
++    <h2>Government Boys Lower Secondary School Garho</h2>
++    <span class="pill">{{ $pill }}</span>
++    <span class="dev">Designed &amp; Developed by Sir Waris Ghafoor</span>
++</div>
+diff --git a/resources/views/pages/admit-card.blade.php b/resources/views/pages/admit-card.blade.php
+new file mode 100644
+index 0000000..4206b8f
+--- /dev/null
++++ b/resources/views/pages/admit-card.blade.php
+@@ -0,0 +1,27 @@
++@extends('layouts.portal')
++
++@section('title', 'Admit Card')
++
++@section('content')
++    @include('pages._hero', ['pill' => 'Admit Card Slip — Roll Number Verification'])
++    <div class="lk-card">
++        <div class="lk-title">Check Your Admit Card</div>
++        @if ($error)<div class="err"><p>{{ $error }}</p></div>@endif
++        <form method="POST" action="{{ route('public.admit-card.download', [], false) }}">
++            @csrf
++            <label for="class">Class</label>
++            <select id="class" name="class">
++                <option value="">All</option>
++                @foreach (['VI', 'VII', 'VIII'] as $c)<option value="{{ $c }}" @selected(old('class') === $c)>{{ $c }}</option>@endforeach
++            </select>
++            <label for="gr_number">GR / Roll number</label>
++            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="e.g. 1024">
++            <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span></label>
++            <input id="dob" name="dob" type="date" value="{{ old('dob') }}" required>
++            <div class="btn-row">
++                <button type="submit">Check Slip</button>
++                <a class="btn ghost" href="{{ route('public.admit-card', [], false) }}">Reset</a>
++            </div>
++        </form>
++    </div>
++@endsection
+diff --git a/resources/views/pages/alumni.blade.php b/resources/views/pages/alumni.blade.php
+new file mode 100644
+index 0000000..d4f4782
+--- /dev/null
++++ b/resources/views/pages/alumni.blade.php
+@@ -0,0 +1,33 @@
++@extends('layouts.portal')
++
++@section('title', 'Alumni')
++
++@section('content')
++    @include('pages._hero', ['pill' => 'Alumni — Former Students Archive'])
++    <div class="lk-card">
++        <div class="lk-title">Find a Former Student</div>
++        <form method="GET" action="{{ route('public.alumni', [], false) }}">
++            <label for="q">GR number, name or father name</label>
++            <input id="q" name="q" value="{{ $q }}" required placeholder="e.g. 195 or student name">
++            <div class="btn-row">
++                <button type="submit">Search</button>
++                <a class="btn ghost" href="{{ route('public.alumni', [], false) }}">Reset</a>
++            </div>
++        </form>
++    </div>
++    @if ($results !== null)
++        @forelse ($results as $s)
++            <div class="fb-item" style="display:flex;gap:14px;align-items:center">
++                @if ($s->photo_url)<img src="{{ $s->photo_url }}" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid #D9A91A">@endif
++                <div>
++                    <b style="color:#0F5132">{{ $s->name }}</b><br>
++                    <small>Father: {{ $s->father_name }} · GR {{ $s->gr_number }}</small><br>
++                    <small>Passed Out: Class VIII · Session {{ $s->pass_out_year ?: '—' }}</small>
++                    @if ($s->previous_school)<br><small>Previous School: {{ $s->previous_school }}</small>@endif
++                </div>
++            </div>
++        @empty
++            <p class="sd sd-note">هن نالي يا GR نمبر سان ڪو former student نه مليو.</p>
++        @endforelse
++    @endif
++@endsection
+diff --git a/resources/views/pages/leaving-certificate.blade.php b/resources/views/pages/leaving-certificate.blade.php
+new file mode 100644
+index 0000000..4db2cbc
+--- /dev/null
++++ b/resources/views/pages/leaving-certificate.blade.php
+@@ -0,0 +1,24 @@
++@extends('layouts.portal')
++
++@section('title', 'Leaving Certificate')
++
++@section('content')
++    @include('pages._hero', ['pill' => 'Leaving Certificate — GR Number Verification'])
++    <div class="lk-card">
++        <div class="lk-title">Find Leaving Certificate</div>
++        @if ($error)<div class="err"><p>{{ $error }}</p></div>@endif
++        <form method="POST" action="{{ route('public.leaving-certificate.download', [], false) }}">
++            @csrf
++            <label for="gr_number">GR number</label>
++            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="e.g. 1024">
++            <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span></label>
++            <input id="dob" name="dob" type="date" value="{{ old('dob') }}" required>
++            <label for="year">Year (optional)</label>
++            <input id="year" name="year" value="{{ old('year') }}" placeholder="e.g. 2024-2025">
++            <div class="btn-row">
++                <button type="submit">Search &amp; Download</button>
++                <a class="btn ghost" href="{{ route('public.leaving-certificate', [], false) }}">Reset</a>
++            </div>
++        </form>
++    </div>
++@endsection
+diff --git a/routes/web.php b/routes/web.php
+index 1280d34..b467e72 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -150,3 +150,9 @@ Route::get('/privacy', fn () => view('pages.privacy', ['info' => \Illuminate\Sup
+ Route::get('/staff', [\App\Http\Controllers\PublicInfoController::class, 'staff'])->name('public.staff');
+ 
+ Route::get('/toppers', [\App\Http\Controllers\PublicInfoController::class, 'toppers'])->name('public.toppers');
++
++Route::get('/admit-card', [\App\Http\Controllers\PublicRecordsController::class, 'admitShow'])->name('public.admit-card');
++Route::post('/admit-card', [\App\Http\Controllers\PublicRecordsController::class, 'admitDownload'])->middleware('throttle:30,1')->name('public.admit-card.download');
++Route::get('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcShow'])->name('public.leaving-certificate');
++Route::post('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcDownload'])->middleware('throttle:30,1')->name('public.leaving-certificate.download');
++Route::get('/alumni', [\App\Http\Controllers\PublicRecordsController::class, 'alumni'])->middleware('throttle:30,1')->name('public.alumni');
+diff --git a/tests/Feature/PublicRecordsTest.php b/tests/Feature/PublicRecordsTest.php
+new file mode 100644
+index 0000000..cc1ede8
+--- /dev/null
++++ b/tests/Feature/PublicRecordsTest.php
+@@ -0,0 +1,34 @@
++<?php
++
++namespace Tests\Feature;
++
++use App\Models\Student;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Tests\TestCase;
++
++class PublicRecordsTest extends TestCase
++{
++    use RefreshDatabase;
++
++    public function test_pages_render(): void
++    {
++        $this->get('/admit-card')->assertOk()->assertSee('Check Your Admit Card');
++        $this->get('/leaving-certificate')->assertOk()->assertSee('Find Leaving Certificate');
++        $this->get('/alumni')->assertOk()->assertSee('Find a Former Student');
++    }
++
++    public function test_wrong_dob_is_rejected(): void
++    {
++        Student::forceCreate(['id' => 's1', 'gr_number' => '77', 'name' => 'Ali', 'father_name' => 'Aslam', 'dob' => '2012-01-02', 'class' => 'VII']);
++        $this->post('/admit-card', ['gr_number' => '77', 'dob' => '2010-01-01'])->assertOk()->assertSee('نه ملي');
++        $this->post('/leaving-certificate', ['gr_number' => '77', 'dob' => '2010-01-01'])->assertOk()->assertSee('نه ملي');
++    }
++
++    public function test_lc_missing_and_alumni_search_hides_dob(): void
++    {
++        Student::forceCreate(['id' => 's2', 'gr_number' => '88', 'name' => 'Bilal', 'father_name' => 'Bashir', 'dob' => '2011-03-04', 'class' => 'VIII', 'passed_out' => true, 'pass_out_year' => '2024-2025']);
++        $this->post('/leaving-certificate', ['gr_number' => '88', 'dob' => '2011-03-04'])->assertOk()->assertSee('جاري نه ٿيو');
++        $this->get('/alumni?q=Bilal')->assertOk()->assertSee('Bilal')->assertSee('2024-2025')->assertDontSee('2011');
++        $this->get('/alumni?q=Zzz')->assertOk()->assertSee('نه مليو');
++    }
++}
