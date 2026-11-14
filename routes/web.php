@@ -150,3 +150,9 @@ Route::get('/privacy', fn () => view('pages.privacy', ['info' => \Illuminate\Sup
 Route::get('/staff', [\App\Http\Controllers\PublicInfoController::class, 'staff'])->name('public.staff');
 
 Route::get('/toppers', [\App\Http\Controllers\PublicInfoController::class, 'toppers'])->name('public.toppers');
+
+Route::get('/admit-card', [\App\Http\Controllers\PublicRecordsController::class, 'admitShow'])->name('public.admit-card');
+Route::post('/admit-card', [\App\Http\Controllers\PublicRecordsController::class, 'admitDownload'])->middleware('throttle:30,1')->name('public.admit-card.download');
+Route::get('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcShow'])->name('public.leaving-certificate');
+Route::post('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcDownload'])->middleware('throttle:30,1')->name('public.leaving-certificate.download');
+Route::get('/alumni', [\App\Http\Controllers\PublicRecordsController::class, 'alumni'])->middleware('throttle:30,1')->name('public.alumni');
