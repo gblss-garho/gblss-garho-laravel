@@ -1,0 +1,540 @@
+diff --git a/app/Http/Controllers/ElibraryController.php b/app/Http/Controllers/ElibraryController.php
+new file mode 100644
+index 0000000..2783e10
+--- /dev/null
++++ b/app/Http/Controllers/ElibraryController.php
+@@ -0,0 +1,75 @@
++<?php
++
++namespace App\Http\Controllers;
++
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\DB;
++use Illuminate\Support\Str;
++
++/** Old-site "E-Library" (FunTime): stories, poems, books, videos, songs. Public read, staff manage. */
++class ElibraryController extends Controller
++{
++    public const TYPES = [
++        'story' => ['Story', '📖', 'Read Now'],
++        'poem' => ['Poem', '⭐', 'Read Now'],
++        'book' => ['Book', '📚', 'Read Now'],
++        'video' => ['Video', '🎬', 'Watch Now'],
++        'song' => ['Song', '🎵', 'Listen Now'],
++    ];
++
++    public function index(Request $request)
++    {
++        $type = $request->query('type');
++        $type = array_key_exists((string) $type, self::TYPES) ? $type : null;
++        $counts = DB::table('funtime_items')->select('type', DB::raw('count(*) c'))->groupBy('type')->pluck('c', 'type');
++        $items = $type ? DB::table('funtime_items')->where('type', $type)->orderByDesc('created_at')->get() : collect();
++        $edit = null;
++        if (auth()->check() && $request->query('edit')) {
++            $edit = DB::table('funtime_items')->where('id', $request->query('edit'))->first();
++        }
++
++        return view('pages.elibrary', ['types' => self::TYPES, 'counts' => $counts, 'type' => $type, 'items' => $items, 'edit' => $edit]);
++    }
++
++    public function store(Request $request)
++    {
++        $data = $request->validate([
++            'id' => ['nullable', 'string', 'max:16'],
++            'type' => ['required', 'in:'.implode(',', array_keys(self::TYPES))],
++            'title' => ['required', 'string', 'max:200'],
++            'image_url' => ['nullable', 'url', 'max:500'],
++            'media_url' => ['nullable', 'url', 'max:500'],
++            'content' => ['nullable', 'string', 'max:20000'],
++        ]);
++        $id = $data['id'] ?? null;
++        unset($data['id']);
++        if ($id && DB::table('funtime_items')->where('id', $id)->exists()) {
++            DB::table('funtime_items')->where('id', $id)->update($data + ['updated_at' => now()]);
++        } else {
++            DB::table('funtime_items')->insert($data + ['id' => Str::random(10), 'created_at' => now(), 'updated_at' => now()]);
++        }
++
++        return redirect(route('public.elibrary', ['type' => $data['type']], false))->with('ok', 'Item save ho gaya.');
++    }
++
++    public function destroy(string $id)
++    {
++        $item = DB::table('funtime_items')->where('id', $id)->first();
++        DB::table('funtime_items')->where('id', $id)->delete();
++
++        return redirect(route('public.elibrary', $item ? ['type' => $item->type] : [], false))->with('ok', 'Item delete ho gaya.');
++    }
++
++    /** Turn a YouTube watch/short URL into an embed URL (null for anything else). */
++    public static function youtubeEmbed(?string $url): ?string
++    {
++        if (! $url) {
++            return null;
++        }
++        if (preg_match('~(?:youtube\.com/(?:watch\?(?:.*&)?v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{11})~', $url, $m)) {
++            return 'https://www.youtube.com/embed/'.$m[1];
++        }
++
++        return null;
++    }
++}
+diff --git a/database/migrations/2026_11_15_000000_create_funtime_items_table.php b/database/migrations/2026_11_15_000000_create_funtime_items_table.php
+new file mode 100644
+index 0000000..4342173
+--- /dev/null
++++ b/database/migrations/2026_11_15_000000_create_funtime_items_table.php
+@@ -0,0 +1,26 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::create('funtime_items', function (Blueprint $t) {
++            $t->string('id', 16)->primary();
++            $t->string('type', 20);
++            $t->string('title');
++            $t->string('image_url', 500)->nullable();
++            $t->string('media_url', 500)->nullable();
++            $t->text('content')->nullable();
++            $t->timestamps();
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::dropIfExists('funtime_items');
++    }
++};
+diff --git a/public/js/kids-corner.js b/public/js/kids-corner.js
+new file mode 100644
+index 0000000..77820b9
+--- /dev/null
++++ b/public/js/kids-corner.js
+@@ -0,0 +1,179 @@
++(function () {
++  var root = document.getElementById('kids-app');
++  if (!root) return;
++  var D = null;
++  function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
++  function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.textContent = html; return e; }
++  var UR = "'Noto Nastaliq Urdu','CustomSindhi',serif", SD = "'CustomSindhi','Noto Serif',serif";
++  var panel = document.getElementById('kids-panel');
++  var tabs = document.querySelectorAll('[data-kids-tab]');
++  var sections = { dictionary: dictionary, wordmatch: wordMatch, memory: memory, quiz: quiz, math: math };
++  function show(name) {
++    tabs.forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-kids-tab') === name); });
++    panel.innerHTML = '';
++    sections[name]();
++  }
++  function btn(text, fn, cls) { var b = el('button', cls || '', text); b.type = 'button'; b.addEventListener('click', fn); return b; }
++  function chips(opts, cur, fn) {
++    var w = el('div', 'kc-chips');
++    opts.forEach(function (o) { var b = btn(o[1], function () { fn(o[0]); }, 'kc-chip' + (o[0] === cur ? ' on' : '')); w.appendChild(b); });
++    return w;
++  }
++
++  function dictionary() {
++    var q = '', cat = 'All';
++    var cats = ['All'].concat(Array.from(new Set(D.dict.map(function (w) { return w.cat; }))));
++    var inp = el('input'); inp.placeholder = 'Search a word (English, Urdu or Sindhi)…'; inp.className = 'kc-input';
++    var chipBox = el('div'), count = el('p', 'kc-meta'), grid = el('div', 'kc-grid');
++    function draw() {
++      chipBox.innerHTML = ''; chipBox.appendChild(chips(cats.map(function (c) { return [c, c]; }), cat, function (c) { cat = c; draw(); }));
++      var s = q.trim().toLowerCase();
++      var list = D.dict.filter(function (w) { return (cat === 'All' || w.cat === cat) && (!s || w.en.toLowerCase().indexOf(s) >= 0 || w.ur.indexOf(q.trim()) >= 0 || w.sd.indexOf(q.trim()) >= 0); });
++      count.textContent = list.length + ' word' + (list.length === 1 ? '' : 's');
++      grid.innerHTML = '';
++      list.forEach(function (w) {
++        var c = el('div', 'kc-card');
++        var top = el('div', 'kc-top'); top.appendChild(el('b', '', w.en)); top.appendChild(el('span', 'kc-tag', w.cat)); c.appendChild(top);
++        var u = el('div', 'kc-ur', w.ur); u.style.fontFamily = UR; c.appendChild(u);
++        var s2 = el('div', 'kc-sd', w.sd); s2.style.fontFamily = SD; c.appendChild(s2);
++        grid.appendChild(c);
++      });
++    }
++    inp.addEventListener('input', function () { q = inp.value; draw(); });
++    panel.appendChild(inp); panel.appendChild(chipBox); panel.appendChild(count); panel.appendChild(grid); draw();
++  }
++
++  function wordMatch() {
++    var lang = 'ur', N = 6, round, left, right, sl = null, sr = null, matched = [], mistakes = 0, busy = false;
++    var box = el('div'); panel.appendChild(box);
++    function fresh() {
++      round = shuffle(D.dict).slice(0, N).map(function (w, i) { return { en: w.en, ur: w.ur, sd: w.sd, id: i }; });
++      left = shuffle(round); right = shuffle(round); sl = sr = null; matched = []; mistakes = 0; busy = false;
++    }
++    function draw() {
++      box.innerHTML = '';
++      var bar = el('div', 'kc-bar');
++      bar.appendChild(chips([['ur', 'English ↔ Urdu'], ['sd', 'English ↔ Sindhi']], lang, function (l) { lang = l; fresh(); draw(); }));
++      bar.appendChild(el('span', 'kc-meta', 'Mistakes: ' + mistakes)); box.appendChild(bar);
++      if (matched.length === N) {
++        var d = el('div', 'kc-card kc-center'); d.appendChild(el('div', 'kc-big', '🎉')); d.appendChild(el('b', '', 'All matched!'));
++        d.appendChild(el('p', 'kc-meta', 'Mistakes: ' + mistakes)); d.appendChild(btn('Play Again', function () { fresh(); draw(); }, 'kc-gold')); box.appendChild(d); return;
++      }
++      var g = el('div', 'kc-two');
++      [['l', left, sl], ['r', right, sr]].forEach(function (col) {
++        var c = el('div', 'kc-col');
++        col[1].forEach(function (w) {
++          var done = matched.indexOf(w.id) >= 0;
++          var b = btn(col[0] === 'l' ? w.en : w[lang], function () { if (busy || done) return; if (col[0] === 'l') sl = w.id; else sr = w.id; check(); draw(); }, 'kc-opt' + (done ? ' ok' : '') + (col[2] === w.id ? ' sel' : ''));
++          if (col[0] === 'r') b.style.fontFamily = lang === 'ur' ? UR : SD;
++          b.disabled = done; c.appendChild(b);
++        });
++        g.appendChild(c);
++      });
++      box.appendChild(g);
++    }
++    function check() {
++      if (sl === null || sr === null) return;
++      if (sl === sr) { matched.push(sl); sl = sr = null; }
++      else { mistakes++; busy = true; setTimeout(function () { sl = sr = null; busy = false; draw(); }, 550); }
++    }
++    fresh(); draw();
++  }
++
++  function memory() {
++    var mode = 'emoji', lang = 'ur', level = 'Medium', L = { Easy: 6, Medium: 8, Hard: 12 };
++    var cards, flipped, moves, locked, box = el('div'); panel.appendChild(box);
++    function deck() {
++      var n = L[level], cs = [];
++      if (mode === 'emoji') { shuffle(D.emojis).slice(0, n).forEach(function (e) { cs.push({ k: e, f: e }, { k: e, f: e }); }); }
++      else {
++        var seen = {}, uniq = D.dict.filter(function (w) { if (seen[w.en]) return false; seen[w.en] = 1; return true; });
++        shuffle(uniq).slice(0, n).forEach(function (w) { cs.push({ k: w.en, f: w.en }, { k: w.en, f: lang === 'ur' ? w.ur : w.sd, t: true }); });
++      }
++      cards = shuffle(cs).map(function (c, i) { c.id = i; c.fl = false; c.m = false; return c; }); flipped = []; moves = 0; locked = false;
++    }
++    function draw() {
++      box.innerHTML = '';
++      box.appendChild(chips([['emoji', 'Emoji'], ['word', 'Words']], mode, function (m) { mode = m; deck(); draw(); }));
++      if (mode === 'word') box.appendChild(chips([['ur', 'Urdu'], ['sd', 'Sindhi']], lang, function (l) { lang = l; deck(); draw(); }));
++      box.appendChild(chips([['Easy', 'Easy'], ['Medium', 'Medium'], ['Hard', 'Hard']], level, function (l) { level = l; deck(); draw(); }));
++      var found = cards.filter(function (c) { return c.m; }).length / 2;
++      var bar = el('div', 'kc-bar'); bar.appendChild(el('span', 'kc-meta', 'Moves: ' + moves + ' · Pairs: ' + found + ' / ' + L[level]));
++      bar.appendChild(btn('↻ Restart', function () { deck(); draw(); }, 'kc-ghost')); box.appendChild(bar);
++      if (found === L[level]) { var w = el('div', 'kc-card kc-center'); w.appendChild(el('div', 'kc-big', '🏆')); w.appendChild(el('b', '', 'Solved in ' + moves + ' moves!')); box.appendChild(w); }
++      var g = el('div', 'kc-mem ' + (mode === 'word' ? 'w' : 'e'));
++      cards.forEach(function (c) {
++        var show = c.fl || c.m;
++        var b = btn(show ? c.f : (mode === 'word' ? '?' : ''), function () { flip(c); }, 'kc-tile' + (show ? ' up' : '') + (c.m ? ' ok' : ''));
++        if (show && c.t) b.style.fontFamily = lang === 'ur' ? UR : SD;
++        g.appendChild(b);
++      });
++      box.appendChild(g);
++    }
++    function flip(c) {
++      if (locked || c.fl || c.m || flipped.length === 2) return;
++      c.fl = true; flipped.push(c);
++      if (flipped.length === 2) {
++        moves++; var a = flipped[0], b = flipped[1];
++        if (a.k === b.k) { setTimeout(function () { a.m = b.m = true; flipped = []; draw(); }, 350); }
++        else { locked = true; setTimeout(function () { a.fl = b.fl = false; flipped = []; locked = false; draw(); }, 800); }
++      }
++      draw();
++    }
++    deck(); draw();
++  }
++
++  function quiz() {
++    var order = shuffle(D.quiz.map(function (_, i) { return i; })), idx = 0, sel = null, score = 0, box = el('div'); panel.appendChild(box);
++    function draw() {
++      box.innerHTML = '';
++      if (idx >= order.length) {
++        var d = el('div', 'kc-card kc-center'); d.appendChild(el('div', 'kc-big', '🏆')); d.appendChild(el('b', '', 'Score: ' + score + ' / ' + order.length));
++        d.appendChild(btn('Play Again', function () { order = shuffle(order); idx = 0; sel = null; score = 0; draw(); }, 'kc-gold')); box.appendChild(d); return;
++      }
++      var q = D.quiz[order[idx]];
++      box.appendChild(el('p', 'kc-meta', 'Question ' + (idx + 1) + ' / ' + order.length + ' · Score: ' + score));
++      var c = el('div', 'kc-card'); var qq = el('p', 'kc-q', q.q); qq.style.fontFamily = SD; c.appendChild(qq);
++      q.options.forEach(function (o, i) {
++        var cls = 'kc-opt'; if (sel !== null) { if (i === q.a) cls += ' ok'; else if (i === sel) cls += ' bad'; }
++        var b = btn(o, function () { if (sel !== null) return; sel = i; if (i === q.a) score++; draw(); }, cls); b.style.fontFamily = SD; b.disabled = sel !== null; c.appendChild(b);
++      });
++      box.appendChild(c);
++      if (sel !== null) box.appendChild(btn(idx + 1 === order.length ? 'See Score' : 'Next Question', function () { sel = null; idx++; draw(); }, 'kc-gold'));
++    }
++    draw();
++  }
++
++  function math() {
++    var level = 'easy', score = 0, att = 0, sel = null, p, box = el('div'); panel.appendChild(box);
++    function ri(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
++    function gen() {
++      var a, b, op, c, t;
++      if (level === 'easy') { op = Math.random() < .5 ? '+' : '-'; a = ri(1, 20); b = ri(1, 20); if (op === '-' && b > a) { t = a; a = b; b = t; } c = op === '+' ? a + b : a - b; }
++      else if (level === 'medium') { op = ['+', '-', '×'][ri(0, 2)]; if (op === '×') { a = ri(2, 12); b = ri(2, 12); c = a * b; } else { a = ri(10, 60); b = ri(10, 60); if (op === '-' && b > a) { t = a; a = b; b = t; } c = op === '+' ? a + b : a - b; } }
++      else { op = ['×', '÷', '+', '-'][ri(0, 3)]; if (op === '×') { a = ri(6, 15); b = ri(2, 12); c = a * b; } else if (op === '÷') { b = ri(2, 12); c = ri(2, 12); a = b * c; } else { a = ri(30, 99); b = ri(10, 99); if (op === '-' && b > a) { t = a; a = b; b = t; } c = op === '+' ? a + b : a - b; } }
++      var o = [c]; while (o.length < 4) { var f = c + (ri(-6, 6) || 1); if (f >= 0 && o.indexOf(f) < 0) o.push(f); }
++      return { text: a + ' ' + op + ' ' + b, c: c, o: shuffle(o) };
++    }
++    function draw() {
++      box.innerHTML = '';
++      box.appendChild(chips([['easy', 'Easy'], ['medium', 'Medium'], ['hard', 'Hard']], level, function (l) { level = l; score = att = 0; sel = null; p = gen(); draw(); }));
++      box.appendChild(el('p', 'kc-meta', 'Score: ' + score + ' / ' + att));
++      var c = el('div', 'kc-card kc-center'); c.appendChild(el('p', 'kc-math', p.text + ' = ?'));
++      var g = el('div', 'kc-two');
++      p.o.forEach(function (v) {
++        var cls = 'kc-opt kc-num'; if (sel !== null) { if (v === p.c) cls += ' ok'; else if (v === sel) cls += ' bad'; }
++        var b = btn(String(v), function () { if (sel !== null) return; sel = v; att++; if (v === p.c) score++; draw(); }, cls); b.disabled = sel !== null; g.appendChild(b);
++      });
++      c.appendChild(g); box.appendChild(c);
++      if (sel !== null) box.appendChild(btn('Next Question', function () { sel = null; p = gen(); draw(); }, 'kc-gold'));
++    }
++    p = gen(); draw();
++  }
++
++  fetch(root.getAttribute('data-src')).then(function (r) { return r.json(); }).then(function (j) {
++    D = j;
++    tabs.forEach(function (b) { b.addEventListener('click', function () { show(b.getAttribute('data-kids-tab')); }); });
++    show('dictionary');
++  }).catch(function () { panel.textContent = 'Kids Corner load nahi ho saka. Page dobara kholein.'; });
++})();
+diff --git a/public/js/kids-data.json b/public/js/kids-data.json
+new file mode 100644
+index 0000000..20988db
+--- /dev/null
++++ b/public/js/kids-data.json
+@@ -0,0 +1 @@
++{"dict":[{"en":"One","ur":"ایک","sd":"هڪ","cat":"Numbers"},{"en":"Two","ur":"دو","sd":"ٻه","cat":"Numbers"},{"en":"Three","ur":"تین","sd":"ٽي","cat":"Numbers"},{"en":"Four","ur":"چار","sd":"چار","cat":"Numbers"},{"en":"Five","ur":"پانچ","sd":"پنج","cat":"Numbers"},{"en":"Six","ur":"چھ","sd":"ڇهه","cat":"Numbers"},{"en":"Seven","ur":"سات","sd":"ست","cat":"Numbers"},{"en":"Eight","ur":"آٹھ","sd":"اَٺ","cat":"Numbers"},{"en":"Nine","ur":"نو","sd":"نو","cat":"Numbers"},{"en":"Ten","ur":"دس","sd":"ڏهه","cat":"Numbers"},{"en":"Eleven","ur":"گیارہ","sd":"يارهن","cat":"Numbers"},{"en":"Twelve","ur":"بارہ","sd":"ٻارهن","cat":"Numbers"},{"en":"Thirteen","ur":"تیرہ","sd":"تيرهن","cat":"Numbers"},{"en":"Fourteen","ur":"چودہ","sd":"چوڏهن","cat":"Numbers"},{"en":"Fifteen","ur":"پندرہ","sd":"پنڌرهن","cat":"Numbers"},{"en":"Sixteen","ur":"سولہ","sd":"سورهن","cat":"Numbers"},{"en":"Seventeen","ur":"سترہ","sd":"سترهن","cat":"Numbers"},{"en":"Eighteen","ur":"اٹھارہ","sd":"ارڙهن","cat":"Numbers"},{"en":"Nineteen","ur":"انیس","sd":"اُڻويهه","cat":"Numbers"},{"en":"Twenty","ur":"بیس","sd":"ويهه","cat":"Numbers"},{"en":"Father","ur":"والد","sd":"پيءُ","cat":"Family"},{"en":"Mother","ur":"ماں","sd":"امڙ","cat":"Family"},{"en":"Brother","ur":"بھائی","sd":"ڀاءُ","cat":"Family"},{"en":"Sister","ur":"بہن","sd":"ڀيڻ","cat":"Family"},{"en":"Grandfather","ur":"دادا","sd":"ڏاڏو","cat":"Family"},{"en":"Grandmother","ur":"دادی","sd":"ڏاڏي","cat":"Family"},{"en":"Son","ur":"بیٹا","sd":"پٽ","cat":"Family"},{"en":"Daughter","ur":"بیٹی","sd":"ڌيءَ","cat":"Family"},{"en":"Uncle","ur":"چچا","sd":"چاچو","cat":"Family"},{"en":"Aunt","ur":"چچی","sd":"چاچي","cat":"Family"},{"en":"Friend","ur":"دوست","sd":"يار","cat":"Family"},{"en":"Family","ur":"خاندان","sd":"خاندان","cat":"Family"},{"en":"Red","ur":"لال","sd":"ڳاڙهو","cat":"Colors"},{"en":"Blue","ur":"نیلا","sd":"نيرو","cat":"Colors"},{"en":"Green","ur":"سبز","sd":"سائو","cat":"Colors"},{"en":"Yellow","ur":"پیلا","sd":"پيلو","cat":"Colors"},{"en":"Black","ur":"کالا","sd":"ڪارو","cat":"Colors"},{"en":"White","ur":"سفید","sd":"اڇو","cat":"Colors"},{"en":"Orange","ur":"نارنجی","sd":"نارنگي","cat":"Colors"},{"en":"Pink","ur":"گلابی","sd":"گلابي","cat":"Colors"},{"en":"Brown","ur":"بھورا","sd":"ناسي","cat":"Colors"},{"en":"Purple","ur":"جامنی","sd":"واڱڻائي","cat":"Colors"},{"en":"Grey","ur":"خاکستری","sd":"ڀورو","cat":"Colors"},{"en":"Dog","ur":"کتا","sd":"ڪتو","cat":"Animals"},{"en":"Cat","ur":"بلی","sd":"ٻلي","cat":"Animals"},{"en":"Cow","ur":"گائے","sd":"ڳئون","cat":"Animals"},{"en":"Goat","ur":"بکری","sd":"ٻڪري","cat":"Animals"},{"en":"Horse","ur":"گھوڑا","sd":"گھوڙو","cat":"Animals"},{"en":"Lion","ur":"شیر","sd":"شينهن","cat":"Animals"},{"en":"Elephant","ur":"ہاتھی","sd":"هاٿي","cat":"Animals"},{"en":"Monkey","ur":"بندر","sd":"ڀولڙو","cat":"Animals"},{"en":"Rabbit","ur":"خرگوش","sd":"سَهو","cat":"Animals"},{"en":"Sheep","ur":"بھیڑ","sd":"رڍ","cat":"Animals"},{"en":"Tiger","ur":"چیتا","sd":"چِيتو","cat":"Animals"},{"en":"Camel","ur":"اونٹ","sd":"اُٺ","cat":"Animals"},{"en":"Donkey","ur":"گدھا","sd":"گڏهه","cat":"Animals"},{"en":"Buffalo","ur":"بھینس","sd":"مَينھن","cat":"Animals"},{"en":"Deer","ur":"ہرن","sd":"هرڻ","cat":"Animals"},{"en":"Bear","ur":"ریچھ","sd":"رڇ","cat":"Animals"},{"en":"Fox","ur":"لومڑی","sd":"لومڙ","cat":"Animals"},{"en":"Pig","ur":"سور","sd":"سوئر","cat":"Animals"},{"en":"Eye","ur":"آنکھ","sd":"اک","cat":"Body"},{"en":"Ear","ur":"کان","sd":"ڪن","cat":"Body"},{"en":"Nose","ur":"ناک","sd":"نڪ","cat":"Body"},{"en":"Mouth","ur":"منہ","sd":"وات","cat":"Body"},{"en":"Hand","ur":"ہاتھ","sd":"هٿ","cat":"Body"},{"en":"Foot","ur":"پاؤں","sd":"پير","cat":"Body"},{"en":"Head","ur":"سر","sd":"مٿو","cat":"Body"},{"en":"Hair","ur":"بال","sd":"وار","cat":"Body"},{"en":"Tooth","ur":"دانت","sd":"ڏند","cat":"Body"},{"en":"Tongue","ur":"زبان","sd":"ڄڀ","cat":"Body"},{"en":"Neck","ur":"گردن","sd":"ڳچي","cat":"Body"},{"en":"Shoulder","ur":"کندھا","sd":"ڪلهو","cat":"Body"},{"en":"Knee","ur":"گھٹنا","sd":"گوڏو","cat":"Body"},{"en":"Finger","ur":"انگلی","sd":"آڱر","cat":"Body"},{"en":"Stomach","ur":"پیٹ","sd":"پيٽ","cat":"Body"},{"en":"Heart","ur":"دل","sd":"دل","cat":"Body"},{"en":"Lip","ur":"ہونٹ","sd":"چپ","cat":"Body"},{"en":"Face","ur":"چہرہ","sd":"مُنهن","cat":"Body"},{"en":"Book","ur":"کتاب","sd":"ڪتاب","cat":"School"},{"en":"Pen","ur":"قلم","sd":"قلم","cat":"School"},{"en":"Pencil","ur":"پنسل","sd":"پينسل","cat":"School"},{"en":"Eraser","ur":"ربڑ","sd":"رٻڙ","cat":"School"},{"en":"Chalk","ur":"چاک","sd":"چاڪ","cat":"School"},{"en":"Notebook","ur":"کاپی","sd":"نوٽ بڪ","cat":"School"},{"en":"Teacher","ur":"استاد","sd":"استاد","cat":"School"},{"en":"Student","ur":"طالب علم","sd":"شاگرد","cat":"School"},{"en":"School","ur":"اسکول","sd":"اسڪول","cat":"School"},{"en":"Library","ur":"کتب خانہ","sd":"لئبريري","cat":"School"},{"en":"Map","ur":"نقشہ","sd":"نقشو","cat":"School"},{"en":"Apple","ur":"سیب","sd":"سيب","cat":"Fruits"},{"en":"Banana","ur":"کیلا","sd":"ڪيلو","cat":"Fruits"},{"en":"Mango","ur":"آم","sd":"انب","cat":"Fruits"},{"en":"Orange (fruit)","ur":"مالٹا","sd":"نارنگي","cat":"Fruits"},{"en":"Grapes","ur":"انگور","sd":"انگور","cat":"Fruits"},{"en":"Watermelon","ur":"تربوز","sd":"ڇانهين","cat":"Fruits"},{"en":"Pomegranate","ur":"انار","sd":"ڏاڙهون","cat":"Fruits"},{"en":"Coconut","ur":"ناریل","sd":"ناريل","cat":"Fruits"},{"en":"Pineapple","ur":"انناس","sd":"اناس","cat":"Fruits"},{"en":"Lemon","ur":"لیموں","sd":"ليمو","cat":"Fruits"},{"en":"Sugarcane","ur":"گنا","sd":"ڪَمَند","cat":"Fruits"},{"en":"Onion","ur":"پیاز","sd":"بصر","cat":"Vegetables"},{"en":"Potato","ur":"آلو","sd":"پَٽاٽو","cat":"Vegetables"},{"en":"Tomato","ur":"ٹماٹر","sd":"ٽَماٽو","cat":"Vegetables"},{"en":"Carrot","ur":"گاجر","sd":"گَجَر","cat":"Vegetables"},{"en":"Garlic","ur":"لہسن","sd":"ٿوم","cat":"Vegetables"},{"en":"Ginger","ur":"ادرک","sd":"اَدِرَڪ","cat":"Vegetables"},{"en":"Chilli","ur":"مرچ","sd":"مرچ","cat":"Vegetables"},{"en":"Peas","ur":"مٹر","sd":"مَٽَر","cat":"Vegetables"},{"en":"Cabbage","ur":"بند گوبھی","sd":"پن گوبي","cat":"Vegetables"},{"en":"Cauliflower","ur":"پھول گوبھی","sd":"گل گوبي","cat":"Vegetables"},{"en":"Spinach","ur":"پالک","sd":"پالڪ","cat":"Vegetables"},{"en":"Brinjal","ur":"بینگن","sd":"واڱڻ","cat":"Vegetables"},{"en":"Monday","ur":"پیر","sd":"سومر","cat":"Days"},{"en":"Tuesday","ur":"منگل","sd":"اڱارو","cat":"Days"},{"en":"Wednesday","ur":"بدھ","sd":"اربع","cat":"Days"},{"en":"Thursday","ur":"جمعرات","sd":"خميس","cat":"Days"},{"en":"Friday","ur":"جمعہ","sd":"جمعو","cat":"Days"},{"en":"Saturday","ur":"ہفتہ","sd":"ڇنڇر","cat":"Days"},{"en":"Sunday","ur":"اتوار","sd":"آچر","cat":"Days"},{"en":"Eat","ur":"کانا","sd":"کائڻ","cat":"Verbs"},{"en":"Drink","ur":"پینا","sd":"پيئڻ","cat":"Verbs"},{"en":"Sleep","ur":"سونا","sd":"سمهڻ","cat":"Verbs"},{"en":"Run","ur":"دوڑنا","sd":"ڊوڙڻ","cat":"Verbs"},{"en":"Walk","ur":"چلنا","sd":"هلڻ","cat":"Verbs"},{"en":"Read","ur":"پڑھنا","sd":"پڙهڻ","cat":"Verbs"},{"en":"Write","ur":"لکھنا","sd":"لکڻ","cat":"Verbs"},{"en":"Play","ur":"کھیلنا","sd":"راند ڪرڻ","cat":"Verbs"},{"en":"Sit","ur":"بیٹھنا","sd":"ويهڻ","cat":"Verbs"},{"en":"Stand","ur":"کھڑا ہونا","sd":"بيهڻ","cat":"Verbs"},{"en":"Go","ur":"جانا","sd":"وڃڻ","cat":"Verbs"},{"en":"Come","ur":"آنا","sd":"اچڻ","cat":"Verbs"},{"en":"See","ur":"دیکھنا","sd":"ڏسڻ","cat":"Verbs"},{"en":"Listen","ur":"سننا","sd":"ٻڌڻ","cat":"Verbs"},{"en":"Speak","ur":"بولنا","sd":"ڳالهائڻ","cat":"Verbs"},{"en":"Laugh","ur":"ہنسنا","sd":"کلڻ","cat":"Verbs"},{"en":"Cry","ur":"رونا","sd":"رئڻ","cat":"Verbs"},{"en":"Jump","ur":"کودنا","sd":"ٽپڻ","cat":"Verbs"},{"en":"Big","ur":"بڑا","sd":"وڏو","cat":"Adjectives"},{"en":"Small","ur":"چھوٹا","sd":"ننڍو","cat":"Adjectives"},{"en":"Good","ur":"اچھا","sd":"چڱو","cat":"Adjectives"},{"en":"Bad","ur":"برا","sd":"خراب","cat":"Adjectives"},{"en":"Hot","ur":"گرم","sd":"گرم","cat":"Adjectives"},{"en":"Cold","ur":"ٹھنڈا","sd":"ٿڌو","cat":"Adjectives"},{"en":"Fast","ur":"تیز","sd":"تکو","cat":"Adjectives"},{"en":"Slow","ur":"آہستہ","sd":"سست","cat":"Adjectives"},{"en":"Happy","ur":"خوش","sd":"خوش","cat":"Adjectives"},{"en":"New","ur":"نیا","sd":"نئون","cat":"Adjectives"},{"en":"Old","ur":"پرانا","sd":"پراڻو","cat":"Adjectives"},{"en":"Clean","ur":"صاف","sd":"صاف","cat":"Adjectives"},{"en":"Strong","ur":"طاقتور","sd":"مضبوط","cat":"Adjectives"},{"en":"Weak","ur":"کمزور","sd":"ڪمزور","cat":"Adjectives"},{"en":"Hello","ur":"السلام علیکم","sd":"السلام عليڪم","cat":"Greetings"},{"en":"Thank you","ur":"شکریہ","sd":"مهرباني","cat":"Greetings"},{"en":"Yes","ur":"ہاں","sd":"ها","cat":"Greetings"},{"en":"No","ur":"نہیں","sd":"نه","cat":"Greetings"},{"en":"Please","ur":"براہ مہربانی","sd":"مهرباني ڪري","cat":"Greetings"},{"en":"Sorry","ur":"معاف کیجیے","sd":"معاف ڪجو","cat":"Greetings"},{"en":"Good Morning","ur":"صبح بخیر","sd":"صبح جو سلام","cat":"Greetings"},{"en":"Good Night","ur":"شب بخیر","sd":"رات جو سلام","cat":"Greetings"},{"en":"Sun","ur":"سورج","sd":"سج","cat":"Nature & Science"},{"en":"Moon","ur":"چاند","sd":"چنڊ","cat":"Nature & Science"},{"en":"Star","ur":"ستارہ","sd":"تارو","cat":"Nature & Science"},{"en":"Sky","ur":"آسمان","sd":"آسمان","cat":"Nature & Science"},{"en":"Earth","ur":"زمین","sd":"زمين","cat":"Nature & Science"},{"en":"Water","ur":"پانی","sd":"پاڻي","cat":"Nature & Science"},{"en":"Fire","ur":"آگ","sd":"باهه","cat":"Nature & Science"},{"en":"Air","ur":"ہوا","sd":"هوا","cat":"Nature & Science"},{"en":"Cloud","ur":"بادل","sd":"ڪڪر","cat":"Nature & Science"},{"en":"Rain","ur":"بارش","sd":"مينهن","cat":"Nature & Science"},{"en":"Mountain","ur":"پہاڑ","sd":"جبل","cat":"Nature & Science"},{"en":"River","ur":"دریا","sd":"درياءُ","cat":"Nature & Science"},{"en":"Sea","ur":"سمندر","sd":"سمنڊ","cat":"Nature & Science"},{"en":"Forest","ur":"جنگل","sd":"ٻيلو","cat":"Nature & Science"},{"en":"Desert","ur":"صحرا","sd":"ريگستان","cat":"Nature & Science"},{"en":"Tree","ur":"درخت","sd":"وڻ","cat":"Nature & Science"},{"en":"Flower","ur":"پھول","sd":"گل","cat":"Nature & Science"},{"en":"Sand","ur":"ریت","sd":"واري","cat":"Nature & Science"},{"en":"Stone","ur":"پتھر","sd":"پٿر","cat":"Nature & Science"},{"en":"Soil","ur":"مٹی","sd":"مٽي","cat":"Nature & Science"},{"en":"Country","ur":"ملک","sd":"ملڪ","cat":"Geography"},{"en":"City","ur":"شہر","sd":"شهر","cat":"Geography"},{"en":"Village","ur":"گاؤں","sd":"ڳوٺ","cat":"Geography"},{"en":"Island","ur":"جزیرہ","sd":"ٻيٽ","cat":"Geography"},{"en":"Valley","ur":"وادی","sd":"وادي","cat":"Geography"},{"en":"World","ur":"دنیا","sd":"دنيا","cat":"Geography"},{"en":"Government","ur":"حکومت","sd":"حڪومت","cat":"Government & Civics"},{"en":"President","ur":"صدر","sd":"صدر","cat":"Government & Civics"},{"en":"Citizen","ur":"شہری","sd":"شهري","cat":"Government & Civics"},{"en":"Flag","ur":"جھنڈا","sd":"جھنڊو","cat":"Government & Civics"},{"en":"Vote","ur":"ووٹ","sd":"ووٽ","cat":"Government & Civics"},{"en":"Law","ur":"قانون","sd":"قانون","cat":"Government & Civics"},{"en":"Freedom","ur":"آزادی","sd":"آزادي","cat":"Government & Civics"},{"en":"Computer","ur":"کمپیوٹر","sd":"ڪمپيوٽر","cat":"Technology"},{"en":"Internet","ur":"انٹرنیٹ","sd":"انٽرنيٽ","cat":"Technology"},{"en":"Mobile Phone","ur":"موبائل فون","sd":"موبائيل فون","cat":"Technology"},{"en":"Camera","ur":"کیمرہ","sd":"ڪئميرا","cat":"Technology"},{"en":"Television","ur":"ٹیلی ویژن","sd":"ٽيليويزن","cat":"Technology"},{"en":"Brain","ur":"دماغ","sd":"دماغ","cat":"Body"},{"en":"Blood","ur":"خون","sd":"رت","cat":"Body"},{"en":"Bone","ur":"ہڈی","sd":"هڏو","cat":"Body"},{"en":"Lungs","ur":"پھیپھڑے","sd":"ڦڦڙا","cat":"Body"},{"en":"Skin","ur":"جلد","sd":"کَل","cat":"Body"},{"en":"Farmer","ur":"کسان","sd":"هاري","cat":"Occupations"},{"en":"Doctor","ur":"ڈاکٹر","sd":"ڊاڪٽر","cat":"Occupations"},{"en":"Engineer","ur":"انجینئر","sd":"انجنيئر","cat":"Occupations"},{"en":"Police Officer","ur":"پولیس افسر","sd":"پوليس آفيسر","cat":"Occupations"},{"en":"Fisherman","ur":"ماہی گیر","sd":"مهاڻو","cat":"Occupations"},{"en":"Shopkeeper","ur":"دکاندار","sd":"دڪاندار","cat":"Occupations"},{"en":"Soldier","ur":"فوجی","sd":"فوجي","cat":"Occupations"},{"en":"Month","ur":"مہینہ","sd":"مهينو","cat":"Time"},{"en":"Year","ur":"سال","sd":"ورهيه","cat":"Time"},{"en":"Hour","ur":"گھنٹہ","sd":"ڪلاڪ","cat":"Time"},{"en":"Minute","ur":"منٹ","sd":"منٽ","cat":"Time"},{"en":"Morning","ur":"صبح","sd":"صبح","cat":"Time"},{"en":"Evening","ur":"شام","sd":"شام","cat":"Time"},{"en":"Night","ur":"رات","sd":"رات","cat":"Time"},{"en":"Car","ur":"گاڑی","sd":"ڪار","cat":"Transport"},{"en":"Bus","ur":"بس","sd":"بس","cat":"Transport"},{"en":"Bicycle","ur":"سائیکل","sd":"سائيڪل","cat":"Transport"},{"en":"Train","ur":"ٹرین","sd":"ريل","cat":"Transport"},{"en":"Airplane","ur":"ہوائی جہاز","sd":"هوائي جهاز","cat":"Transport"},{"en":"Boat","ur":"کشتی","sd":"ٻيڙي","cat":"Transport"},{"en":"Sad","ur":"اداس","sd":"اداس","cat":"Emotions"},{"en":"Angry","ur":"غصہ","sd":"ڪاوڙيل","cat":"Emotions"},{"en":"Afraid","ur":"ڈرا ہوا","sd":"ڊڄيل","cat":"Emotions"},{"en":"Excited","ur":"پرجوش","sd":"پرجوش","cat":"Emotions"},{"en":"Surprised","ur":"حیران","sd":"حيران","cat":"Emotions"}],"quiz":[{"q":"What does \"گھوڙو\" (Sindhi) mean in English?","options":["Horse","Cow","Goat","Camel"],"a":0},{"q":"What does \"کتاب\" mean in English?","options":["Pen","Book","Table","Chair"],"a":1},{"q":"What is the Sindhi word for \"Red\"?","options":["نيرو","ڳاڙهو","سائو","پيلو"],"a":1},{"q":"What is the Urdu word for \"Water\"?","options":["ہوا","پانی","آگ","مٹی"],"a":1},{"q":"What does \"ڏند\" mean in English?","options":["Eye","Ear","Tooth","Hand"],"a":2},{"q":"What is the capital of Pakistan?","options":["Karachi","Lahore","Islamabad","Multan"],"a":2},{"q":"How many days are in a week?","options":["5","6","7","8"],"a":2},{"q":"What is the largest planet in our solar system?","options":["Earth","Jupiter","Mars","Venus"],"a":1},{"q":"Which gas do humans breathe in to survive?","options":["Carbon Dioxide","Oxygen","Nitrogen","Hydrogen"],"a":1},{"q":"What is 9 × 6?","options":["54","56","45","63"],"a":0},{"q":"Which is the national language of Pakistan?","options":["English","Sindhi","Urdu","Punjabi"],"a":2},{"q":"How many continents are there?","options":["5","6","7","8"],"a":2},{"q":"What is the freezing point of water in Celsius?","options":["0°C","10°C","100°C","-10°C"],"a":0},{"q":"What does \"وڏو\" mean in English?","options":["Small","Big","Fast","Slow"],"a":1},{"q":"What is the Sindhi word for \"Thank you\"?","options":["مهرباني","معاف ڪجو","سلام","خدا حافظ"],"a":0},{"q":"Which organ pumps blood in the body?","options":["Lungs","Brain","Heart","Kidney"],"a":2},{"q":"What is 12 + 15?","options":["25","27","26","28"],"a":1},{"q":"Which ocean is the largest in the world?","options":["Atlantic","Indian","Arctic","Pacific"],"a":3},{"q":"What does \"وڃڻ\" mean in English?","options":["Come","Go","Sit","Stand"],"a":1},{"q":"How many minutes are there in an hour?","options":["30","45","60","90"],"a":2}],"emojis":["🐶","🐱","🐘","🦁","🍎","🍌","⚽","🚗","☀️","🌙","🐰","🐸","🍇","🎓","🎨","✈️"]}
+\ No newline at end of file
+diff --git a/resources/views/layouts/portal.blade.php b/resources/views/layouts/portal.blade.php
+index 545cc09..6a2b59a 100644
+--- a/resources/views/layouts/portal.blade.php
++++ b/resources/views/layouts/portal.blade.php
+@@ -265,6 +265,8 @@
+             ['Admit Card', route('public.admit-card', [], false), 'admit-card*'],
+             ['Leaving Cert.', route('public.leaving-certificate', [], false), 'leaving-certificate*'],
+             ['Alumni', route('public.alumni', [], false), 'alumni*'],
++            ['E-Library', route('public.elibrary', [], false), 'e-library*'],
++            ['Kids Corner', route('public.kids-corner', [], false), 'kids-corner*'],
+             ['Gallery', route('public.gallery', [], false), 'gallery*'],
+             ['Textbooks', route('public.textbooks', [], false), 'textbooks*'],
+             ['Calendar', route('public.calendar', [], false), 'calendar*'],
+@@ -286,6 +288,8 @@
+             ['Admit Card', route('public.admit-card', [], false), 'admit-card*'],
+             ['Leaving Cert.', route('public.leaving-certificate', [], false), 'leaving-certificate*'],
+             ['Alumni', route('public.alumni', [], false), 'alumni*'],
++            ['E-Library', route('public.elibrary', [], false), 'e-library*'],
++            ['Kids Corner', route('public.kids-corner', [], false), 'kids-corner*'],
+             ['Gallery', route('public.gallery', [], false), 'gallery*'],
+             ['Textbooks', route('public.textbooks', [], false), 'textbooks*'],
+             ['Calendar', route('public.calendar', [], false), 'calendar*'],
+@@ -305,6 +309,8 @@
+         ['Admit Card', route('public.admit-card', [], false), 'admit-card*', '🎫'],
+         ['Leaving Certificate', route('public.leaving-certificate', [], false), 'leaving-certificate*', '📜'],
+         ['Alumni', route('public.alumni', [], false), 'alumni*', '🎓'],
++        ['E-Library', route('public.elibrary', [], false), 'e-library*', '📚'],
++        ['Kids Corner', route('public.kids-corner', [], false), 'kids-corner*', '🧸'],
+         ['Gallery', route('public.gallery', [], false), 'gallery*', '🖼️'],
+         ['Text Books', route('public.textbooks', [], false), 'textbooks*', '📚'],
+         ['Calendar', route('public.calendar', [], false), 'calendar*', '📅'],
+diff --git a/resources/views/pages/elibrary.blade.php b/resources/views/pages/elibrary.blade.php
+new file mode 100644
+index 0000000..1494e5d
+--- /dev/null
++++ b/resources/views/pages/elibrary.blade.php
+@@ -0,0 +1,77 @@
++@extends('layouts.portal')
++
++@section('title', 'E-Library')
++
++@section('content')
++    @include('pages._hero', ['pill' => 'E-Library — Stories, Poems, Books, Videos & Songs'])
++    @if (session('ok'))<div class="ok">{{ session('ok') }}</div>@endif
++    @if ($errors->any())<div class="err">{{ $errors->first() }}</div>@endif
++    @php $staff = auth()->check() && in_array(auth()->user()->role, ['admin', 'teacher'], true); @endphp
++
++    <p class="sd sd-note">Padhen, khelen aur seekhen hamari activities ke sath.</p>
++
++    @if (! $type)
++        <div class="tiles">
++            @foreach ($types as $key => [$label, $icon])
++                <a class="tile" href="{{ route('public.elibrary', ['type' => $key], false) }}">
++                    <b>{{ $icon }} {{ $label }}</b>
++                    <small>{{ $counts[$key] ?? 0 }} item(s)</small>
++                </a>
++            @endforeach
++        </div>
++    @else
++        <p><a href="{{ route('public.elibrary', [], false) }}">&larr; E-Library</a></p>
++    @endif
++
++    @if ($staff)
++        <div class="lk-card">
++            <div class="lk-title">{{ $edit ? 'Edit Item' : 'Add Item' }}</div>
++            <form method="POST" action="{{ route('elibrary.store', [], false) }}">
++                @csrf
++                @if ($edit)<input type="hidden" name="id" value="{{ $edit->id }}">@endif
++                <label for="f_type">Type</label>
++                <select id="f_type" name="type">
++                    @foreach ($types as $key => [$label])<option value="{{ $key }}" @selected(old('type', $edit->type ?? $type ?? 'story') === $key)>{{ $label }}</option>@endforeach
++                </select>
++                <label for="f_title">Title</label>
++                <input id="f_title" name="title" required maxlength="200" value="{{ old('title', $edit->title ?? '') }}">
++                <label for="f_media">Video / Song / Book link (optional)</label>
++                <input id="f_media" name="media_url" type="url" placeholder="https://" value="{{ old('media_url', $edit->media_url ?? '') }}">
++                <label for="f_img">Image link (optional)</label>
++                <input id="f_img" name="image_url" type="url" placeholder="https://" value="{{ old('image_url', $edit->image_url ?? '') }}">
++                <label for="f_content">Text (story / poem)</label>
++                <textarea id="f_content" name="content" rows="5" dir="auto">{{ old('content', $edit->content ?? '') }}</textarea>
++                <div class="btn-row"><button type="submit">Save</button>
++                    @if ($edit)<a class="btn ghost" href="{{ route('public.elibrary', ['type' => $edit->type], false) }}">Cancel</a>@endif</div>
++            </form>
++        </div>
++    @endif
++
++    @if ($type)
++        @forelse ($items as $f)
++            @php $embed = \App\Http\Controllers\ElibraryController::youtubeEmbed($f->media_url); [$label, $icon, $cta] = $types[$f->type]; @endphp
++            <div class="fb-item">
++                <small>{{ $icon }} {{ $label }}</small>
++                <h3 dir="auto" style="margin:4px 0 8px">{{ $f->title }}</h3>
++                @if ($f->image_url)<img src="{{ $f->image_url }}" alt="" style="max-width:100%;border-radius:12px;margin-bottom:8px">@endif
++                @if ($embed)
++                    <div style="position:relative;padding-top:56%;margin-bottom:8px"><iframe src="{{ $embed }}" allowfullscreen loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px"></iframe></div>
++                @elseif ($f->media_url && $f->type === 'song' && preg_match('/\.(mp3|m4a|ogg|wav)(\?|$)/i', $f->media_url))
++                    <audio controls src="{{ $f->media_url }}" style="width:100%;margin-bottom:8px"></audio>
++                @elseif ($f->media_url)
++                    <a class="btn" href="{{ $f->media_url }}" target="_blank" rel="noopener noreferrer">{{ $cta }}</a>
++                @endif
++                @if ($f->content)<p dir="auto" style="white-space:pre-wrap;line-height:1.7">{{ $f->content }}</p>@endif
++                @if ($staff)
++                    <a href="{{ route('public.elibrary', ['type' => $f->type, 'edit' => $f->id], false) }}">Edit</a>
++                    <form method="POST" action="{{ route('elibrary.destroy', $f->id, false) }}" style="display:inline" onsubmit="return confirm('Ye item delete karein?')">
++                        @csrf @method('DELETE')
++                        <button type="submit" class="ghost" style="padding:2px 10px;color:#8B2E2E;border-color:#8B2E2E">Delete</button>
++                    </form>
++                @endif
++            </div>
++        @empty
++            <p class="sd sd-note">Is category mein abhi kuch nahi.</p>
++        @endforelse
++    @endif
++@endsection
+diff --git a/resources/views/pages/kids-corner.blade.php b/resources/views/pages/kids-corner.blade.php
+new file mode 100644
+index 0000000..8570f2b
+--- /dev/null
++++ b/resources/views/pages/kids-corner.blade.php
+@@ -0,0 +1,43 @@
++@extends('layouts.portal')
++
++@section('title', 'Kids Corner')
++
++@section('content')
++    @include('pages._hero', ['pill' => 'Kids Corner — Dictionary & Mind Games'])
++    <style>
++        .kc-nav, .kc-chips { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin:0 0 14px; }
++        .kc-nav button, .kc-chip { flex:none; border:0; border-radius:999px; padding:9px 16px; font-weight:600; font-size:14px; background:#EAF3EF; color:#0F5132; cursor:pointer; }
++        .kc-nav button.on, .kc-chip.on { background:#0F5132; color:#fff; }
++        .kc-nav button.on { background:linear-gradient(135deg,#DBB43C,#C9A227); color:#1F2A24; }
++        .kc-input { width:100%; box-sizing:border-box; margin:0 0 12px; border-radius:16px; background:#F6F4EC; border:1.5px solid #E3DCC7; padding:14px 16px; font-size:16px; }
++        .kc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; }
++        .kc-card { background:#fff; border:1px solid #E9E2CC; border-radius:16px; padding:14px; box-shadow:0 6px 16px -8px rgba(15,81,50,.16); margin:0 0 12px; }
++        .kc-center { text-align:center; } .kc-big { font-size:40px; }
++        .kc-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; color:#0F5132; }
++        .kc-tag { font-size:11px; background:#FDF3D8; color:#8B7B1E; border-radius:999px; padding:2px 8px; }
++        .kc-ur { text-align:right; font-size:20px; direction:rtl; } .kc-sd { text-align:right; font-size:17px; color:#0F5132; direction:rtl; }
++        .kc-meta { color:#8B7B1E; font-size:13px; font-weight:600; margin:6px 0 10px; }
++        .kc-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
++        .kc-two { display:grid; grid-template-columns:1fr 1fr; gap:10px; max-width:560px; } .kc-col { display:grid; gap:8px; align-content:start; }
++        .kc-opt { display:block; width:100%; text-align:center; padding:11px 12px; border-radius:12px; border:1px solid #E3DCC7; background:#FAF6EC; color:#1F2A24; font-size:15px; cursor:pointer; margin:0 0 8px; }
++        .kc-col .kc-opt { margin:0; }
++        .kc-opt.sel { border-color:#C9A227; background:#FDF3D8; } .kc-opt.ok { background:#DFF3E6; border-color:#3FD17A; color:#0F5132; } .kc-opt.bad { background:#FDEEE9; border-color:#E3897A; color:#8B2E2E; }
++        .kc-num { font-size:20px; font-weight:700; }
++        .kc-gold { border:0; border-radius:999px; padding:12px 22px; font-weight:700; background:linear-gradient(135deg,#DBB43C,#C9A227); color:#1F2A24; cursor:pointer; margin-top:8px; }
++        .kc-ghost { border:1.5px solid #0F5132; border-radius:999px; padding:6px 14px; background:#fff; color:#0F5132; cursor:pointer; }
++        .kc-q { font-weight:700; color:#0F5132; margin:0 0 12px; } .kc-math { font-size:32px; font-weight:800; color:#0F5132; margin:0 0 14px; }
++        .kc-mem { display:grid; gap:8px; max-width:460px; } .kc-mem.e { grid-template-columns:repeat(4,1fr); } .kc-mem.w { grid-template-columns:repeat(3,1fr); }
++        .kc-tile { aspect-ratio:1; border-radius:14px; border:1px solid #E3DCC7; background:#EAF3EF; font-size:26px; padding:4px; cursor:pointer; word-break:break-word; }
++        .kc-mem.w .kc-tile { font-size:14px; aspect-ratio:auto; min-height:64px; } .kc-tile.up { background:#fff; } .kc-tile.ok { background:#DFF3E6; border-color:#3FD17A; }
++    </style>
++    <p class="sd sd-note">English ↔ Urdu ↔ Sindhi dictionary aur mazedaar games.</p>
++    <div class="kc-nav">
++        <button type="button" data-kids-tab="dictionary" class="on">📖 Dictionary</button>
++        <button type="button" data-kids-tab="wordmatch">🔗 Word Match</button>
++        <button type="button" data-kids-tab="memory">🧠 Memory Game</button>
++        <button type="button" data-kids-tab="quiz">❓ Quiz</button>
++        <button type="button" data-kids-tab="math">➕ Math Puzzle</button>
++    </div>
++    <div id="kids-app" data-src="{{ asset('js/kids-data.json') }}"><div id="kids-panel">Loading…</div></div>
++    <script src="{{ asset('js/kids-corner.js') }}" defer></script>
++@endsection
+diff --git a/routes/web.php b/routes/web.php
+index b467e72..809babb 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -156,3 +156,10 @@ Route::post('/admit-card', [\App\Http\Controllers\PublicRecordsController::class
+ Route::get('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcShow'])->name('public.leaving-certificate');
+ Route::post('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcDownload'])->middleware('throttle:30,1')->name('public.leaving-certificate.download');
+ Route::get('/alumni', [\App\Http\Controllers\PublicRecordsController::class, 'alumni'])->middleware('throttle:30,1')->name('public.alumni');
++
++Route::view('/kids-corner', 'pages.kids-corner')->name('public.kids-corner');
++Route::get('/e-library', [\App\Http\Controllers\ElibraryController::class, 'index'])->name('public.elibrary');
++Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
++    Route::post('/e-library', [\App\Http\Controllers\ElibraryController::class, 'store'])->name('elibrary.store');
++    Route::delete('/e-library/{id}', [\App\Http\Controllers\ElibraryController::class, 'destroy'])->name('elibrary.destroy');
++});
+diff --git a/tests/Feature/ElibraryKidsTest.php b/tests/Feature/ElibraryKidsTest.php
+new file mode 100644
+index 0000000..5fa5217
+--- /dev/null
++++ b/tests/Feature/ElibraryKidsTest.php
+@@ -0,0 +1,50 @@
++<?php
++
++namespace Tests\Feature;
++
++use App\Models\User;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Illuminate\Support\Facades\DB;
++use Tests\TestCase;
++
++class ElibraryKidsTest extends TestCase
++{
++    use RefreshDatabase;
++
++    private function user(string $role): User
++    {
++        return User::forceCreate(['name' => 'U', 'email' => $role.'@example.test', 'password' => bcrypt('x-pass-1'), 'role' => $role, 'is_active' => 1]);
++    }
++
++    public function test_pages_render_and_data_file_is_valid(): void
++    {
++        $this->get('/e-library')->assertOk()->assertSee('Story')->assertSee('Song');
++        $this->get('/kids-corner')->assertOk()->assertSee('Dictionary')->assertSee('Math Puzzle');
++        $j = json_decode(file_get_contents(public_path('js/kids-data.json')), true);
++        $this->assertGreaterThan(100, count($j['dict']));
++        $this->assertCount(20, $j['quiz']);
++    }
++
++    public function test_public_cannot_add_but_staff_can_add_edit_delete(): void
++    {
++        $this->post('/e-library', ['type' => 'story', 'title' => 'X'])->assertRedirect();
++        $this->assertDatabaseCount('funtime_items', 0);
++
++        $this->actingAs($this->user('teacher'));
++        $this->post('/e-library', ['type' => 'story', 'title' => 'Billi', 'content' => 'Ek thi billi'])->assertRedirect('/e-library?type=story');
++        $id = DB::table('funtime_items')->value('id');
++        $this->get('/e-library?type=story')->assertOk()->assertSee('Billi')->assertSee('Edit');
++        $this->post('/e-library', ['id' => $id, 'type' => 'story', 'title' => 'Billi 2'])->assertRedirect();
++        $this->assertDatabaseHas('funtime_items', ['id' => $id, 'title' => 'Billi 2']);
++        $this->post('/e-library', ['type' => 'video', 'title' => 'V', 'media_url' => 'javascript:alert(1)'])->assertSessionHasErrors('media_url');
++        $this->delete('/e-library/'.$id)->assertRedirect();
++        $this->assertDatabaseCount('funtime_items', 0);
++    }
++
++    public function test_youtube_embed_only_for_youtube(): void
++    {
++        $f = \App\Http\Controllers\ElibraryController::class;
++        $this->assertSame('https://www.youtube.com/embed/dQw4w9WgXcQ', $f::youtubeEmbed('https://youtu.be/dQw4w9WgXcQ'));
++        $this->assertNull($f::youtubeEmbed('https://evil.example/x'));
++    }
++}
