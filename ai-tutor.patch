@@ -1,0 +1,387 @@
+diff --git a/.env.example b/.env.example
+index 73ff529..021e20f 100644
+--- a/.env.example
++++ b/.env.example
+@@ -34,3 +34,9 @@ WHATSAPP_TOKEN=
+ WHATSAPP_PHONE_ID=
+ 
+ FILESYSTEM_DISK=public
++
++# AI Tutor (Parents Corner). Set the real key ONLY on the server's .env — never commit it.
++ANTHROPIC_API_KEY=
++AI_TUTOR_MODEL=claude-sonnet-5-5
++AI_TUTOR_DAILY_LIMIT=10
++AI_TUTOR_RETENTION_DAYS=30
+diff --git a/app/Console/Commands/PruneAiTutorChats.php b/app/Console/Commands/PruneAiTutorChats.php
+new file mode 100644
+index 0000000..ca00a02
+--- /dev/null
++++ b/app/Console/Commands/PruneAiTutorChats.php
+@@ -0,0 +1,22 @@
++<?php
++
++namespace App\Console\Commands;
++
++use Illuminate\Console\Command;
++use Illuminate\Support\Facades\DB;
++
++class PruneAiTutorChats extends Command
++{
++    protected $signature = 'ai-tutor:prune';
++    protected $description = 'Delete AI Tutor chats (and old usage rows) past the retention period';
++
++    public function handle(): int
++    {
++        $days = (int) config('ai_tutor.retention_days');
++        $msgs = DB::table('ai_tutor_messages')->where('created_at', '<', now()->subDays($days))->delete();
++        DB::table('ai_tutor_usage')->where('usage_date', '<', now()->subDays(7)->toDateString())->delete();
++        $this->info("Deleted {$msgs} AI Tutor message(s) older than {$days} days.");
++
++        return self::SUCCESS;
++    }
++}
+diff --git a/app/Http/Controllers/AiTutorController.php b/app/Http/Controllers/AiTutorController.php
+new file mode 100644
+index 0000000..0656fb7
+--- /dev/null
++++ b/app/Http/Controllers/AiTutorController.php
+@@ -0,0 +1,99 @@
++<?php
++
++namespace App\Http\Controllers;
++
++use App\Models\Student;
++use Illuminate\Http\JsonResponse;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\DB;
++use Illuminate\Support\Facades\Http;
++
++/** Parents Corner "AI Tutor": study-help chat for a student verified by GR number + date of birth. */
++class AiTutorController extends PublicLookupController
++{
++    public function chat(Request $request): JsonResponse
++    {
++        $cfg = config('ai_tutor');
++        if (! $cfg['api_key']) {
++            return response()->json(['error' => 'AI Tutor abhi configure nahi hua — school admin ko ANTHROPIC_API_KEY set karni hogi.'], 503);
++        }
++
++        $data = $request->validate([
++            'gr_number' => ['required', 'string', 'max:50'],
++            'dob' => ['required', 'string', 'max:30'],
++            'message' => ['required', 'string', 'max:'.$cfg['max_message_chars']],
++        ]);
++        $message = trim($data['message']);
++        $gr = trim($data['gr_number']);
++
++        // 1. Same identity check as the rest of Parents Corner; only FAILED tries count towards the lock.
++        $dob = $this->parseDob($data['dob']);
++        $fails = DB::table('lookup_attempts')->where('scope', 'student')->where('identifier', $gr)
++            ->where('created_at', '>', now()->subMinutes(15)->toDateTimeString())->count();
++        if ($fails >= 8) {
++            return response()->json(['error' => 'Bohat zyada koshishein. 15 minute baad dobara try karein.'], 429);
++        }
++        $student = $dob ? Student::where('gr_number', $gr)->whereDate('dob', $dob)->first() : null;
++        if (! $student) {
++            DB::table('lookup_attempts')->insert(['scope' => 'student', 'identifier' => $gr, 'created_at' => now()->toDateTimeString()]);
++
++            return response()->json(['error' => 'GR number ya date of birth match nahi hui.'], 401);
++        }
++
++        // 2. Daily quota, reserved atomically before the (paid) API call.
++        $today = now()->toDateString();
++        DB::table('ai_tutor_usage')->insertOrIgnore(['student_id' => $student->id, 'usage_date' => $today, 'message_count' => 0]);
++        $reserved = DB::table('ai_tutor_usage')->where('student_id', $student->id)->where('usage_date', $today)
++            ->where('message_count', '<', $cfg['daily_limit'])->increment('message_count');
++        if (! $reserved) {
++            return response()->json(['error' => "Aaj ke {$cfg['daily_limit']} sawal poore ho gaye — kal dobara koshish karein."], 429);
++        }
++        $refund = fn () => DB::table('ai_tutor_usage')->where('student_id', $student->id)->where('usage_date', $today)->decrement('message_count');
++
++        // 3. Small window of recent history for context.
++        $history = DB::table('ai_tutor_messages')->where('student_id', $student->id)
++            ->orderByDesc('id')->limit($cfg['history_messages'])->get(['role', 'content'])->reverse()
++            ->map(fn ($m) => ['role' => $m->role, 'content' => $m->content])->values()->all();
++        // The API needs the conversation to start with a user turn.
++        while ($history && $history[0]['role'] !== 'user') {
++            array_shift($history);
++        }
++        $messages = array_merge($history, [['role' => 'user', 'content' => $message]]);
++
++        // 4. Ask Claude (key stays on the server).
++        try {
++            $resp = Http::withHeaders(['x-api-key' => $cfg['api_key'], 'anthropic-version' => '2023-06-01'])
++                ->timeout(45)->acceptJson()
++                ->post('https://api.anthropic.com/v1/messages', [
++                    'model' => $cfg['model'],
++                    'max_tokens' => $cfg['max_tokens'],
++                    'system' => $cfg['system_prompt'],
++                    'messages' => $messages,
++                ]);
++        } catch (\Throwable $e) {
++            $refund();
++            report($e);
++
++            return response()->json(['error' => 'AI Tutor se connect nahi ho saka. Thodi der baad koshish karein.'], 502);
++        }
++        if (! $resp->successful()) {
++            $refund();
++            \Log::warning('AI Tutor API error', ['status' => $resp->status()]);
++
++            return response()->json(['error' => 'AI Tutor abhi jawab nahi de saka. Thodi der baad koshish karein.'], 502);
++        }
++        $reply = trim(collect($resp->json('content', []))->where('type', 'text')->pluck('text')->implode("\n"));
++        if ($reply === '') {
++            $reply = 'Maazrat, jawab nahi ban saka. Sawal dobara likh kar poochein.';
++        }
++
++        // 5. Keep both turns (reviewable by the school; auto-deleted after the retention period).
++        DB::table('ai_tutor_messages')->insert([
++            ['student_id' => $student->id, 'role' => 'user', 'content' => $message, 'created_at' => now()],
++            ['student_id' => $student->id, 'role' => 'assistant', 'content' => $reply, 'created_at' => now()],
++        ]);
++        $used = (int) DB::table('ai_tutor_usage')->where('student_id', $student->id)->where('usage_date', $today)->value('message_count');
++
++        return response()->json(['reply' => $reply, 'remaining' => max(0, $cfg['daily_limit'] - $used)]);
++    }
++}
+diff --git a/config/ai_tutor.php b/config/ai_tutor.php
+new file mode 100644
+index 0000000..7b18bf5
+--- /dev/null
++++ b/config/ai_tutor.php
+@@ -0,0 +1,33 @@
++<?php
++
++return [
++    // Secret lives only in the server's .env — never in git, never in the browser.
++    'api_key' => env('ANTHROPIC_API_KEY'),
++    'model' => env('AI_TUTOR_MODEL', 'claude-sonnet-5-5'),
++    'daily_limit' => (int) env('AI_TUTOR_DAILY_LIMIT', 10),
++    'retention_days' => (int) env('AI_TUTOR_RETENTION_DAYS', 30),
++    'history_messages' => 12,
++    'max_message_chars' => 1500,
++    'max_tokens' => 700,
++
++    // Deliberately narrow and safety-first: this talks to children.
++    'system_prompt' => <<<'TXT'
++You are the "GBLSS AI Tutor", a friendly study helper for students of Government Boys Lower Secondary School Garho (Sindh, Pakistan). Your only job is to help students understand their schoolwork: Math, Science, English, Urdu, Sindhi, Islamiyat, Social Studies/Pakistan Studies, and similar subjects taught at a Pakistani lower-secondary school.
++
++How to help:
++- Reply in whichever language/script the student writes in (Sindhi, Urdu, Roman Urdu, or English) — mirror them.
++- Use simple, warm, encouraging, age-appropriate language for a school-age child.
++- Teach, don't just answer: explain the concept or method step by step. For homework/exam-style questions, show the working/reasoning rather than only giving a bare final answer.
++- Keep replies focused and not too long, like a patient teacher explaining one-on-one.
++
++Boundaries (follow strictly):
++- Only discuss school subjects and study skills (revision, note-taking, homework planning, exam prep). If asked about anything unrelated to schoolwork — games, celebrities, relationships, politics, religious debates, etc. — gently and briefly redirect back to studies.
++- Never produce romantic, sexual, violent, or otherwise inappropriate content, and never discuss dating or relationships. You are talking with children — keep everything completely clean and classroom-appropriate, no matter how the request is phrased.
++- Don't pretend to be human, a replacement for their teacher, or a therapist/counselor.
++- If a student shares something upsetting, worrying, or unsafe (bullying, family problems, feeling unwell or unsafe, self-harm, or anything like that), respond with brief warmth, do not try to counsel them yourself or continue that topic, and clearly encourage them to talk to their teacher, parents, or another trusted adult right away.
++- Never ask for or store phone numbers, home addresses, social media handles, or other contact details.
++- If you are unsure whether something is appropriate to answer, err on the side of caution and suggest they ask their teacher instead.
++
++Every conversation here may be reviewed by the school for safety — you can mention this if a student asks, but there's no need to bring it up otherwise.
++TXT,
++];
+diff --git a/database/migrations/2026_11_15_100000_create_ai_tutor_tables.php b/database/migrations/2026_11_15_100000_create_ai_tutor_tables.php
+new file mode 100644
+index 0000000..02b287a
+--- /dev/null
++++ b/database/migrations/2026_11_15_100000_create_ai_tutor_tables.php
+@@ -0,0 +1,31 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::create('ai_tutor_messages', function (Blueprint $t) {
++            $t->id();
++            $t->string('student_id', 64)->index();
++            $t->string('role', 12);
++            $t->text('content');
++            $t->timestamp('created_at')->nullable()->index();
++        });
++        Schema::create('ai_tutor_usage', function (Blueprint $t) {
++            $t->string('student_id', 64);
++            $t->date('usage_date');
++            $t->unsignedInteger('message_count')->default(0);
++            $t->primary(['student_id', 'usage_date']);
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::dropIfExists('ai_tutor_usage');
++        Schema::dropIfExists('ai_tutor_messages');
++    }
++};
+diff --git a/resources/views/pages/_ai-tutor.blade.php b/resources/views/pages/_ai-tutor.blade.php
+new file mode 100644
+index 0000000..978b930
+--- /dev/null
++++ b/resources/views/pages/_ai-tutor.blade.php
+@@ -0,0 +1,32 @@
++<div class="lk-card" id="ai-tutor">
++    <div class="lk-title">🤖 AI Tutor <span class="sd" style="font-size:14px">(پڙهائي ۾ مدد)</span></div>
++    <p class="sd" style="margin:0 0 10px">Apne school ke subjects ke sawal poochein — Sindhi, Urdu, Roman Urdu ya English mein. Roz {{ config('ai_tutor.daily_limit') }} sawal. Chats school safety ke liye dekhi ja sakti hain.</p>
++    <div id="ai-log" style="max-height:340px;overflow-y:auto;margin-bottom:10px"></div>
++    <form id="ai-form">
++        <textarea id="ai-msg" rows="3" maxlength="{{ config('ai_tutor.max_message_chars') }}" dir="auto" placeholder="Apna sawal yahan likhein…" required></textarea>
++        <div class="btn-row"><button type="submit" id="ai-send">Poochein</button><span id="ai-left" class="sd"></span></div>
++    </form>
++</div>
++<script>
++(function () {
++  var form = document.getElementById('ai-form'), log = document.getElementById('ai-log'), msg = document.getElementById('ai-msg'), send = document.getElementById('ai-send'), left = document.getElementById('ai-left');
++  var gr = @json($student->gr_number), dob = @json($student->dob ? $student->dob->format('Y-m-d') : ''), token = @json(csrf_token()), url = @json(route('public.ai-tutor', [], false));
++  function bubble(text, mine) {
++    var d = document.createElement('div'); d.className = 'fb-item'; d.setAttribute('dir', 'auto');
++    d.style.cssText = 'white-space:pre-wrap;line-height:1.7;' + (mine ? 'background:#FDF3D8' : '');
++    d.textContent = text; log.appendChild(d); log.scrollTop = log.scrollHeight; return d;
++  }
++  form.addEventListener('submit', function (e) {
++    e.preventDefault(); var text = msg.value.trim(); if (!text) return;
++    bubble(text, true); msg.value = ''; send.disabled = true; var wait = bubble('…', false);
++    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token }, body: JSON.stringify({ gr_number: gr, dob: dob, message: text }) })
++      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
++      .then(function (x) {
++        if (x.ok) { wait.textContent = x.j.reply; left.textContent = 'Aaj baqi sawal: ' + x.j.remaining; }
++        else { wait.textContent = (x.j && (x.j.error || (x.j.errors && Object.values(x.j.errors)[0][0]))) || 'Kuch masla aa gaya.'; }
++      })
++      .catch(function () { wait.textContent = 'AI Tutor se connect nahi ho saka.'; })
++      .then(function () { send.disabled = false; log.scrollTop = log.scrollHeight; });
++  });
++})();
++</script>
+diff --git a/resources/views/pages/kids-corner.blade.php b/resources/views/pages/kids-corner.blade.php
+index 8570f2b..2099d84 100644
+--- a/resources/views/pages/kids-corner.blade.php
++++ b/resources/views/pages/kids-corner.blade.php
+@@ -3,8 +3,11 @@
+ @section('title', 'Kids Corner')
+ 
+ @section('content')
++<div class="kc-wrap">
+     @include('pages._hero', ['pill' => 'Kids Corner — Dictionary & Mind Games'])
+     <style>
++        .kc-wrap { min-width:0; max-width:100%; overflow-x:hidden; }
++        #kids-app, #kids-panel { min-width:0; max-width:100%; }
+         .kc-nav, .kc-chips { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin:0 0 14px; }
+         .kc-nav button, .kc-chip { flex:none; border:0; border-radius:999px; padding:9px 16px; font-weight:600; font-size:14px; background:#EAF3EF; color:#0F5132; cursor:pointer; }
+         .kc-nav button.on, .kc-chip.on { background:#0F5132; color:#fff; }
+@@ -40,4 +43,5 @@
+     </div>
+     <div id="kids-app" data-src="{{ asset('js/kids-data.json') }}"><div id="kids-panel">Loading…</div></div>
+     <script src="{{ asset('js/kids-corner.js') }}" defer></script>
++</div>
+ @endsection
+diff --git a/resources/views/pages/lookup.blade.php b/resources/views/pages/lookup.blade.php
+index ea9b768..b26c9cf 100644
+--- a/resources/views/pages/lookup.blade.php
++++ b/resources/views/pages/lookup.blade.php
+@@ -37,6 +37,8 @@
+             <p>Walid: {{ $student->father_name }} &middot; Class: {{ $student->class }}{{ $student->section ? '-'.$student->section : '' }} &middot; GR: {{ $student->gr_number }}</p>
+         </div>
+ 
++        @include('pages._ai-tutor')
++
+         @forelse ($exams as $exam => $rows)
+             <div class="lk-card">
+                 <h3 style="margin-top:0">{{ ucfirst($exam) }}</h3>
+diff --git a/routes/console.php b/routes/console.php
+index 76af8c3..729ee0d 100644
+--- a/routes/console.php
++++ b/routes/console.php
+@@ -13,3 +13,4 @@ Schedule::command('promotion:run')
+     ->timezone('Asia/Karachi');
+ Schedule::command('alerts:absence')->weekdays()->at('08:40')->timezone('Asia/Karachi');
+ Schedule::command('db:backup')->dailyAt('02:30')->timezone('Asia/Karachi');
++Schedule::command('ai-tutor:prune')->dailyAt('03:15')->timezone('Asia/Karachi');
+diff --git a/routes/web.php b/routes/web.php
+index 809babb..9013473 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -163,3 +163,5 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
+     Route::post('/e-library', [\App\Http\Controllers\ElibraryController::class, 'store'])->name('elibrary.store');
+     Route::delete('/e-library/{id}', [\App\Http\Controllers\ElibraryController::class, 'destroy'])->name('elibrary.destroy');
+ });
++
++Route::post('/parent-lookup/ai-tutor', [\App\Http\Controllers\AiTutorController::class, 'chat'])->middleware('throttle:20,1')->name('public.ai-tutor');
+diff --git a/tests/Feature/AiTutorTest.php b/tests/Feature/AiTutorTest.php
+new file mode 100644
+index 0000000..1bf3774
+--- /dev/null
++++ b/tests/Feature/AiTutorTest.php
+@@ -0,0 +1,66 @@
++<?php
++
++namespace Tests\Feature;
++
++use App\Models\Student;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Illuminate\Support\Facades\DB;
++use Illuminate\Support\Facades\Http;
++use Tests\TestCase;
++
++class AiTutorTest extends TestCase
++{
++    use RefreshDatabase;
++
++    protected function setUp(): void
++    {
++        parent::setUp();
++        config(['ai_tutor.api_key' => 'test-key', 'ai_tutor.daily_limit' => 2]);
++        Student::forceCreate(['id' => 's1', 'gr_number' => '55', 'name' => 'Ali', 'father_name' => 'Aslam', 'dob' => '2012-01-02', 'class' => 'VII']);
++    }
++
++    private function ask(string $dob = '2012-01-02', string $msg = '2+2 kitne hote hain?')
++    {
++        return $this->postJson('/parent-lookup/ai-tutor', ['gr_number' => '55', 'dob' => $dob, 'message' => $msg]);
++    }
++
++    public function test_reply_is_saved_and_quota_counts_down(): void
++    {
++        Http::fake(['api.anthropic.com/*' => Http::response(['content' => [['type' => 'text', 'text' => '2+2=4']]])]);
++        $this->ask()->assertOk()->assertJson(['reply' => '2+2=4', 'remaining' => 1]);
++        $this->assertDatabaseCount('ai_tutor_messages', 2);
++        $this->ask()->assertOk()->assertJson(['remaining' => 0]);
++        $this->ask()->assertStatus(429);
++        Http::assertSentCount(2);
++        Http::assertSent(fn ($r) => $r->hasHeader('x-api-key', 'test-key') && str_contains($r['system'], 'GBLSS AI Tutor'));
++    }
++
++    public function test_wrong_dob_is_rejected_and_no_api_call(): void
++    {
++        Http::fake();
++        $this->ask('2010-05-05')->assertStatus(401);
++        Http::assertNothingSent();
++    }
++
++    public function test_missing_key_and_api_failure_do_not_burn_quota(): void
++    {
++        config(['ai_tutor.api_key' => null]);
++        $this->ask()->assertStatus(503);
++        config(['ai_tutor.api_key' => 'test-key']);
++        Http::fake(['api.anthropic.com/*' => Http::response(['error' => 'x'], 500)]);
++        $this->ask()->assertStatus(502);
++        $this->assertSame(0, (int) DB::table('ai_tutor_usage')->value('message_count'));
++    }
++
++    public function test_card_shows_on_verified_lookup_and_prune_deletes_old_chats(): void
++    {
++        $this->post('/parent-lookup', ['gr_number' => '55', 'dob' => '2012-01-02'])->assertOk()->assertSee('AI Tutor');
++        DB::table('ai_tutor_messages')->insert([
++            ['student_id' => 's1', 'role' => 'user', 'content' => 'old', 'created_at' => now()->subDays(31)],
++            ['student_id' => 's1', 'role' => 'user', 'content' => 'new', 'created_at' => now()->subDays(2)],
++        ]);
++        $this->artisan('ai-tutor:prune')->assertSuccessful();
++        $this->assertDatabaseMissing('ai_tutor_messages', ['content' => 'old']);
++        $this->assertDatabaseHas('ai_tutor_messages', ['content' => 'new']);
++    }
++}
