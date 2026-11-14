@@ -16,7 +16,7 @@ npm run dev             # in one terminal
 php artisan serve       # in another
 ```
 
-Default seeded admin: `wariskatyar2015@gmail.com` / `password` (change immediately).
+The seeder creates the first admin with a placeholder password. Change it immediately after seeding; never leave a default password on a live server.
 
 ## Build phases
 1. Laravel skeleton — **done**

@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class LoginController extends Controller
 {
@@ -21,12 +23,25 @@ class LoginController extends Controller
             'password' => ['required'],
         ]);
 
+        $key = 'login:'.Str::lower($credentials['email']).'|'.$request->ip();
+
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $minutes = (int) ceil(RateLimiter::availableIn($key) / 60);
+
+            return back()->withErrors([
+                'email' => 'ڪيتريون ئي غلط ڪوششون ٿيون. '.$minutes.' منٽن کانپوءِ ٻيهر ڪوشش ڪريو.',
+            ])->onlyInput('email');
+        }
+
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
+            RateLimiter::hit($key, 900);
+
             return back()->withErrors([
                 'email' => 'لاگ ان ٿي نه سگهيو. اي ميل/پاسورڊ چيڪ ڪريو.',
             ])->onlyInput('email');
         }
 
+        RateLimiter::clear($key);
         $request->session()->regenerate();
 
         return redirect($this->dashboardPathFor(Auth::user()));
