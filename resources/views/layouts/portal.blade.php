@@ -243,6 +243,15 @@
             ['Results', route('admin.results.index', [], false), 'admin/results*'],
             ['ID Cards', route('admin.id-cards.index', [], false), 'admin/id-cards*'],
             ['Admit Cards', route('admin.admit-cards.index', [], false), 'admin/admit-cards*'],
+            ['GR Register', route('admin.gr-register', [], false), 'admin/gr-register*'],
+            ['Notices', route('admin.content.index', [], false), 'admin/content*'],
+            ['Leaving Certs', route('admin.leaving-certificates.index', [], false), 'admin/leaving-certificates*'],
+            ['Promotions', route('admin.promotions.history', [], false), 'admin/promotions*'],
+            ['Book Bank', route('admin.bookbank.index', [], false), 'admin/bookbank*'],
+            ['Teacher Leave', route('admin.leave.index', [], false), 'admin/leave*'],
+            ['Gallery', route('admin.media.index', [], false), 'admin/media*'],
+            ['Contact Msgs', route('admin.contact.index', [], false), 'admin/contact*'],
+            ['Security', route('admin.security.index', [], false), 'admin/security*'],
             ['Settings', route('admin.settings.edit', [], false), 'admin/settings*'],
         ];
     } else {
@@ -263,6 +272,27 @@
             ['Contact Us', route('public.contact', [], false), 'contact*'],
             ['Feedback', route('public.feedback', [], false), 'feedback*'],
         ];
+    }
+    // Signed-in staff keep their own tabs first, then the public site tabs after a divider.
+    if (in_array($role, ['admin', 'teacher'], true)) {
+        $nav[] = ['|', null, '__sep__'];
+        foreach ([
+            ['Website', route('home', [], false), '/'],
+            ['Parents Corner', route('public.lookup', [], false), 'parent-lookup*'],
+            ['Staff', route('public.staff', [], false), 'staff*'],
+            ['Results', route('public.results', [], false), 'results*'],
+            ['Toppers', route('public.toppers', [], false), 'toppers*'],
+            ['ID Card', route('public.id-cards', [], false), 'id-cards*'],
+            ['Admit Card', route('public.admit-card', [], false), 'admit-card*'],
+            ['Leaving Cert.', route('public.leaving-certificate', [], false), 'leaving-certificate*'],
+            ['Alumni', route('public.alumni', [], false), 'alumni*'],
+            ['Gallery', route('public.gallery', [], false), 'gallery*'],
+            ['Textbooks', route('public.textbooks', [], false), 'textbooks*'],
+            ['Calendar', route('public.calendar', [], false), 'calendar*'],
+            ['About', route('public.about', [], false), 'about*'],
+            ['Contact Us', route('public.contact', [], false), 'contact*'],
+            ['Feedback', route('public.feedback', [], false), 'feedback*'],
+        ] as $item) { $nav[] = $item; }
     }
 @endphp
 @php
@@ -353,7 +383,11 @@
         </div>
         <nav class="nav">
             @foreach ($nav as [$label, $url, $pattern])
-                <a href="{{ $url }}" class="{{ request()->is($pattern) ? 'on' : '' }}">{{ $label }}</a>
+                @if ($url === null)
+                    <span style="color:#D9A91A;opacity:.7;padding:0 4px;align-self:center">|</span>
+                @else
+                    <a href="{{ $url }}" class="{{ request()->is($pattern) ? 'on' : '' }}">{{ $label }}</a>
+                @endif
             @endforeach
         </nav>
     </div>
