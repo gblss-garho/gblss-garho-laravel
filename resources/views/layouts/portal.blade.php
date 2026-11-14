@@ -380,6 +380,6 @@
     </div>
 </main>
 
-<footer class="site-foot">{{ $schoolName }} &mdash; records maintained per General Register</footer>
+<footer class="site-foot">{{ $schoolName }} &mdash; records maintained per General Register &middot; <a href="{{ route('public.privacy', [], false) }}">Privacy</a></footer>
 </body>
 </html>

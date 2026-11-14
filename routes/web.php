@@ -139,6 +139,7 @@ Route::middleware(['auth', 'role:admin'])->get('/admin/results-history', [\App\H
 Route::middleware(['auth', 'role:admin'])->get('/admin/security', [\App\Http\Controllers\AdminSecurityController::class, 'index'])->name('admin.security.index');
 
 Route::get('/about', [\App\Http\Controllers\PublicInfoController::class, 'about'])->name('public.about');
+Route::get('/privacy', fn () => view('pages.privacy', ['info' => \Illuminate\Support\Facades\DB::table('school_info')->where('id', 1)->first()]))->name('public.privacy');
 Route::get('/staff', [\App\Http\Controllers\PublicInfoController::class, 'staff'])->name('public.staff');
 
 Route::get('/toppers', [\App\Http\Controllers\PublicInfoController::class, 'toppers'])->name('public.toppers');
