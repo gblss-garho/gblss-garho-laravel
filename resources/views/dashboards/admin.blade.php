@@ -23,6 +23,7 @@
         <a class="tile" href="{{ route('admin.bookbank.index', [], false) }}"><b>Book Bank</b><span>Kitabon ka stock</span></a>
         <a class="tile" href="{{ route('admin.leave.index', [], false) }}"><b>Teacher Leave Requests</b><span>Chhutti ki arziyan</span></a>
         <a class="tile" href="{{ route('admin.media.index', [], false) }}"><b>Gallery, Textbooks &amp; Feedback</b><span>Photos, kitabein, rai</span></a>
+        <a class="tile" href="{{ route('admin.contact.index', [], false) }}"><b>Contact Messages</b><span>Parents ke paighamat</span></a>
         <a class="tile" href="{{ route('admin.security.index', [], false) }}"><b>Security Logs</b><span>Login aur attendance logs</span></a>
     </div>
 @endsection

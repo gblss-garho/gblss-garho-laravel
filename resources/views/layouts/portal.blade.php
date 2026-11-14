@@ -255,7 +255,9 @@
             ['ID Card', route('public.id-cards', [], false), 'id-cards*'],
             ['Gallery', route('public.gallery', [], false), 'gallery*'],
             ['Textbooks', route('public.textbooks', [], false), 'textbooks*'],
+            ['Calendar', route('public.calendar', [], false), 'calendar*'],
             ['About', route('public.about', [], false), 'about*'],
+            ['Contact Us', route('public.contact', [], false), 'contact*'],
             ['Feedback', route('public.feedback', [], false), 'feedback*'],
         ];
     }
@@ -269,7 +271,9 @@
         ['ID Card', route('public.id-cards', [], false), 'id-cards*', '🪪'],
         ['Gallery', route('public.gallery', [], false), 'gallery*', '🖼️'],
         ['Text Books', route('public.textbooks', [], false), 'textbooks*', '📚'],
+        ['Calendar', route('public.calendar', [], false), 'calendar*', '📅'],
         ['About', route('public.about', [], false), 'about*', 'ℹ️'],
+        ['Contact Us', route('public.contact', [], false), 'contact*', '📞'],
         ['Feedback', route('public.feedback', [], false), 'feedback*', '📝'],
     ];
     if ($role === 'admin') {
@@ -293,6 +297,7 @@
             ['Teacher Leave', route('admin.leave.index', [], false), 'admin/leave*', '🏖️'],
             ['Gallery & Textbooks', route('admin.media.index', [], false), 'admin/media*', '🖼️'],
             ['School Settings', route('admin.settings.edit', [], false), 'admin/settings*', '⚙️'],
+            ['Contact Messages', route('admin.contact.index', [], false), 'admin/contact*', '📞'],
             ['Security Logs', route('admin.security.index', [], false), 'admin/security*', '🔐'],
         ];
     } else {
