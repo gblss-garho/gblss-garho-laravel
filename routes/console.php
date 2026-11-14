@@ -12,3 +12,4 @@ Schedule::command('promotion:run')
     ->yearlyOn(3, 31, '00:05')
     ->timezone('Asia/Karachi');
 Schedule::command('alerts:absence')->weekdays()->at('08:40')->timezone('Asia/Karachi');
+Schedule::command('db:backup')->dailyAt('02:30')->timezone('Asia/Karachi');
