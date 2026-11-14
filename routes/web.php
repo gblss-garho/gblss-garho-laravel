@@ -156,3 +156,10 @@ Route::post('/admit-card', [\App\Http\Controllers\PublicRecordsController::class
 Route::get('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcShow'])->name('public.leaving-certificate');
 Route::post('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcDownload'])->middleware('throttle:30,1')->name('public.leaving-certificate.download');
 Route::get('/alumni', [\App\Http\Controllers\PublicRecordsController::class, 'alumni'])->middleware('throttle:30,1')->name('public.alumni');
+
+Route::view('/kids-corner', 'pages.kids-corner')->name('public.kids-corner');
+Route::get('/e-library', [\App\Http\Controllers\ElibraryController::class, 'index'])->name('public.elibrary');
+Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
+    Route::post('/e-library', [\App\Http\Controllers\ElibraryController::class, 'store'])->name('elibrary.store');
+    Route::delete('/e-library/{id}', [\App\Http\Controllers\ElibraryController::class, 'destroy'])->name('elibrary.destroy');
+});
