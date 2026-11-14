@@ -69,8 +69,9 @@
             .m-nav button:hover, .more-head button:hover { background:transparent; }
             .m-nav button.on:hover { background:#D9A91A; }
             main { padding-bottom: 86px; }
-    
-        /* ---- phase B: shared old-site components ---- */
+        }
+
+        /* ---- phase B: shared old-site components (global, not mobile-only) ---- */
         .page-title h1 { background: linear-gradient(100deg,#0F5132,#1B7A4D 45%,#C9A227); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent; font-weight:700; }
         .page-title[data-n]:before { content:attr(data-n); flex:none; width:40px; height:40px; border-radius:50%; background:#0a3a24; color:#D9A91A; display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:13px; font-weight:700; box-shadow:0 4px 12px rgba(10,58,36,.3); }
         .hero-lk { position:relative; overflow:hidden; text-align:center; color:#fff; border-radius:24px; margin: 22px 0 22px; padding: 34px 18px 38px; background: linear-gradient(160deg,#12613F,#0B3D26); box-shadow:0 12px 30px rgba(10,58,36,.25); }
@@ -118,8 +119,7 @@
         .fb-item .st { color:#D9A91A; } .fb-item small { color:var(--muted); }
         .tp { display:flex; align-items:center; gap:14px; background:#FDF1E1; border-radius:16px; padding:12px 14px; margin-bottom:10px; }
 
-        .site-foot { padding-bottom: 90px; }
-        }
+        @media (max-width:768px) { .site-foot { padding-bottom: 90px; } }
 
         /* page */
         main { flex:1; padding-bottom: 20px; }
