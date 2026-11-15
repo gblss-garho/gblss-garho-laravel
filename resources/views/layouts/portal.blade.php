@@ -53,6 +53,14 @@
         /* mobile bottom nav + More sheet (as in the old site) */
         .m-nav, .more-sheet, .more-backdrop { display:none; }
         @media (max-width:768px) {
+            .site-head { position:static; }
+            .site-head .top { padding:8px 0; gap:8px; }
+            .brand { gap:8px; }
+            .brand img { width:38px; height:38px; }
+            .brand b { font-size:13px; }
+            .brand small { display:none; }
+            .flag { display:none; }
+            .head-btn { font-size:11px; padding:6px 10px; }
             .nav { display:none; }
             .m-nav { display:flex; position:fixed; left:10px; right:10px; bottom:10px; z-index:70; background:rgba(6,63,49,.96); backdrop-filter:blur(14px); border:1px solid rgba(217,169,26,.22); border-radius:18px; padding:6px; box-shadow:0 14px 36px rgba(0,0,0,.22); justify-content:space-around; }
             .m-nav a, .m-nav button { color:#fff; font: inherit; font-size:10px; font-weight:600; padding:7px 9px; border-radius:12px; min-width:58px; text-align:center; text-decoration:none; background:transparent; border:0; margin:0; cursor:pointer; }
