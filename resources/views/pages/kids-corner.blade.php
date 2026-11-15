@@ -3,8 +3,11 @@
 @section('title', 'Kids Corner')
 
 @section('content')
+<div class="kc-wrap">
     @include('pages._hero', ['pill' => 'Kids Corner — Dictionary & Mind Games'])
     <style>
+        .kc-wrap { min-width:0; max-width:100%; overflow-x:hidden; }
+        #kids-app, #kids-panel { min-width:0; max-width:100%; }
         .kc-nav, .kc-chips { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin:0 0 14px; }
         .kc-nav button, .kc-chip { flex:none; border:0; border-radius:999px; padding:9px 16px; font-weight:600; font-size:14px; background:#EAF3EF; color:#0F5132; cursor:pointer; }
         .kc-nav button.on, .kc-chip.on { background:#0F5132; color:#fff; }
@@ -40,4 +43,5 @@
     </div>
     <div id="kids-app" data-src="{{ asset('js/kids-data.json') }}"><div id="kids-panel">Loading…</div></div>
     <script src="{{ asset('js/kids-corner.js') }}" defer></script>
+</div>
 @endsection

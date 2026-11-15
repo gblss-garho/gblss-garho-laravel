@@ -37,6 +37,8 @@
             <p>Walid: {{ $student->father_name }} &middot; Class: {{ $student->class }}{{ $student->section ? '-'.$student->section : '' }} &middot; GR: {{ $student->gr_number }}</p>
         </div>
 
+        @include('pages._ai-tutor')
+
         @forelse ($exams as $exam => $rows)
             <div class="lk-card">
                 <h3 style="margin-top:0">{{ ucfirst($exam) }}</h3>

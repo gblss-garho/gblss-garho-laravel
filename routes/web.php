@@ -163,3 +163,5 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
     Route::post('/e-library', [\App\Http\Controllers\ElibraryController::class, 'store'])->name('elibrary.store');
     Route::delete('/e-library/{id}', [\App\Http\Controllers\ElibraryController::class, 'destroy'])->name('elibrary.destroy');
 });
+
+Route::post('/parent-lookup/ai-tutor', [\App\Http\Controllers\AiTutorController::class, 'chat'])->middleware('throttle:20,1')->name('public.ai-tutor');
