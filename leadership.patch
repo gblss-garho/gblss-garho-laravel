@@ -1,0 +1,174 @@
+From eb9937efa0c3c3e39b67b4cf6082e8e6edc09845 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 16 Nov 2026 00:35:37 +0500
+Subject: [PATCH] Leadership messages: Minister and Secretary School Education
+ Sindh
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HttsdfoZKD8pHnvrLZEBS2
+---
+ .../Controllers/AdminSettingsController.php   |  6 ++++
+ app/Models/SchoolInfo.php                     |  2 ++
+ ..._add_secretary_minister_to_school_info.php | 28 +++++++++++++++++++
+ resources/views/admin/settings.blade.php      | 14 ++++++++++
+ resources/views/pages/about.blade.php         |  2 +-
+ resources/views/pages/home.blade.php          |  2 +-
+ tests/Feature/LeadershipMessagesTest.php      | 23 +++++++++++++++
+ 7 files changed, 75 insertions(+), 2 deletions(-)
+ create mode 100644 database/migrations/2026_11_16_000000_add_secretary_minister_to_school_info.php
+ create mode 100644 tests/Feature/LeadershipMessagesTest.php
+
+diff --git a/app/Http/Controllers/AdminSettingsController.php b/app/Http/Controllers/AdminSettingsController.php
+index 3781e01..aec68df 100644
+--- a/app/Http/Controllers/AdminSettingsController.php
++++ b/app/Http/Controllers/AdminSettingsController.php
+@@ -15,6 +15,8 @@ class AdminSettingsController extends Controller
+         'principal_name', 'principal_photo_url', 'principal_message',
+         'teo_name', 'teo_photo_url', 'teo_message',
+         'deo_name', 'deo_photo_url', 'deo_message',
++        'secretary_name', 'secretary_photo_url', 'secretary_message',
++        'minister_name', 'minister_photo_url', 'minister_message',
+         'current_exam_title', 'current_exam_year',
+     ];
+ 
+@@ -40,6 +42,10 @@ class AdminSettingsController extends Controller
+             'principal_message' => 'nullable|string|max:3000',
+             'teo_message' => 'nullable|string|max:3000',
+             'deo_message' => 'nullable|string|max:3000',
++            'secretary_photo_url' => 'nullable|string|max:500',
++            'secretary_message' => 'nullable|string|max:3000',
++            'minister_photo_url' => 'nullable|string|max:500',
++            'minister_message' => 'nullable|string|max:3000',
+             'established_year' => 'nullable|digits:4',
+             'total_classes' => 'nullable|string|max:60',
+             'shifts' => 'nullable|string|max:60',
+diff --git a/app/Models/SchoolInfo.php b/app/Models/SchoolInfo.php
+index dea64d0..909d3c2 100644
+--- a/app/Models/SchoolInfo.php
++++ b/app/Models/SchoolInfo.php
+@@ -13,6 +13,8 @@ class SchoolInfo extends Model
+         'semis_code', 'about_text', 'school_lat', 'school_lng', 'map_location',
+         'deo_name', 'deo_message', 'deo_photo_url',
+         'teo_name', 'teo_message', 'teo_photo_url',
++        'secretary_name', 'secretary_message', 'secretary_photo_url',
++        'minister_name', 'minister_message', 'minister_photo_url',
+         'current_exam_year', 'urdu_name', 'school_photo_url', 'about_text',
+         'principal_name', 'principal_photo_url', 'principal_message',
+     ];
+diff --git a/database/migrations/2026_11_16_000000_add_secretary_minister_to_school_info.php b/database/migrations/2026_11_16_000000_add_secretary_minister_to_school_info.php
+new file mode 100644
+index 0000000..1404346
+--- /dev/null
++++ b/database/migrations/2026_11_16_000000_add_secretary_minister_to_school_info.php
+@@ -0,0 +1,28 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::table('school_info', function (Blueprint $t) {
++            foreach (['secretary', 'minister'] as $k) {
++                $t->string($k.'_name')->nullable();
++                $t->text($k.'_message')->nullable();
++                $t->string($k.'_photo_url')->nullable();
++            }
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::table('school_info', function (Blueprint $t) {
++            foreach (['secretary', 'minister'] as $k) {
++                $t->dropColumn([$k.'_name', $k.'_message', $k.'_photo_url']);
++            }
++        });
++    }
++};
+diff --git a/resources/views/admin/settings.blade.php b/resources/views/admin/settings.blade.php
+index 119c75f..695c6bb 100644
+--- a/resources/views/admin/settings.blade.php
++++ b/resources/views/admin/settings.blade.php
+@@ -83,6 +83,20 @@
+             {{ $field('deo_message', 'District Education Officer — Message', '', 'textarea') }}
+         </div>
+ 
++        <div class="card">
++            <h2>Minister for Education, Sindh</h2>
++            {{ $field('minister_name', 'Minister for Education, Sindh — Name') }}
++            {{ $field('minister_photo_url', 'Minister for Education, Sindh — Photo URL', '', 'text', 'https://...') }}
++            {{ $field('minister_message', 'Minister for Education, Sindh — Message', '', 'textarea') }}
++        </div>
++
++        <div class="card">
++            <h2>Secretary School Education, Sindh</h2>
++            {{ $field('secretary_name', 'Secretary School Education, Sindh — Name') }}
++            {{ $field('secretary_photo_url', 'Secretary School Education, Sindh — Photo URL', '', 'text', 'https://...') }}
++            {{ $field('secretary_message', 'Secretary School Education, Sindh — Message', '', 'textarea') }}
++        </div>
++
+         <div class="card">
+             <h2>Current Exam</h2>
+             {{ $field('current_exam_title', 'Current Exam Title (e.g. Annual Examination)') }}
+diff --git a/resources/views/pages/about.blade.php b/resources/views/pages/about.blade.php
+index 0761c60..27d93bb 100644
+--- a/resources/views/pages/about.blade.php
++++ b/resources/views/pages/about.blade.php
+@@ -56,7 +56,7 @@
+         </div>
+     @endif
+ 
+-    @foreach ([['principal_name', 'principal_message', 'principal_photo_url', 'Head Master'], ['teo_name', 'teo_message', 'teo_photo_url', 'TEO'], ['deo_name', 'deo_message', 'deo_photo_url', 'DEO']] as [$n, $m, $p, $label])
++    @foreach ([['minister_name', 'minister_message', 'minister_photo_url', 'Minister for Education, Sindh'], ['secretary_name', 'secretary_message', 'secretary_photo_url', 'Secretary School Education, Sindh'], ['principal_name', 'principal_message', 'principal_photo_url', 'Head Master'], ['teo_name', 'teo_message', 'teo_photo_url', 'TEO'], ['deo_name', 'deo_message', 'deo_photo_url', 'DEO']] as [$n, $m, $p, $label])
+         @if (!empty($info->$m))
+             <h2>{{ $label }} ka paigham</h2>
+             <div class="card">
+diff --git a/resources/views/pages/home.blade.php b/resources/views/pages/home.blade.php
+index 9dea7cb..547a33d 100644
+--- a/resources/views/pages/home.blade.php
++++ b/resources/views/pages/home.blade.php
+@@ -198,7 +198,7 @@
+ 
+ @php
+     $leaders = [];
+-    foreach ([['principal', 'Head Master', 'Head Master'], ['teo', 'TEO', 'Taluka Education Officer'], ['deo', 'DEO', 'District Education Officer']] as [$k, $tab, $full]) {
++    foreach ([['minister', 'Minister', 'Minister for Education, Sindh'], ['secretary', 'Secretary', 'Secretary School Education, Sindh'], ['principal', 'Head Master', 'Head Master'], ['teo', 'TEO', 'Taluka Education Officer'], ['deo', 'DEO', 'District Education Officer']] as [$k, $tab, $full]) {
+         $m = $info->{$k.'_message'} ?? null;
+         if (!empty($m)) { $leaders[] = ['tab' => $tab, 'name' => $info->{$k.'_name'} ?? '', 'photo' => $info->{$k.'_photo_url'} ?? '', 'msg' => $m]; }
+     }
+diff --git a/tests/Feature/LeadershipMessagesTest.php b/tests/Feature/LeadershipMessagesTest.php
+new file mode 100644
+index 0000000..32dbbfd
+--- /dev/null
++++ b/tests/Feature/LeadershipMessagesTest.php
+@@ -0,0 +1,23 @@
++<?php
++
++namespace Tests\Feature;
++
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Illuminate\Support\Facades\DB;
++use Tests\TestCase;
++
++class LeadershipMessagesTest extends TestCase
++{
++    use RefreshDatabase;
++
++    public function test_minister_and_secretary_messages_show_when_set(): void
++    {
++        DB::table('school_info')->updateOrInsert(['id' => 1], [
++            'name' => 'GBLSS Garho',
++            'minister_name' => 'Test Minister', 'minister_message' => 'Minister test message',
++            'secretary_name' => 'Test Secretary', 'secretary_message' => 'Secretary test message',
++        ]);
++        $this->get('/')->assertOk()->assertSee('Minister test message')->assertSee('Secretary test message');
++        $this->get('/about')->assertOk()->assertSee('Test Secretary');
++    }
++}
+-- 
+2.43.0
+
