@@ -15,6 +15,8 @@ class AdminSettingsController extends Controller
         'principal_name', 'principal_photo_url', 'principal_message',
         'teo_name', 'teo_photo_url', 'teo_message',
         'deo_name', 'deo_photo_url', 'deo_message',
+        'secretary_name', 'secretary_photo_url', 'secretary_message',
+        'minister_name', 'minister_photo_url', 'minister_message',
         'current_exam_title', 'current_exam_year',
     ];
 
@@ -40,6 +42,10 @@ class AdminSettingsController extends Controller
             'principal_message' => 'nullable|string|max:3000',
             'teo_message' => 'nullable|string|max:3000',
             'deo_message' => 'nullable|string|max:3000',
+            'secretary_photo_url' => 'nullable|string|max:500',
+            'secretary_message' => 'nullable|string|max:3000',
+            'minister_photo_url' => 'nullable|string|max:500',
+            'minister_message' => 'nullable|string|max:3000',
             'established_year' => 'nullable|digits:4',
             'total_classes' => 'nullable|string|max:60',
             'shifts' => 'nullable|string|max:60',

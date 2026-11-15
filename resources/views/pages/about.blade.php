@@ -56,7 +56,7 @@
         </div>
     @endif
 
-    @foreach ([['principal_name', 'principal_message', 'principal_photo_url', 'Head Master'], ['teo_name', 'teo_message', 'teo_photo_url', 'TEO'], ['deo_name', 'deo_message', 'deo_photo_url', 'DEO']] as [$n, $m, $p, $label])
+    @foreach ([['minister_name', 'minister_message', 'minister_photo_url', 'Minister for Education, Sindh'], ['secretary_name', 'secretary_message', 'secretary_photo_url', 'Secretary School Education, Sindh'], ['principal_name', 'principal_message', 'principal_photo_url', 'Head Master'], ['teo_name', 'teo_message', 'teo_photo_url', 'TEO'], ['deo_name', 'deo_message', 'deo_photo_url', 'DEO']] as [$n, $m, $p, $label])
         @if (!empty($info->$m))
             <h2>{{ $label }} ka paigham</h2>
             <div class="card">

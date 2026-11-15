@@ -198,7 +198,7 @@
 
 @php
     $leaders = [];
-    foreach ([['principal', 'Head Master', 'Head Master'], ['teo', 'TEO', 'Taluka Education Officer'], ['deo', 'DEO', 'District Education Officer']] as [$k, $tab, $full]) {
+    foreach ([['minister', 'Minister', 'Minister for Education, Sindh'], ['secretary', 'Secretary', 'Secretary School Education, Sindh'], ['principal', 'Head Master', 'Head Master'], ['teo', 'TEO', 'Taluka Education Officer'], ['deo', 'DEO', 'District Education Officer']] as [$k, $tab, $full]) {
         $m = $info->{$k.'_message'} ?? null;
         if (!empty($m)) { $leaders[] = ['tab' => $tab, 'name' => $info->{$k.'_name'} ?? '', 'photo' => $info->{$k.'_photo_url'} ?? '', 'msg' => $m]; }
     }

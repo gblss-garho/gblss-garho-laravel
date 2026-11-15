@@ -84,6 +84,20 @@
         </div>
 
         <div class="card">
+            <h2>Minister for Education, Sindh</h2>
+            {{ $field('minister_name', 'Minister for Education, Sindh — Name') }}
+            {{ $field('minister_photo_url', 'Minister for Education, Sindh — Photo URL', '', 'text', 'https://...') }}
+            {{ $field('minister_message', 'Minister for Education, Sindh — Message', '', 'textarea') }}
+        </div>
+
+        <div class="card">
+            <h2>Secretary School Education, Sindh</h2>
+            {{ $field('secretary_name', 'Secretary School Education, Sindh — Name') }}
+            {{ $field('secretary_photo_url', 'Secretary School Education, Sindh — Photo URL', '', 'text', 'https://...') }}
+            {{ $field('secretary_message', 'Secretary School Education, Sindh — Message', '', 'textarea') }}
+        </div>
+
+        <div class="card">
             <h2>Current Exam</h2>
             {{ $field('current_exam_title', 'Current Exam Title (e.g. Annual Examination)') }}
             {{ $field('current_exam_year', 'Current Exam Year / Session (e.g. 2026-2027)') }}
