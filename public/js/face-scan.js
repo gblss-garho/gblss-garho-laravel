@@ -43,13 +43,14 @@
 
         var challenges = (root.getAttribute('data-challenges') || '').split(',').filter(Boolean);
         var liveField = form.querySelector('input[name=liveness]');
-        var FAST = function () { return new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.5 }); };
+        var FAST = function () { return new faceapi.TinyFaceDetectorOptions({ inputSize: 192, scoreThreshold: 0.45 }); };
+        var act = root.querySelector('.fs-act');
 
         function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
         function ear(eye) { // eye aspect ratio from the 6 eye landmarks
             return (dist(eye[1], eye[5]) + dist(eye[2], eye[4])) / (2 * dist(eye[0], eye[3]));
         }
-        function metrics(lm) {
+        function metricsOf(lm) {
             var jaw = lm.getJawOutline(), nose = lm.getNose();
             var w = jaw[16].x - jaw[0].x;
             return {
@@ -59,39 +60,31 @@
         }
         async function frame() {
             var d = await faceapi.detectSingleFace(video, FAST()).withFaceLandmarks();
-            return d ? metrics(d.landmarks) : null;
+            return d ? metricsOf(d.landmarks) : null;
         }
 
-        var TEXT = {
-            blink: 'Ab ek dafa PALAK jhapkayen',
-            turn_left: 'Sir ko screen ke BAAYEN taraf ghumayen',
-            turn_right: 'Sir ko screen ke DAAYEN taraf ghumayen'
+        // Sindhi instructions (the user's own right/left; the preview is mirrored like a mirror)
+        var SD = {
+            blink: '\u0627\u06a9\u064a\u0648\u0646 \u0647\u06aa \u0680\u064a\u0631\u0648 \u0687\u0646\u0680\u064a\u0648',
+            turn_left: '\u067e\u0646\u06be\u0646\u062c\u064a \u0686\u06be\u0631\u064a \u06a9\u064a \u06a9\u0627\u067b\u064a \u067e\u0627\u0633\u064a \u06af\u06be\u0645\u0627\u064a\u0648',
+            turn_right: '\u067e\u0646\u06be\u0646\u062c\u064a \u0686\u06be\u0631\u064a \u06a9\u064a \u0633\u0627\u0684\u064a \u067e\u0627\u0633\u064a \u06af\u06be\u0645\u0627\u064a\u0648'
         };
 
-        // Resolves true when the action is seen within `ms`.
+        // Resolves true when the action is seen within `ms`. Blink = eyes visibly closing against the open-eye baseline.
         async function doChallenge(name, ms) {
-            var t0 = Date.now(), open = 0, closedSeen = false;
+            var t0 = Date.now(), base = 0, n = 0;
             while (Date.now() - t0 < ms) {
                 var m = await frame();
                 if (!m) { continue; }
                 if (name === 'blink') {
-                    if (m.ear > open) { open = m.ear; }
-                    if (open > 0.2 && m.ear < open * 0.74) { closedSeen = true; }
-                    else if (closedSeen && m.ear > open * 0.86) { return true; }
-                } else if (name === 'turn_left') { // nose moves toward the camera-left edge (raw image)
-                    if (m.yaw > 0.64) { return true; }
+                    n++;
+                    if (n <= 3 || m.ear > base) { base = Math.max(base, m.ear); }
+                    if (n > 3 && base > 0.18 && m.ear < base * 0.8) { return true; }
+                } else if (name === 'turn_left') {
+                    if (m.yaw > 0.6) { return true; }
                 } else if (name === 'turn_right') {
-                    if (m.yaw < 0.36) { return true; }
+                    if (m.yaw < 0.4) { return true; }
                 }
-            }
-            return false;
-        }
-
-        async function waitFrontal(ms) {
-            var t0 = Date.now();
-            while (Date.now() - t0 < ms) {
-                var m = await frame();
-                if (m && m.yaw > 0.42 && m.yaw < 0.58) { return true; }
             }
             return false;
         }
@@ -107,34 +100,44 @@
             if (busy) { return; }
             busy = true;
             btn.disabled = true;
+            act.textContent = '';
 
             state('scan', 'Chehra dhoondha ja raha hai... seedha dekhen.');
             var first = null, t0 = Date.now();
             while (Date.now() - t0 < 6000 && !first) {
                 first = await frame();
-                if (!first) { await sleep(150); }
+                if (!first) { await sleep(120); }
             }
             if (!first) { return fail('Chehra nahi mila. Roshni mein, seedha camera ki taraf dekhen aur dobara try karen.'); }
 
             for (var i = 0; i < challenges.length; i++) {
-                state('scan', 'Liveness ' + (i + 1) + '/' + challenges.length + ': ' + (TEXT[challenges[i]] || ''));
-                var ok = await doChallenge(challenges[i], 7000);
-                if (!ok) { return fail('Liveness check pass nahi hua (' + (TEXT[challenges[i]] || challenges[i]) + '). Dobara try karen.'); }
-                state('scan', 'Theek hai! Ab seedha camera mein dekhen...');
-                if (!(await waitFrontal(4000))) { return fail('Seedha dekhna zaroori hai. Dobara try karen.'); }
+                act.textContent = SD[challenges[i]] || '';
+                state('scan', 'Liveness check: upar likha kaam karen.');
+                var ok = await doChallenge(challenges[i], 9000);
+                act.textContent = '';
+                if (!ok) { return fail('Liveness check pass nahi hua. Dobara try karen aur hidayat par amal karen.'); }
             }
 
-            state('scan', 'Chehra pehchana ja raha hai... seedha dekhen.');
-            var found = await faceapi
-                .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
-                .withFaceLandmarks()
-                .withFaceDescriptor();
-            if (!found) { return fail('Chehra nahi mila. Dobara try karen.'); }
+            // Take the face fingerprint as soon as the face is roughly frontal again.
+            state('scan', 'Theek hai! Ab seedha dekhen...');
+            var found = null;
+            t0 = Date.now();
+            while (Date.now() - t0 < 5000) {
+                var d = await faceapi
+                    .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+                    .withFaceLandmarks()
+                    .withFaceDescriptor();
+                if (d) {
+                    var yaw = metricsOf(d.landmarks).yaw;
+                    if (yaw > 0.4 && yaw < 0.6) { found = d; break; }
+                }
+            }
+            if (!found) { return fail('Seedha dekhna zaroori hai. Dobara try karen.'); }
 
             field.value = JSON.stringify(Array.prototype.slice.call(found.descriptor));
             liveField.value = JSON.stringify({ c: challenges, ok: true });
             state('ok', 'Asli insan ki tasdeeq ho gayi. Save ho raha hai...');
-            await sleep(900);
+            await sleep(700);
             form.submit();
         }
 

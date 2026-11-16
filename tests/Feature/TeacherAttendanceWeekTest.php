@@ -84,8 +84,8 @@ class TeacherAttendanceWeekTest extends TestCase
 
         $this->actingAs($u)->get('/teacher/face-enroll')->assertOk();
         $c = session('liveness')['c'];
-        $this->assertCount(2, $c);
-        $this->assertContains('blink', $c);
+        $this->assertCount(1, $c);
+        $this->assertContains($c[0], ['blink', 'turn_left', 'turn_right']);
 
         $this->travel(5)->seconds();
         $this->post('/teacher/face-enroll', [

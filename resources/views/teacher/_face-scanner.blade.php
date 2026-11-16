@@ -11,6 +11,7 @@
         </svg>
         <div class="fs-check" aria-hidden="true">&#10003;</div>
     </div>
+    <p class="fs-act sd" dir="rtl" aria-live="assertive"></p>
     <p class="fs-msg" role="status" aria-live="polite">Camera aur face model load ho rahe hain...</p>
     <button type="button" class="fs-btn" disabled>{{ $btn }}</button>
     <div class="fs-tips"><span>&#9728; Achi roshni</span><span>&#128065; Palak jhapkayen</span><span>&#8596; Sir ghumayen</span><span>&#128083; Chashma/mask hata den</span></div>

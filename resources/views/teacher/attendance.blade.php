@@ -27,7 +27,7 @@
             'action' => route($isIn ? 'teacher.attendance.checkin' : 'teacher.attendance.checkout', [], false),
             'btn' => $isIn ? 'Face se Check In Karen' : 'Face se Check Out Karen',
             'title' => $isIn ? 'Check In' : 'Check Out',
-            'sub' => 'Chehra scan aur liveness check (palak, sir ghumana) ke baad attendance lagegi.',
+            'sub' => 'Chehra scan aur ek chhote liveness kaam ke baad attendance lagegi.',
             'challenges' => $challenges,
             'initialFail' => $errMsg,
         ])

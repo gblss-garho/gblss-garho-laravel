@@ -30,6 +30,8 @@
 .fs[data-state=scan] .fs-msg { color: #FCD34D; }
 .fs[data-state=ok]   .fs-msg { color: #86EFAC; }
 .fs[data-state=fail] .fs-msg { color: #FCA5A5; }
+.fs-act { margin: 14px 4px 0; font-size: 21px; line-height: 1.9; color: #FCD34D; font-weight: 600; }
+.fs-act:empty { display: none; }
 .fs-btn { font: inherit; font-weight: 700; font-size: 15px; padding: 12px 26px; border: 0; border-radius: 999px; cursor: pointer; margin: 0;
           background: linear-gradient(135deg,#DBB43C,#C9A227); color: #1F2A24; box-shadow: 0 6px 16px rgba(0,0,0,.28); }
 .fs-btn:disabled { opacity: .55; cursor: default; }

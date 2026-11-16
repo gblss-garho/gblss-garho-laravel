@@ -17,7 +17,7 @@
         'action' => route('teacher.face.enroll.store', [], false),
         'btn' => 'Scan Shuru Karen',
         'title' => 'Chehra Enroll',
-        'sub' => 'Ek dafa enroll karen. Asli insan ki tasdeeq ke liye palak jhapkana aur sir ghumana hoga.',
+        'sub' => 'Ek dafa enroll karen. Asli insan ki tasdeeq ke liye ek chhota sa kaam (palak ya sir ghumana) hoga.',
         'challenges' => $challenges,
         'initialFail' => $errors->first(),
     ])

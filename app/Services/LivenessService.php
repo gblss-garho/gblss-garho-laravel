@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Challenge-response liveness for face enrol / check-in / check-out.
- * The server picks a random pair of actions (blink + a head turn) and remembers it in the session;
- * the browser must report that exact pair as completed, and not instantly. A still photo cannot blink or turn.
+ * The server picks one random action (blink, turn left or turn right) and remembers it in the session;
+ * the browser must report that exact action as completed, and not instantly. A still photo cannot blink or turn.
  * (A determined attacker with a pre-recorded video of the right actions is a harder, separate problem.)
  */
 class LivenessService
@@ -20,8 +20,8 @@ class LivenessService
     /** @return string[] */
     public function issue(Request $request): array
     {
-        $turn = random_int(0, 1) ? 'turn_left' : 'turn_right';
-        $list = random_int(0, 1) ? ['blink', $turn] : [$turn, 'blink'];
+        $options = ['blink', 'turn_left', 'turn_right'];
+        $list = [$options[random_int(0, 2)]];
         $request->session()->put(self::KEY, ['c' => $list, 't' => now()->timestamp]);
 
         return $list;
@@ -61,6 +61,6 @@ class LivenessService
             ]);
         }
 
-        return 'Liveness check mukammal nahi hua (palak jhapakna aur sir ghumana zaroori hai). Page dobara khol kar scan karen.';
+        return 'Liveness check mukammal nahi hua (hidayat ke mutabiq palak jhapakna ya sir ghumana zaroori hai). Page dobara khol kar scan karen.';
     }
 }
