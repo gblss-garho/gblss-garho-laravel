@@ -23,7 +23,7 @@ class GrRegisterTest extends TestCase
     {
         DB::table('gr_register')->insert([
             ['reg_no' => 1, 'name' => 'Old Student One', 'father_name' => 'Old Father', 'removal_cause' => 'to join elsewhere', 'created_at' => now(), 'updated_at' => now()],
-            ['reg_no' => 2, 'name' => 'Old Student Two', 'father_name' => 'Old Father 2', 'created_at' => now(), 'updated_at' => now()],
+            ['reg_no' => 2, 'name' => 'Old Student Two', 'father_name' => 'Old Father 2', 'removal_cause' => null, 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         $this->actingAs($this->admin());
