@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\LivenessService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 class FaceEnrollController extends Controller
 {
+    public function __construct(protected LivenessService $liveness)
+    {
+    }
+
     public function show(Request $request)
     {
         $teacher = $request->user()->teacher;
@@ -14,17 +19,22 @@ class FaceEnrollController extends Controller
         return view('teacher.face-enroll', [
             'teacher' => $teacher,
             'isEnrolled' => $teacher && ! empty($teacher->face_descriptor),
+            'challenges' => $this->liveness->issue($request),
         ]);
     }
 
     public function store(Request $request)
     {
-        $descriptor = $this->decodeDescriptor($request->input('descriptor_json'));
-
         $teacher = $request->user()->teacher;
         if (! $teacher) {
             return back()->withErrors(['face' => 'Aapke account se koi teacher record linked nahi hai.']);
         }
+
+        if ($err = $this->liveness->verify($request, $teacher, 'enroll')) {
+            return back()->withErrors(['face' => $err]);
+        }
+
+        $descriptor = $this->decodeDescriptor($request->input('descriptor_json'));
 
         $teacher->face_descriptor = $descriptor;
         $teacher->save();

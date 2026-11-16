@@ -10,7 +10,7 @@ class TeacherAttendance extends Model
 
     protected $fillable = [
         'teacher_id', 'date', 'check_in_at', 'check_out_at',
-        'check_in_method', 'check_out_method',
+        'check_in_method', 'check_out_method', 'late_minutes',
     ];
 
     protected function casts(): array

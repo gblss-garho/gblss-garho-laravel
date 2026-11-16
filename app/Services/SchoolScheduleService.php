@@ -97,6 +97,37 @@ class SchoolScheduleService
         return $now->between($start, $end);
     }
 
+    /** The day's raw times (in_start, in_end, out_start, out_end) as "H:i" strings. */
+    public function timesFor(Carbon $d): array
+    {
+        return $this->season($d);
+    }
+
+    /** Check-in is accepted from the start of the day until the check-out window opens; after in_end it counts as late. */
+    public function isWithinCheckInPeriod(Carbon $now): bool
+    {
+        if (! $this->isSchoolDay($now)) {
+            return false;
+        }
+        $s = $this->season($now);
+
+        return $now->between(
+            $now->copy()->setTimeFromTimeString($s['in_start']),
+            $now->copy()->setTimeFromTimeString($s['out_start'])
+        );
+    }
+
+    /** Whole minutes after the on-time window (in_end) closed; 0 when on time. */
+    public function lateMinutes(Carbon $checkIn): int
+    {
+        $limit = $checkIn->copy()->setTimeFromTimeString($this->season($checkIn)['in_end']);
+        if ($checkIn->lessThanOrEqualTo($limit)) {
+            return 0;
+        }
+
+        return (int) floor($limit->diffInSeconds($checkIn) / 60);
+    }
+
     private function formatTime(string $hhmm): string
     {
         try {
