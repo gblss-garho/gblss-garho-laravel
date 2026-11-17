@@ -101,6 +101,7 @@
             busy = true;
             btn.disabled = true;
             act.textContent = '';
+            root.removeAttribute('data-act');
 
             state('scan', 'Chehra dhoondha ja raha hai... seedha dekhen.');
             var first = null, t0 = Date.now();
@@ -112,9 +113,11 @@
 
             for (var i = 0; i < challenges.length; i++) {
                 act.textContent = SD[challenges[i]] || '';
+                root.setAttribute('data-act', challenges[i]);
                 state('scan', 'Liveness check: upar likha kaam karen.');
                 var ok = await doChallenge(challenges[i], 9000);
                 act.textContent = '';
+                root.removeAttribute('data-act');
                 if (!ok) { return fail('Liveness check pass nahi hua. Dobara try karen aur hidayat par amal karen.'); }
             }
 

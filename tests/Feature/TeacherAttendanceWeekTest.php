@@ -46,7 +46,7 @@ class TeacherAttendanceWeekTest extends TestCase
 
         $r = $this->actingAs($u)->get('/teacher/attendance')->assertOk();
         $r->assertSee('Late 25 min', false)->assertSee('Chhutti manzoor')->assertSee('Absent')->assertSee('Present');
-        $r->assertSee('Hafta:', false)->assertSee('css/attendance.css', false);
+        $r->assertSee('hz-hero', false)->assertSee('HAZRI', false)->assertSee('css/attendance.css', false);
 
         Carbon::setTestNow();
     }
@@ -55,7 +55,7 @@ class TeacherAttendanceWeekTest extends TestCase
     {
         [$u] = $this->teacher();
         $this->actingAs($u)->get('/teacher/face-enroll')->assertOk()
-            ->assertSee('data-face-scan', false)->assertSee('fs-ticks', false);
+            ->assertSee('data-face-scan', false)->assertSee('fs-ticks', false)->assertSee('fs-arrow', false)->assertSee('fs-eye', false);
     }
 
     public function test_asset_files_exist(): void

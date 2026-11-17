@@ -58,6 +58,22 @@ class TeacherAttendanceController extends Controller
 
         $late = $hasIn ? $this->lateOf($record, $now) : ($mode === 'checkin' ? $this->schedule->lateMinutes($now) : 0);
 
+        $dayBar = null;
+        if ($isSchoolDay) {
+            $from = $now->copy()->setTimeFromTimeString($times['in_start']);
+            $to = $now->copy()->setTimeFromTimeString($times['out_end']);
+            $total = max(1, $from->diffInMinutes($to));
+            $pct = fn (Carbon $t) => max(0, min(100, round($from->diffInMinutes($t, false) / $total * 100, 1)));
+            $dayBar = [
+                'now' => $pct($now),
+                'ontime' => $pct($from->copy()->setTimeFromTimeString($times['in_end'])),
+                'in' => $hasIn ? $pct($record->check_in_at) : null,
+                'out' => $hasOut ? $pct($record->check_out_at) : null,
+                'from' => $from->format('g:i A'),
+                'to' => $to->format('g:i A'),
+            ];
+        }
+
         $weekStart = $this->weekStartFrom($request->query('week'), $now);
 
         return view('teacher.attendance', [
@@ -65,6 +81,7 @@ class TeacherAttendanceController extends Controller
             'record' => $record,
             'mode' => $mode,
             'late' => $late,
+            'dayBar' => $dayBar,
             'isSchoolDay' => $isSchoolDay,
             'canCheckIn' => $canCheckIn,
             'canCheckOut' => $canCheckOut,
