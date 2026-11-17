@@ -3,6 +3,7 @@
 @section('title', 'Kids Corner')
 
 @section('content')
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap" rel="stylesheet">
 <div class="kc-wrap">
     @include('pages._hero', ['pill' => 'Kids Corner — Dictionary & Mind Games'])
     <style>
@@ -18,7 +19,7 @@
         .kc-center { text-align:center; } .kc-big { font-size:40px; }
         .kc-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; color:#0F5132; }
         .kc-tag { font-size:11px; background:#FDF3D8; color:#8B7B1E; border-radius:999px; padding:2px 8px; }
-        .kc-ur { text-align:right; font-size:20px; direction:rtl; } .kc-sd { text-align:right; font-size:17px; color:#0F5132; direction:rtl; }
+        .kc-ur { text-align:right; font-size:20px; direction:rtl; line-height:2.1; } .kc-sd { text-align:right; font-size:17px; color:#0F5132; direction:rtl; }
         .kc-meta { color:#8B7B1E; font-size:13px; font-weight:600; margin:6px 0 10px; }
         .kc-bar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
         .kc-two { display:grid; grid-template-columns:1fr 1fr; gap:10px; max-width:560px; } .kc-col { display:grid; gap:8px; align-content:start; }
