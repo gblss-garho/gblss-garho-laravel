@@ -5,7 +5,8 @@
 @section('content')
     <link rel="stylesheet" href="{{ asset('css/attendance.css') }}">
     @php
-        $errMsg = $errors->first('attendance') ?: $errors->first();
+        $errMsg = $errors->first('attendance') ?: ($errors->has('geo') ? '' : $errors->first());
+        $geoMsg = $errors->first('geo');
         $scanning = in_array($mode, ['checkin', 'checkout'], true);
         $isIn = $mode === 'checkin';
         $now = \Carbon\Carbon::now();
@@ -17,6 +18,7 @@
 
         @if (session('status'))<div class="hz-ok">{{ session('status') }}</div>@endif
         @if ($errMsg && ! $scanning)<div class="hz-err">{{ $errMsg }}</div>@endif
+        @if ($geoMsg)<div class="hz-geo" lang="sd" dir="rtl"><span class="pin">&#128205;</span>{{ $geoMsg }}</div>@endif
 
         {{-- ===== Aaj ===== --}}
         <section class="hz-hero">
@@ -81,6 +83,7 @@
                 'title' => $isIn ? 'Check In' : 'Check Out',
                 'sub' => 'Chehra scan aur ek chhote liveness kaam ke baad hazri lagegi.',
                 'challenges' => $challenges,
+                'geo' => $geo,
                 'initialFail' => $errMsg,
             ])
         @endif

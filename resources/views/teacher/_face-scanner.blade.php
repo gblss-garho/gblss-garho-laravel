@@ -1,7 +1,7 @@
 {{-- Round camera frame with a status ring. Params: $action, $btn, $title, $sub, $challenges (liveness), $initialFail (optional) --}}
 <link rel="stylesheet" href="{{ asset('css/attendance.css') }}">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@500;700&display=swap" rel="stylesheet">
-<div class="fs" data-face-scan data-challenges="{{ implode(',', $challenges ?? []) }}" data-state="loading" @if (!empty($initialFail)) data-initial-fail="{{ $initialFail }}" @endif>
+<div class="fs" data-face-scan data-challenges="{{ implode(',', $challenges ?? []) }}" @if (!empty($geo)) data-geo-lat="{{ $geo['lat'] }}" data-geo-lng="{{ $geo['lng'] }}" data-geo-radius="{{ $geo['radius'] }}" @endif data-state="loading" @if (!empty($initialFail)) data-initial-fail="{{ $initialFail }}" @endif>
     <h2 class="fs-title">{{ $title }}</h2>
     <p class="fs-sub">{{ $sub }}</p>
     <div class="fs-stage">
@@ -23,6 +23,9 @@
         @csrf
         <input type="hidden" name="descriptor_json">
         <input type="hidden" name="liveness">
+        <input type="hidden" name="lat">
+        <input type="hidden" name="lng">
+        <input type="hidden" name="acc">
     </form>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>

@@ -89,6 +89,63 @@
             return false;
         }
 
+        // ---- School location (geofence) ----
+        var GEO = null;
+        if (root.getAttribute('data-geo-lat')) {
+            GEO = {
+                lat: parseFloat(root.getAttribute('data-geo-lat')),
+                lng: parseFloat(root.getAttribute('data-geo-lng')),
+                radius: parseInt(root.getAttribute('data-geo-radius'), 10) || 200
+            };
+        }
+        var GEO_TXT = {
+            denied: '\u067e\u0646\u06be\u0646\u062c\u064a \u0641\u0648\u0646 \u062c\u064a \u0644\u0648\u06aa\u064a\u0634\u0646 (GPS) \u062c\u064a \u0627\u062c\u0627\u0632\u062a \u068f\u064a\u0648 \u06fd \u067b\u064a\u0647\u0631 \u06aa\u0648\u0634\u0634 \u06aa\u0631\u064a\u0648.',
+            weak: 'GPS \u062c\u064a \u062f\u0631\u0633\u062a\u06af\u064a \u06aa\u0645\u0632\u0648\u0631 \u0622\u0647\u064a. \u06a9\u0644\u064a\u0644 \u062c\u0627\u0621\u0650 \u062a\u064a \u0627\u0686\u064a \u067b\u064a\u0647\u0631 \u06aa\u0648\u0634\u0634 \u06aa\u0631\u064a\u0648.',
+            outA: '\u0627\u0648\u0647\u0627\u0646 \u0647\u0646 \u0648\u0642\u062a \u0627\u0633\u06aa\u0648\u0644 \u062c\u064a \u062c\u06b3\u0647\u0647 \u06a9\u0627\u0646 \u067b\u0627\u0647\u0631 \u0622\u0647\u064a\u0648. \u062d\u0627\u0636\u0631\u064a \u0631\u06b3\u0648 \u0627\u0633\u06aa\u0648\u0644 \u062c\u064a ',
+            outB: ' \u0645\u064a\u067d\u0631\u0646 \u0627\u0646\u062f\u0631 \u0644\u06b3\u064a \u0633\u06af\u0647\u064a \u067f\u064a (\u0627\u0648\u0647\u0627\u0646 \u0627\u0633\u06aa\u0648\u0644 \u06a9\u0627\u0646 \u062a\u0642\u0631\u064a\u0628\u0646 ',
+            outC: ' \u0645\u064a\u067d\u0631 \u067e\u0631\u064a \u0622\u0647\u064a\u0648).'
+        };
+        function metersBetween(a1, o1, a2, o2) {
+            var R = 6371000, rad = Math.PI / 180;
+            var dp = (a2 - a1) * rad, dl = (o2 - o1) * rad;
+            var h = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(a1 * rad) * Math.cos(a2 * rad) * Math.sin(dl / 2) * Math.sin(dl / 2);
+            return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+        }
+        function getPosition() {
+            return new Promise(function (resolve, reject) {
+                if (!navigator.geolocation) { reject({ code: 1 }); return; }
+                navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+            });
+        }
+        // Returns true when allowed (and fills the hidden fields); otherwise shows the Sindhi message and returns false.
+        async function checkLocation() {
+            if (!GEO) { return true; }
+            state('scan', 'School ki location check ho rahi hai...');
+            var pos;
+            try { pos = await getPosition(); }
+            catch (e) {
+                act.textContent = GEO_TXT.denied;
+                fail('Location nahi mili. Phone ki location (GPS) on karen aur browser ko ijazat den.');
+                return false;
+            }
+            var c = pos.coords;
+            form.querySelector('input[name=lat]').value = c.latitude;
+            form.querySelector('input[name=lng]').value = c.longitude;
+            form.querySelector('input[name=acc]').value = Math.round(c.accuracy || 0);
+            if (c.accuracy > 150) {
+                act.textContent = GEO_TXT.weak;
+                fail('GPS ki darstagi kam hai. Khuli jagah par aa kar dobara try karen.');
+                return false;
+            }
+            var d = Math.round(metersBetween(c.latitude, c.longitude, GEO.lat, GEO.lng));
+            if (d > GEO.radius) {
+                act.textContent = GEO_TXT.outA + GEO.radius + GEO_TXT.outB + d + GEO_TXT.outC;
+                fail('Aap abhi school ki location se bahar hain (' + d + ' m door).');
+                return false;
+            }
+            return true;
+        }
+
         function fail(text) {
             state('fail', text);
             btn.textContent = 'Dobara Try Karen';
@@ -102,6 +159,8 @@
             btn.disabled = true;
             act.textContent = '';
             root.removeAttribute('data-act');
+
+            if (!(await checkLocation())) { return; }
 
             state('scan', 'Chehra dhoondha ja raha hai... seedha dekhen.');
             var first = null, t0 = Date.now();

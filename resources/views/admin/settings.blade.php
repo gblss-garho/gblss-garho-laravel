@@ -53,6 +53,27 @@
             {{ $field('school_lat', 'School Latitude (e.g. 25.1234)', '', 'number') }}
             {{ $field('school_lng', 'School Longitude (e.g. 68.1234)', '', 'number') }}
             {{ $field('attendance_radius', 'Allowed Radius in Meters (default 200)', '', 'number') }}
+            @if (! is_numeric($s->school_lat ?? null) || ! is_numeric($s->school_lng ?? null))
+                <p class="who" style="color:#991B1B"><b>Zaroori:</b> School ki location abhi save nahi hai, is liye teachers kahin se bhi hazri laga sakte hain. Neeche ka button dabayen (school mein khade ho kar) aur Save karen.</p>
+            @endif
+            <button type="button" id="useMyLoc" class="btn" style="margin:6px 0 12px">&#128205; Meri maujooda location use karen (school mein khade ho kar)</button>
+            <span id="useMyLocMsg" class="who"></span>
+            <script>
+                (function () {
+                    var b = document.getElementById('useMyLoc'), m = document.getElementById('useMyLocMsg');
+                    if (!b) { return; }
+                    b.addEventListener('click', function () {
+                        if (!navigator.geolocation) { m.textContent = 'Is browser mein location support nahi.'; return; }
+                        m.textContent = 'Location li ja rahi hai...';
+                        navigator.geolocation.getCurrentPosition(function (p) {
+                            document.querySelector('[name=school_lat]').value = p.coords.latitude.toFixed(6);
+                            document.querySelector('[name=school_lng]').value = p.coords.longitude.toFixed(6);
+                            m.textContent = 'Location bhar di gayi (darstagi ~' + Math.round(p.coords.accuracy) + ' m). Ab niche Save karen.';
+                        }, function () { m.textContent = 'Location nahi mili. Phone ki location on karen aur ijazat den.'; },
+                        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 });
+                    });
+                })();
+            </script>
             <p class="who" style="margin-top:12px">School ka waqt Sindh Government ke mutabiq khud lagta hai (sardi 1 Nov&ndash;31 Mar: 8:30 AM&ndash;2:00 PM, Jumma 12:30 PM tak; garmi 1 Apr&ndash;31 Oct: 8:00 AM&ndash;1:30 PM, Jumma 12:00 PM tak). Check-in pehle 30 minute, check-out aakhri 20 minute mein hota hai.</p>
             <label>Weekly Off Days</label>
             <div style="display:flex;flex-wrap:wrap;gap:8px">

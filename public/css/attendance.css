@@ -130,3 +130,6 @@
 .dp-bar i { position: absolute; top: 0; bottom: 0; border-radius: 4px; background: linear-gradient(90deg,#22C55E,#16A34A); }
 .dp.s-late .dp-bar i { background: linear-gradient(90deg,#FBBF24,#D97706); }
 .hz-foot { font-size: 11.5px; color: #777; margin-top: 8px; }
+
+.hz-geo { background: #FEF3C7; color: #78350F; border: 1px solid #F59E0B; border-radius: 14px; padding: 12px 14px; margin: 10px 0; font-family: 'Noto Naskh Arabic', 'Noto Sans Arabic', serif; font-size: 17px; line-height: 2; font-weight: 600; }
+.hz-geo .pin { margin-inline-start: 8px; }

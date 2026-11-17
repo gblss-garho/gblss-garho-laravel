@@ -16,6 +16,7 @@ class TeacherAttendanceController extends Controller
         protected SchoolScheduleService $schedule,
         protected FaceRecognitionService $face,
         protected \App\Services\LivenessService $liveness,
+        protected \App\Services\GeoFenceService $geo,
     ) {
     }
 
@@ -89,6 +90,7 @@ class TeacherAttendanceController extends Controller
             'checkInLabel' => $this->schedule->checkInWindowLabel($now),
             'checkOutLabel' => $this->schedule->checkOutWindowLabel($now),
             'week' => $teacher ? $this->buildWeek($teacher, $weekStart, $now) : null,
+            'geo' => in_array($mode, ['checkin', 'checkout'], true) ? $this->geo->config() : null,
             'challenges' => in_array($mode, ['checkin', 'checkout'], true) ? $this->liveness->issue($request) : [],
             'weekStart' => $weekStart,
             'prevWeek' => $weekStart->copy()->subWeek()->toDateString(),
@@ -236,6 +238,10 @@ class TeacherAttendanceController extends Controller
             return back()->withErrors(['attendance' => 'Check-in ka waqt khatam ho chuka hai ya aaj school off hai. Details ke liye Principal/Admin se rabta karen.']);
         }
 
+        if ($geoErr = $this->geo->check($request)) {
+            return back()->withErrors(['geo' => $geoErr]);
+        }
+
         if ($err = $this->liveness->verify($request, $teacher, 'check_in')) {
             return back()->withErrors(['attendance' => $err]);
         }
@@ -280,6 +286,10 @@ class TeacherAttendanceController extends Controller
 
         if (! $this->schedule->isWithinCheckOutWindow($now)) {
             return back()->withErrors(['attendance' => 'Check-out sirf school khatam hone se pehle aakhri 15 minutes mein ho sakta hai.']);
+        }
+
+        if ($geoErr = $this->geo->check($request)) {
+            return back()->withErrors(['geo' => $geoErr]);
         }
 
         if ($err = $this->liveness->verify($request, $teacher, 'check_out')) {
