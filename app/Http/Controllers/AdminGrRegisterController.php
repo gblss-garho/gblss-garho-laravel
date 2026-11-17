@@ -22,6 +22,29 @@ class AdminGrRegisterController extends Controller
         return redirect(route('admin.gr-register', [], false))->with('ok', ($code === 0 ? 'Import mukammal. ' : 'Import fail: ').$out);
     }
 
+    public function edit(int $reg)
+    {
+        $gr = Schema::hasTable('gr_register') ? DB::table('gr_register')->where('reg_no', $reg)->first() : null;
+        $student = Student::where('gr_number', (string) $reg)->first();
+        abort_unless($gr || $student, 404);
+
+        return view('admin.gr-edit', [
+            'reg' => $reg, 'gr' => $gr, 'student' => $student,
+            'choice' => \App\Services\StudentStatusService::choiceFor($student, $gr),
+        ]);
+    }
+
+    public function update(Request $request, int $reg)
+    {
+        $data = $request->validate(\App\Services\StudentStatusService::rules());
+        $student = Student::where('gr_number', (string) $reg)->first();
+        $exists = Schema::hasTable('gr_register') && DB::table('gr_register')->where('reg_no', $reg)->exists();
+        abort_unless($exists || $student, 404);
+        app(\App\Services\StudentStatusService::class)->apply($reg, $student, $data);
+
+        return redirect(route('admin.gr-register', ['q' => $reg], false))->with('ok', "GR {$reg} ka status update ho gaya.");
+    }
+
     public function index(Request $request)
     {
         $q = trim((string) $request->query('q', ''));

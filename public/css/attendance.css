@@ -2,7 +2,7 @@
 .fs { max-width: 420px; margin: 14px auto; padding: 22px 18px 20px; border-radius: 26px; text-align: center; color: #FAF6EC;
       background: radial-gradient(120% 90% at 50% 0%, #1B7A4D 0%, #0F5132 48%, #0a3a24 100%);
       border: 1px solid rgba(219,180,60,.45); box-shadow: 0 18px 40px rgba(11,61,38,.28), inset 0 1px 0 rgba(255,255,255,.08); }
-.fs-title { font-family: 'Noto Serif', Georgia, serif; font-weight: 700; font-size: 18px; margin: 0 0 2px; }
+.fs-title { font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; font-weight: 700; font-size: 18px; margin: 0 0 2px; }
 .fs-sub { font-size: 12.5px; opacity: .78; margin: 0 0 16px; }
 .fs-stage { --ring: rgba(219,180,60,.55); position: relative; width: min(74vw, 300px); aspect-ratio: 1; margin: 0 auto; }
 .fs-cam { position: absolute; inset: 7.5%; border-radius: 50%; overflow: hidden; background: #06261a;
@@ -67,7 +67,7 @@
 .hz-ajrak { height: 9px; background: repeating-linear-gradient(90deg, #DBB43C 0 12px, #0F5132 12px 22px, #8A2232 22px 30px, #0F5132 30px 40px); }
 .hz-hero-in { padding: 16px 18px 18px; }
 .hz-date { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.hz-date b { font-family: 'Noto Serif', Georgia, serif; font-size: 22px; }
+.hz-date b { font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; font-size: 22px; }
 .hz-date span { font-size: 12px; opacity: .8; letter-spacing: .6px; }
 .hz-state { display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 800; padding: 4px 12px; border-radius: 999px; background: rgba(255,255,255,.14); }
 .hz-state.ok { background: #16A34A; color: #fff; } .hz-state.warn { background: #F59E0B; color: #3b2300; } .hz-state.bad { background: #DC2626; color: #fff; }
@@ -94,17 +94,17 @@
             background: conic-gradient(#16A34A calc(var(--p) * 1%), #ECE7D6 0); position: relative; }
 .hz-score::before { content: ""; position: absolute; inset: 9px; border-radius: 50%; background: #fff; }
 .hz-score span { position: relative; text-align: center; line-height: 1.05; }
-.hz-score b { display: block; font-family: 'Noto Serif', Georgia, serif; font-size: 22px; color: #0F5132; }
+.hz-score b { display: block; font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; font-size: 22px; color: #0F5132; }
 .hz-score small { font-size: 9.5px; color: #777; letter-spacing: .6px; }
 .hz-chips { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
 .hz-chips div { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #444; }
 .hz-chips i { width: 11px; height: 11px; border-radius: 50%; flex: none; }
-.hz-chips b { font-family: 'Noto Serif', Georgia, serif; margin-right: 2px; }
+.hz-chips b { font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; margin-right: 2px; }
 
 .hz-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 14px 0 10px; }
 .dd { font: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: center; color: #555; }
 .dd .dc { --c: #CFC8B2; display: grid; place-items: center; width: 100%; max-width: 50px; aspect-ratio: 1; margin: 0 auto; border-radius: 50%;
-          font-family: 'Noto Serif', Georgia, serif; font-weight: 700; font-size: 16px; color: #3a3a3a; background: #fff; border: 3px solid var(--c); }
+          font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; font-weight: 700; font-size: 16px; color: #3a3a3a; background: #fff; border: 3px solid var(--c); }
 .dd small { display: block; margin-top: 5px; font-size: 10.5px; letter-spacing: .6px; text-transform: uppercase; }
 .dd.s-present .dc { --c: #16A34A; background: #DCFCE7; } .dd.s-late .dc { --c: #F59E0B; background: #FEF3C7; }
 .dd.s-leave .dc { --c: #6366F1; background: #E0E7FF; }   .dd.s-absent .dc { --c: #DC2626; background: #FEE2E2; }
@@ -117,7 +117,7 @@
 .hz-js .dp { display: none; } .hz-js .dp.on { display: block; }
 .dp.s-present { --c: #16A34A; } .dp.s-late { --c: #F59E0B; } .dp.s-leave { --c: #6366F1; } .dp.s-absent { --c: #DC2626; } .dp.s-pending { --c: #38BDF8; }
 .dp-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.dp-top b { font-family: 'Noto Serif', Georgia, serif; font-size: 16px; }
+.dp-top b { font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; font-size: 16px; }
 .pill { display: inline-block; font-size: 12px; font-weight: 800; padding: 3px 11px; border-radius: 999px; }
 .p-present { background: #DCFCE7; color: #14532D; } .p-late { background: #FEF3C7; color: #92400E; } .p-leave { background: #E0E7FF; color: #3730A3; }
 .p-absent { background: #FEE2E2; color: #991B1B; } .p-pending { background: #E0F2FE; color: #075985; } .p-off, .p-na, .p-upcoming { background: #ECECE6; color: #666; }

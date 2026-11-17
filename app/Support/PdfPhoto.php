@@ -2,6 +2,9 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+
 /**
  * Shrinks a photo (data URI) before it goes into a DomPDF page.
  * Phone photos can be 10+ megapixels; DomPDF decodes them in full and
@@ -9,14 +12,56 @@ namespace App\Support;
  */
 class PdfPhoto
 {
+    /** Accepts a data: URI, an http(s) URL, or a path under /public; returns a small JPEG data URI (or null). */
     public static function small(?string $src, int $max = 220): ?string
     {
-        $src = (string) $src;
-        if (! preg_match('#^data:image/(?:jpe?g|png);base64,(.+)$#is', $src, $m) || ! function_exists('imagecreatefromstring')) {
+        $src = trim((string) $src);
+        if ($src === '' || ! function_exists('imagecreatefromstring')) {
             return null;
         }
-        $bin = base64_decode($m[1], true);
-        if ($bin === false) {
+
+        // Remote / local-path photos (what the website shows) are fetched once, shrunk and cached for a day.
+        if (! str_starts_with($src, 'data:')) {
+            return Cache::remember('pdfphoto:'.md5($src.'|'.$max), 86400, fn () => self::shrink(self::load($src), $max));
+        }
+
+        if (! preg_match('#^data:image/(?:jpe?g|png|webp|gif);base64,(.+)$#is', $src, $m)) {
+            return null;
+        }
+
+        return self::shrink(base64_decode($m[1], true) ?: null, $max);
+    }
+
+    /** Raw bytes for a URL or public-path photo, or null. Only http(s) to public hosts is allowed. */
+    private static function load(string $src): ?string
+    {
+        if (preg_match('#^https?://#i', $src)) {
+            $host = parse_url($src, PHP_URL_HOST);
+            $ip = $host ? gethostbyname($host) : null;
+            if (! $ip || ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return null;
+            }
+            try {
+                $r = Http::timeout(8)->withHeaders(['Accept' => 'image/*'])->get($src);
+            } catch (\Throwable $e) {
+                return null;
+            }
+
+            return $r->successful() && strlen($r->body()) < 12_000_000 ? $r->body() : null;
+        }
+
+        $rel = ltrim(parse_url($src, PHP_URL_PATH) ?: '', '/');
+        $file = realpath(public_path($rel));
+        if ($rel === '' || ! $file || ! str_starts_with($file, realpath(public_path()) ?: '#') || ! is_file($file)) {
+            return null;
+        }
+
+        return @file_get_contents($file) ?: null;
+    }
+
+    private static function shrink(?string $bin, int $max): ?string
+    {
+        if (! $bin) {
             return null;
         }
         $info = @getimagesizefromstring($bin);
@@ -24,9 +69,6 @@ class PdfPhoto
             return null;
         }
         $ratio = min(1, $max / max($info[0], $info[1]));
-        if ($ratio === 1 && strlen($bin) < 150000) {
-            return $src;
-        }
         @ini_set('memory_limit', '512M');
         $im = @imagecreatefromstring($bin);
         unset($bin);

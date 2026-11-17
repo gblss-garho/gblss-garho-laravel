@@ -4,7 +4,7 @@
   var D = null;
   function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
   function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.textContent = html; return e; }
-  var UR = "'Noto Nastaliq Urdu','CustomSindhi',serif", SD = "'CustomSindhi','Noto Serif',serif";
+  var UR = "'Noto Nastaliq Urdu','CustomSindhi',serif", SD = "'Noto Naskh Arabic','CustomSindhi','Noto Serif',serif";
   var panel = document.getElementById('kids-panel');
   var tabs = document.querySelectorAll('[data-kids-tab]');
   var sections = { dictionary: dictionary, wordmatch: wordMatch, memory: memory, quiz: quiz, math: math };

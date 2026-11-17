@@ -4,7 +4,7 @@
 
 @section('content')
     <style>
-        .rs-title { text-align:center; margin:28px 0 6px; font-family:'Noto Serif',Georgia,serif; font-weight:800; font-size:42px; color:#C9A227; }
+        .rs-title { text-align:center; margin:28px 0 6px; font-family:'Noto Serif',Georgia,'Noto Naskh Arabic',serif; font-weight:800; font-size:42px; color:#C9A227; }
         .rs-sub { text-align:center; font-size:20px; color:#0F5132; margin:0 0 22px; }
         .rs-tabs { display:flex; gap:6px; background:#fff; border:1px solid #E9E2CC; border-radius:18px; padding:8px; flex-wrap:wrap; margin:16px 0; }
         .rs-tabs button { margin:0; flex:1; min-width:90px; padding:11px 10px; border-radius:12px; background:transparent; color:#0F5132; font-weight:600; box-shadow:none; }

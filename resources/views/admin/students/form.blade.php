@@ -29,6 +29,9 @@
         <p>Address<br><input name="address" value="{{ $f('address') }}"></p>
         <p>Guardian phone <span class="sd">(مثال 923001234567، WhatsApp رپورٽ لاءِ)</span><br><input name="guardian_phone" value="{{ $f('guardian_phone') }}" placeholder="923001234567" ></p>
         <p>Admission date<br><input type="date" name="admission_date" value="{{ $f('admission_date') }}"></p>
+        @if ($student)
+            @include('admin.partials.status-fields', ['student' => $student, 'gr' => \Illuminate\Support\Facades\Schema::hasTable('gr_register') ? \Illuminate\Support\Facades\DB::table('gr_register')->where('reg_no', (int) $student->gr_number)->first() : null])
+        @endif
         <button type="submit">Save</button>
     </form>
 @endsection

@@ -62,7 +62,10 @@ class AdminStudentController extends Controller
 
     public function update(Request $request, Student $student)
     {
-        $student->update($request->validate($this->rules($student)));
+        $data = $request->validate($this->rules($student) + \App\Services\StudentStatusService::rules());
+        $status = \Illuminate\Support\Arr::only($data, array_keys(\App\Services\StudentStatusService::rules()));
+        $student->update(\Illuminate\Support\Arr::except($data, array_keys($status)));
+        app(\App\Services\StudentStatusService::class)->apply((int) $student->gr_number, $student->fresh(), $status);
 
         return redirect()->route('admin.students.index')->with('ok', 'Student update ho gaya.');
     }

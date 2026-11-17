@@ -21,6 +21,8 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/dashboard', fn () => view('dashboards.admin'))->name('admin.dashboard');
     Route::get('/admin/gr-register', [\App\Http\Controllers\AdminGrRegisterController::class, 'index'])->name('admin.gr-register');
+    Route::get('/admin/gr-register/{reg}/edit', [\App\Http\Controllers\AdminGrRegisterController::class, 'edit'])->whereNumber('reg')->name('admin.gr-register.edit');
+    Route::put('/admin/gr-register/{reg}', [\App\Http\Controllers\AdminGrRegisterController::class, 'update'])->whereNumber('reg')->name('admin.gr-register.update');
     Route::post('/admin/gr-register/import', [\App\Http\Controllers\AdminGrRegisterController::class, 'import'])->name('admin.gr-register.import');
     Route::get('/admin/promotions', [AdminPromotionController::class, 'history'])->name('admin.promotions.history');
     Route::get('/admin/promotions/{batch}/review', [AdminPromotionController::class, 'review'])->name('admin.promotions.review');

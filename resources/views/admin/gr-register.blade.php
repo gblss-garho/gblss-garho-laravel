@@ -43,7 +43,7 @@
     <p style="color:#6b6b5c;font-size:14px">{{ $shown }} record &middot; page {{ $page }} / {{ $pages }}</p>
 
     <div class="scroll"><table>
-        <tr><th>GR</th><th>Name</th><th>Father</th><th>DOB</th><th>Address</th><th>Admitted</th><th>Removed</th><th>Status</th></tr>
+        <tr><th>GR</th><th>Name</th><th>Father</th><th>DOB</th><th>Address</th><th>Admitted</th><th>Removed</th><th>Status</th><th></th></tr>
         @forelse ($rows as $r)
             <tr>
                 <td><b>{{ $r->reg }}</b></td>
@@ -62,9 +62,10 @@
                     @if ($r->remarks)<br><small>{{ $r->remarks }}</small>@endif
                 </td>
                 <td>{{ $r->active ? 'Active '.$r->current : ($r->status ?: 'Left') }}</td>
+                <td><a href="{{ route('admin.gr-register.edit', $r->reg, false) }}">Edit</a></td>
             </tr>
         @empty
-            <tr><td colspan="8">Koi record nahi mila.</td></tr>
+            <tr><td colspan="9">Koi record nahi mila.</td></tr>
         @endforelse
     </table></div>
 
