@@ -1,0 +1,290 @@
+From 9d4f93b2f760885ddc5a1f05a8a80463b3d83552 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 17 Nov 2026 13:37:54 +0500
+Subject: [PATCH 1/2] Fix student QR scan: backfill qr_code when printing
+ cards, accept legacy ID-card text, tolerant class match, stronger scanner
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HttsdfoZKD8pHnvrLZEBS2
+---
+ .../Controllers/TeacherQrScanController.php   |  9 +++-
+ app/Models/Concerns/HasQrCode.php             | 10 +++++
+ .../views/admin/id-cards/class.blade.php      |  2 +-
+ .../views/admin/id-cards/student.blade.php    |  2 +-
+ .../admin/staff-id-cards/teacher.blade.php    |  2 +-
+ resources/views/teacher/qr-scan.blade.php     | 11 ++---
+ tests/Feature/StudentQrScanTest.php           | 41 +++++++++++++++++++
+ 7 files changed, 67 insertions(+), 10 deletions(-)
+ create mode 100644 tests/Feature/StudentQrScanTest.php
+
+diff --git a/app/Http/Controllers/TeacherQrScanController.php b/app/Http/Controllers/TeacherQrScanController.php
+index 47f9010..f6dd41d 100644
+--- a/app/Http/Controllers/TeacherQrScanController.php
++++ b/app/Http/Controllers/TeacherQrScanController.php
+@@ -42,18 +42,23 @@ class TeacherQrScanController extends Controller
+         }
+ 
+         $code = strtoupper(trim((string) $request->input('qr_code')));
+-        if ($code === '' || strlen($code) > 32) {
++        if ($code === '' || strlen($code) > 64) {
+             return $this->error('QR code sahi nahi hai.', 422);
+         }
+ 
+         $student = Student::where('qr_code', $code)->first();
++        // Cards printed before a qr_code was assigned carry GBLSS-GARHO-<year>-<GR>.
++        if (! $student && preg_match('/^GBLSS-GARHO-\d{4}-(\d+)$/', $code, $m)) {
++            $student = Student::all()->first(fn ($s) => (int) $s->gr_number === (int) $m[1]);
++        }
+         if (! $student) {
+             return $this->error('Yeh QR code kisi student ka nahi hai.', 404);
+         }
+         if ($student->passed_out) {
+             return $this->error($student->name.' passed out hai, attendance nahi lag sakti.', 422);
+         }
+-        if (! in_array($student->class, $teacher->assigned_classes_list, true)) {
++        $norm = fn ($c) => mb_strtolower(preg_replace('/\s+/', '', (string) $c));
++        if (! in_array($norm($student->class), array_map($norm, $teacher->assigned_classes_list), true)) {
+             return $this->error($student->name.' aapki class ka student nahi hai.', 403);
+         }
+ 
+diff --git a/app/Models/Concerns/HasQrCode.php b/app/Models/Concerns/HasQrCode.php
+index 2646b0a..83fd80b 100644
+--- a/app/Models/Concerns/HasQrCode.php
++++ b/app/Models/Concerns/HasQrCode.php
+@@ -23,4 +23,14 @@ trait HasQrCode
+ 
+         return $code;
+     }
++
++    /** Make sure the record has a persisted qr_code (old imported rows may lack one). */
++    public function ensureQrCode(): string
++    {
++        if (empty($this->qr_code)) {
++            $this->forceFill(['qr_code' => static::generateUniqueQrCode()])->saveQuietly();
++        }
++
++        return $this->qr_code;
++    }
+ }
+diff --git a/resources/views/admin/id-cards/class.blade.php b/resources/views/admin/id-cards/class.blade.php
+index c80d905..546e04c 100644
+--- a/resources/views/admin/id-cards/class.blade.php
++++ b/resources/views/admin/id-cards/class.blade.php
+@@ -7,7 +7,7 @@
+         $gr = str_pad(trim((string) $student->gr_number), 3, '0', STR_PAD_LEFT);
+         $admYear = $student->admission_date ? \Carbon\Carbon::parse($student->admission_date)->year : now()->year;
+         $idText = 'GBLSS-GARHO-'.$admYear.'-'.$gr;
+-        $qr = app(\App\Services\QrCodeService::class)->dataUri($student->qr_code ?: $idText, 300, 1);
++        $qr = app(\App\Services\QrCodeService::class)->dataUri($student->ensureQrCode(), 300, 1);
+     @endphp
+     @include('admin.id-cards._card', ['type' => 'student', 'person' => $student, 'idText' => $idText, 'qr' => $qr])
+ @endforeach
+diff --git a/resources/views/admin/id-cards/student.blade.php b/resources/views/admin/id-cards/student.blade.php
+index 7ddcc9b..aba946c 100644
+--- a/resources/views/admin/id-cards/student.blade.php
++++ b/resources/views/admin/id-cards/student.blade.php
+@@ -2,7 +2,7 @@
+     $gr = str_pad(trim((string) $student->gr_number), 3, '0', STR_PAD_LEFT);
+     $admYear = $student->admission_date ? \Carbon\Carbon::parse($student->admission_date)->year : now()->year;
+     $idText = 'GBLSS-GARHO-'.$admYear.'-'.$gr;
+-    $qr = app(\App\Services\QrCodeService::class)->dataUri($student->qr_code ?: $idText, 300, 1);
++    $qr = app(\App\Services\QrCodeService::class)->dataUri($student->ensureQrCode(), 300, 1);
+ @endphp
+ <!DOCTYPE html>
+ <html lang="en">
+diff --git a/resources/views/admin/staff-id-cards/teacher.blade.php b/resources/views/admin/staff-id-cards/teacher.blade.php
+index ce8d83f..11646d9 100644
+--- a/resources/views/admin/staff-id-cards/teacher.blade.php
++++ b/resources/views/admin/staff-id-cards/teacher.blade.php
+@@ -1,7 +1,7 @@
+ @php
+     $year = $teacher->entry_in_service ? \Carbon\Carbon::parse($teacher->entry_in_service)->year : now()->year;
+     $idText = 'GBLSS-GARHO-STAFF-'.$year.'-'.strtoupper($teacher->pid ?: substr($teacher->id, -6));
+-    $qr = app(\App\Services\QrCodeService::class)->dataUri($teacher->qr_code ?: $idText, 300, 1);
++    $qr = app(\App\Services\QrCodeService::class)->dataUri($teacher->ensureQrCode(), 300, 1);
+ @endphp
+ <!DOCTYPE html>
+ <html lang="en">
+diff --git a/resources/views/teacher/qr-scan.blade.php b/resources/views/teacher/qr-scan.blade.php
+index c685f8b..50c21fd 100644
+--- a/resources/views/teacher/qr-scan.blade.php
++++ b/resources/views/teacher/qr-scan.blade.php
+@@ -17,8 +17,9 @@
+         <canvas id="canvas" hidden></canvas>
+         <p id="result" style="font-weight: bold;"></p>
+ 
++        <p style="color:#6b6b5c;font-size:13px">Card ko 15-25 cm door rakhein, roshni mein, QR seedha ho aur camera focus ho.</p>
+         <p>Camera na chale to code khud likhein:</p>
+-        <input type="text" id="manual_code" maxlength="32" autocapitalize="characters">
++        <input type="text" id="manual_code" maxlength="64" autocapitalize="characters">
+         <button type="button" id="manual_submit">Mark Present</button>
+ 
+         <p>Ya gallery/screenshot se QR image select karein:</p>
+@@ -33,7 +34,7 @@
+             const CSRF = @json(csrf_token());
+             const SAME_CODE_MS = 5000;
+             const TICK_MS = 250;
+-            const MAX_WIDTH = 640;
++            const MAX_WIDTH = 960;
+             const video = document.getElementById('video');
+             const canvas = document.getElementById('canvas');
+             const ctx = canvas.getContext('2d', { willReadFrequently: true });
+@@ -86,7 +87,7 @@
+                     canvas.height = Math.round(video.videoHeight * scale);
+                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                     const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+-                    const found = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
++                    const found = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
+                     if (found && found.data) {
+                         const code = found.data.trim().toUpperCase();
+                         const now = Date.now();
+@@ -110,7 +111,7 @@
+                     return;
+                 }
+                 try {
+-                    video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
++                    video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } });
+                     await video.play();
+                     requestAnimationFrame(tick);
+                 } catch (e) {
+@@ -134,7 +135,7 @@
+                 canvas.height = Math.round(img.height * scale);
+                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                 const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
+-                const found = jsQR(data.data, data.width, data.height, { inversionAttempts: 'dontInvert' });
++                const found = jsQR(data.data, data.width, data.height, { inversionAttempts: 'attemptBoth' });
+                 if (found && found.data) {
+                     submitCode(found.data.trim().toUpperCase());
+                 } else {
+diff --git a/tests/Feature/StudentQrScanTest.php b/tests/Feature/StudentQrScanTest.php
+new file mode 100644
+index 0000000..da7bda4
+--- /dev/null
++++ b/tests/Feature/StudentQrScanTest.php
+@@ -0,0 +1,41 @@
++<?php
++
++namespace Tests\Feature;
++
++use App\Models\Student;
++use App\Models\Teacher;
++use App\Models\User;
++use Carbon\Carbon;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Tests\TestCase;
++
++class StudentQrScanTest extends TestCase
++{
++    use RefreshDatabase;
++
++    protected function tearDown(): void
++    {
++        Carbon::setTestNow();
++        parent::tearDown();
++    }
++
++    private function setup2(): array
++    {
++        Carbon::setTestNow(Carbon::parse('2026-11-18 09:30')); // Wednesday, school hours
++        $u = User::forceCreate(['name' => 'T', 'email' => 't@example.test', 'password' => bcrypt('x'), 'role' => 'teacher', 'is_active' => 1]);
++        Teacher::forceCreate(['id' => 'tch0000002', 'user_id' => $u->id, 'name' => 'T', 'auth_email' => 't@example.test', 'assigned_class' => 'Five', 'created_at' => now()]);
++        $s = Student::create(['id' => 's1', 'gr_number' => '12', 'name' => 'Ali', 'class' => 'five ', 'passed_out' => 0, 'admission_date' => '2024-04-01']);
++
++        return [$u, $s];
++    }
++
++    public function test_scan_by_qr_code_and_by_legacy_id_text(): void
++    {
++        [$u, $s] = $this->setup2();
++        $this->actingAs($u);
++        $code = $s->ensureQrCode();
++
++        $this->postJson('/teacher/qr-scan', ['qr_code' => strtolower($code)])->assertOk()->assertJsonPath('status', 'marked');
++        $this->postJson('/teacher/qr-scan', ['qr_code' => 'GBLSS-GARHO-2024-012'])->assertOk()->assertJsonPath('status', 'already_present');
++    }
++}
+-- 
+2.43.0
+
+
+From c44aa07859edbf440772d94df0d407b9dde49346 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 17 Nov 2026 13:41:57 +0500
+Subject: [PATCH 2/2] Staff photo check command, more tolerant photo URL
+ loading with logging
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HttsdfoZKD8pHnvrLZEBS2
+---
+ app/Console/Commands/CheckStaffPhotos.php | 28 +++++++++++++++++++++++
+ app/Support/PdfPhoto.php                  |  9 ++++++++
+ 2 files changed, 37 insertions(+)
+ create mode 100644 app/Console/Commands/CheckStaffPhotos.php
+
+diff --git a/app/Console/Commands/CheckStaffPhotos.php b/app/Console/Commands/CheckStaffPhotos.php
+new file mode 100644
+index 0000000..d9f966a
+--- /dev/null
++++ b/app/Console/Commands/CheckStaffPhotos.php
+@@ -0,0 +1,28 @@
++<?php
++
++namespace App\Console\Commands;
++
++use App\Models\Teacher;
++use App\Support\PdfPhoto;
++use Illuminate\Console\Command;
++
++class CheckStaffPhotos extends Command
++{
++    protected $signature = 'photos:check';
++
++    protected $description = 'Show which teachers have a photo that the ID card can load';
++
++    public function handle(): int
++    {
++        $rows = Teacher::orderBy('name')->get()->map(function (Teacher $t) {
++            $src = trim((string) $t->photo_url);
++            $kind = $src === '' ? 'none' : (str_starts_with($src, 'data:') ? 'data-uri' : (preg_match('#^(https?:)?//#i', $src) ? 'url' : 'path'));
++            $ok = $src !== '' && PdfPhoto::small($src) !== null;
++
++            return [$t->name, $kind, $kind === 'url' || $kind === 'path' ? mb_substr($src, 0, 70) : '', $ok ? 'OK' : ($src === '' ? 'no photo' : 'FAILED')];
++        });
++        $this->table(['Teacher', 'Type', 'Value', 'Card photo'], $rows->all());
++
++        return self::SUCCESS;
++    }
++}
+diff --git a/app/Support/PdfPhoto.php b/app/Support/PdfPhoto.php
+index ea60172..b4787f3 100644
+--- a/app/Support/PdfPhoto.php
++++ b/app/Support/PdfPhoto.php
+@@ -35,7 +35,11 @@ class PdfPhoto
+     /** Raw bytes for a URL or public-path photo, or null. Only http(s) to public hosts is allowed. */
+     private static function load(string $src): ?string
+     {
++        if (str_starts_with($src, '//')) {
++            $src = 'https:'.$src;
++        }
+         if (preg_match('#^https?://#i', $src)) {
++            $src = str_replace(' ', '%20', $src);
+             $host = parse_url($src, PHP_URL_HOST);
+             $ip = $host ? gethostbyname($host) : null;
+             if (! $ip || ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+@@ -44,8 +48,13 @@ class PdfPhoto
+             try {
+                 $r = Http::timeout(8)->withHeaders(['Accept' => 'image/*'])->get($src);
+             } catch (\Throwable $e) {
++                \Log::warning('PdfPhoto fetch failed: '.$e->getMessage(), ['src' => $src]);
++
+                 return null;
+             }
++            if (! $r->successful()) {
++                \Log::warning('PdfPhoto HTTP '.$r->status(), ['src' => $src]);
++            }
+ 
+             return $r->successful() && strlen($r->body()) < 12_000_000 ? $r->body() : null;
+         }
+-- 
+2.43.0
+
