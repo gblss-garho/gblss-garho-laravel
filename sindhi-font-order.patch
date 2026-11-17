@@ -1,0 +1,303 @@
+From 3be5b465b3b1ef95a5b54b86895b3d074cd2e056 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 17 Nov 2026 18:55:15 +0500
+Subject: [PATCH] =?UTF-8?q?Use=20CustomSindhi=20(hero=20font)=20for=20all?=
+ =?UTF-8?q?=20Sindhi=20text,=20Naskh=20only=20for=20words=20with=20=DA=84;?=
+ =?UTF-8?q?=20leadership=20order=20Minister,=20Secretary,=20DEO,=20TEO,=20?=
+ =?UTF-8?q?Head=20Master?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HttsdfoZKD8pHnvrLZEBS2
+---
+ public/css/attendance.css                | 16 +++++-----
+ public/css/class-report.css              |  2 +-
+ public/js/kids-corner.js                 |  2 +-
+ resources/views/layouts/portal.blade.php | 39 +++++++++++++++++++-----
+ resources/views/pages/home.blade.php     | 22 ++++++-------
+ resources/views/pages/results.blade.php  |  2 +-
+ 6 files changed, 53 insertions(+), 30 deletions(-)
+
+diff --git a/public/css/attendance.css b/public/css/attendance.css
+index 5205571..6ad79d4 100644
+--- a/public/css/attendance.css
++++ b/public/css/attendance.css
+@@ -2,7 +2,7 @@
+ .fs { max-width: 420px; margin: 14px auto; padding: 22px 18px 20px; border-radius: 26px; text-align: center; color: #FAF6EC;
+       background: radial-gradient(120% 90% at 50% 0%, #1B7A4D 0%, #0F5132 48%, #0a3a24 100%);
+       border: 1px solid rgba(219,180,60,.45); box-shadow: 0 18px 40px rgba(11,61,38,.28), inset 0 1px 0 rgba(255,255,255,.08); }
+-.fs-title { font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; font-weight: 700; font-size: 18px; margin: 0 0 2px; }
++.fs-title { font-family: 'Noto Serif',Georgia,'CustomSindhi','Noto Naskh Arabic',serif; font-weight: 700; font-size: 18px; margin: 0 0 2px; }
+ .fs-sub { font-size: 12.5px; opacity: .78; margin: 0 0 16px; }
+ .fs-stage { --ring: rgba(219,180,60,.55); position: relative; width: min(74vw, 300px); aspect-ratio: 1; margin: 0 auto; }
+ .fs-cam { position: absolute; inset: 7.5%; border-radius: 50%; overflow: hidden; background: #06261a;
+@@ -30,7 +30,7 @@
+ .fs[data-state=scan] .fs-msg { color: #FCD34D; }
+ .fs[data-state=ok]   .fs-msg { color: #86EFAC; }
+ .fs[data-state=fail] .fs-msg { color: #FCA5A5; }
+-.fs-act { margin: 14px 4px 0; font-family: 'Noto Naskh Arabic', 'Noto Sans Arabic', 'Droid Arabic Naskh', serif; font-size: 22px; line-height: 2; color: #FCD34D; font-weight: 700; unicode-bidi: plaintext; }
++.fs-act { margin: 14px 4px 0; font-family: 'CustomSindhi','Noto Naskh Arabic', 'Noto Sans Arabic', 'Droid Arabic Naskh', serif; font-size: 22px; line-height: 2; color: #FCD34D; font-weight: 700; unicode-bidi: plaintext; }
+ .fs-act:empty { display: none; }
+ .fs-btn { font: inherit; font-weight: 700; font-size: 15px; padding: 12px 26px; border: 0; border-radius: 999px; cursor: pointer; margin: 0;
+           background: linear-gradient(135deg,#DBB43C,#C9A227); color: #1F2A24; box-shadow: 0 6px 16px rgba(0,0,0,.28); }
+@@ -67,7 +67,7 @@
+ .hz-ajrak { height: 9px; background: repeating-linear-gradient(90deg, #DBB43C 0 12px, #0F5132 12px 22px, #8A2232 22px 30px, #0F5132 30px 40px); }
+ .hz-hero-in { padding: 16px 18px 18px; }
+ .hz-date { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+-.hz-date b { font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; font-size: 22px; }
++.hz-date b { font-family: 'Noto Serif',Georgia,'CustomSindhi','Noto Naskh Arabic',serif; font-size: 22px; }
+ .hz-date span { font-size: 12px; opacity: .8; letter-spacing: .6px; }
+ .hz-state { display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 800; padding: 4px 12px; border-radius: 999px; background: rgba(255,255,255,.14); }
+ .hz-state.ok { background: #16A34A; color: #fff; } .hz-state.warn { background: #F59E0B; color: #3b2300; } .hz-state.bad { background: #DC2626; color: #fff; }
+@@ -94,17 +94,17 @@
+             background: conic-gradient(#16A34A calc(var(--p) * 1%), #ECE7D6 0); position: relative; }
+ .hz-score::before { content: ""; position: absolute; inset: 9px; border-radius: 50%; background: #fff; }
+ .hz-score span { position: relative; text-align: center; line-height: 1.05; }
+-.hz-score b { display: block; font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; font-size: 22px; color: #0F5132; }
++.hz-score b { display: block; font-family: 'Noto Serif',Georgia,'CustomSindhi','Noto Naskh Arabic',serif; font-size: 22px; color: #0F5132; }
+ .hz-score small { font-size: 9.5px; color: #777; letter-spacing: .6px; }
+ .hz-chips { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
+ .hz-chips div { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #444; }
+ .hz-chips i { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+-.hz-chips b { font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; margin-right: 2px; }
++.hz-chips b { font-family: 'Noto Serif',Georgia,'CustomSindhi','Noto Naskh Arabic',serif; margin-right: 2px; }
+ 
+ .hz-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin: 14px 0 10px; }
+ .dd { font: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; text-align: center; color: #555; }
+ .dd .dc { --c: #CFC8B2; display: grid; place-items: center; width: 100%; max-width: 50px; aspect-ratio: 1; margin: 0 auto; border-radius: 50%;
+-          font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; font-weight: 700; font-size: 16px; color: #3a3a3a; background: #fff; border: 3px solid var(--c); }
++          font-family: 'Noto Serif',Georgia,'CustomSindhi','Noto Naskh Arabic',serif; font-weight: 700; font-size: 16px; color: #3a3a3a; background: #fff; border: 3px solid var(--c); }
+ .dd small { display: block; margin-top: 5px; font-size: 10.5px; letter-spacing: .6px; text-transform: uppercase; }
+ .dd.s-present .dc { --c: #16A34A; background: #DCFCE7; } .dd.s-late .dc { --c: #F59E0B; background: #FEF3C7; }
+ .dd.s-leave .dc { --c: #6366F1; background: #E0E7FF; }   .dd.s-absent .dc { --c: #DC2626; background: #FEE2E2; }
+@@ -117,7 +117,7 @@
+ .hz-js .dp { display: none; } .hz-js .dp.on { display: block; }
+ .dp.s-present { --c: #16A34A; } .dp.s-late { --c: #F59E0B; } .dp.s-leave { --c: #6366F1; } .dp.s-absent { --c: #DC2626; } .dp.s-pending { --c: #38BDF8; }
+ .dp-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+-.dp-top b { font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; font-size: 16px; }
++.dp-top b { font-family: 'Noto Serif',Georgia,'CustomSindhi','Noto Naskh Arabic',serif; font-size: 16px; }
+ .pill { display: inline-block; font-size: 12px; font-weight: 800; padding: 3px 11px; border-radius: 999px; }
+ .p-present { background: #DCFCE7; color: #14532D; } .p-late { background: #FEF3C7; color: #92400E; } .p-leave { background: #E0E7FF; color: #3730A3; }
+ .p-absent { background: #FEE2E2; color: #991B1B; } .p-pending { background: #E0F2FE; color: #075985; } .p-off, .p-na, .p-upcoming { background: #ECECE6; color: #666; }
+@@ -131,5 +131,5 @@
+ .dp.s-late .dp-bar i { background: linear-gradient(90deg,#FBBF24,#D97706); }
+ .hz-foot { font-size: 11.5px; color: #777; margin-top: 8px; }
+ 
+-.hz-geo { background: #FEF3C7; color: #78350F; border: 1px solid #F59E0B; border-radius: 14px; padding: 12px 14px; margin: 10px 0; font-family: 'Noto Naskh Arabic', 'Noto Sans Arabic', serif; font-size: 17px; line-height: 2; font-weight: 600; }
++.hz-geo { background: #FEF3C7; color: #78350F; border: 1px solid #F59E0B; border-radius: 14px; padding: 12px 14px; margin: 10px 0; font-family: 'CustomSindhi','Noto Naskh Arabic', 'Noto Sans Arabic', serif; font-size: 17px; line-height: 2; font-weight: 600; }
+ .hz-geo .pin { margin-inline-start: 8px; }
+diff --git a/public/css/class-report.css b/public/css/class-report.css
+index 9988351..7eb7329 100644
+--- a/public/css/class-report.css
++++ b/public/css/class-report.css
+@@ -15,7 +15,7 @@
+ .cr-ajrak { height:9px; background:repeating-linear-gradient(90deg,#DBB43C 0 12px,#0F5132 12px 22px,#8A2232 22px 30px,#0F5132 30px 40px); }
+ .cr-hero-in { padding:14px 16px 16px; }
+ .cr-title { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+-.cr-title b { display:block; font-family:'Noto Serif',Georgia,'Noto Naskh Arabic',serif; font-size:22px; }
++.cr-title b { display:block; font-family:'Noto Serif',Georgia,'CustomSindhi','Noto Naskh Arabic',serif; font-size:22px; }
+ .cr-title span { font-size:12.5px; opacity:.8; }
+ .cr-nav a { display:inline-block; text-decoration:none; color:#FAF6EC; background:rgba(255,255,255,.14); width:36px; height:36px; line-height:36px; text-align:center; border-radius:50%; margin-left:6px; font-size:18px; }
+ .cr-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:14px; }
+diff --git a/public/js/kids-corner.js b/public/js/kids-corner.js
+index 17fc76c..cd6657a 100644
+--- a/public/js/kids-corner.js
++++ b/public/js/kids-corner.js
+@@ -4,7 +4,7 @@
+   var D = null;
+   function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+   function el(tag, cls, html) { var e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.textContent = html; return e; }
+-  var UR = "'Noto Nastaliq Urdu','CustomSindhi',serif", SD = "'Noto Naskh Arabic','CustomSindhi','Noto Serif',serif";
++  var UR = "'Noto Nastaliq Urdu','CustomSindhi',serif", SD = "'CustomSindhi','Noto Naskh Arabic','Noto Serif',serif";
+   var panel = document.getElementById('kids-panel');
+   var tabs = document.querySelectorAll('[data-kids-tab]');
+   var sections = { dictionary: dictionary, wordmatch: wordMatch, memory: memory, quiz: quiz, math: math };
+diff --git a/resources/views/layouts/portal.blade.php b/resources/views/layouts/portal.blade.php
+index faf1512..cd21767 100644
+--- a/resources/views/layouts/portal.blade.php
++++ b/resources/views/layouts/portal.blade.php
+@@ -16,15 +16,16 @@
+         :root { --g:#0F5132; --g2:#1B7A4D; --g3:#0a3a24; --gold:#DBB43C; --gold2:#c9a22c; --bg:#F7F5EE; --ink:#2b2b2b; --muted:#6b6b6b; --red:#9b2c2c; }
+         * { box-sizing: border-box; }
+         html { -webkit-text-size-adjust: 100%; }
+-        body { margin:0; background:var(--bg); color:var(--ink); font-family: 'Inter',system-ui,-apple-system,'Segoe UI',Roboto,'Noto Naskh Arabic','CustomSindhi',sans-serif; line-height:1.55; min-height:100vh; display:flex; flex-direction:column; }
++        body { margin:0; background:var(--bg); color:var(--ink); font-family: 'Inter',system-ui,-apple-system,'Segoe UI',Roboto,'CustomSindhi','Noto Naskh Arabic',sans-serif; line-height:1.55; min-height:100vh; display:flex; flex-direction:column; }
+         a { color: var(--g2); }
+-        h1, h2, h3, .brand b { font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; }
++        h1, h2, h3, .brand b { font-family: 'Noto Serif',Georgia,'CustomSindhi','Noto Naskh Arabic',serif; }
+         body.has-bg::before { content:""; position:fixed; inset:0; z-index:-1; background: linear-gradient(#F7F5EFF2,#F7F5EFF2), var(--bgimg) center/cover no-repeat; }
+         .wrap { width:100%; max-width: 1000px; margin: 0 auto; padding: 0 16px; }
+ 
+-        /* Sindhi / Urdu text: Noto Naskh Arabic has the full Sindhi letter set (ڄ ڃ ڻ ڙ ڪ ڳ ھ); CustomSindhi is only the fallback */
++        /* Sindhi text uses CustomSindhi (the home-page hero look). Its ڄ looks like ڃ, so words containing ڄ get Noto Naskh Arabic (.sd-j, added by script below). */
++        .sd-j { font-family: 'Noto Naskh Arabic', serif !important; }
+         .sd, .err, .ok { unicode-bidi: plaintext; }
+-        .sd, :lang(sd) { font-family: 'Noto Naskh Arabic', 'CustomSindhi', 'Noto Nastaliq Urdu', serif !important; font-size: 1.08em; line-height: 1.9; }
++        .sd, :lang(sd) { font-family: 'CustomSindhi','Noto Naskh Arabic', 'Noto Nastaliq Urdu', serif !important; font-size: 1.08em; line-height: 1.9; }
+         .sd-note { color: var(--muted); }
+         .highlights { display:grid; grid-template-columns:1fr; gap:10px; margin: 6px 0 18px; }
+         @media (min-width:700px){ .highlights { grid-template-columns: repeat(2,1fr); } }
+@@ -88,7 +89,7 @@
+         .hero-lk:after { content:""; position:absolute; left:0; right:0; bottom:0; height:6px; background:linear-gradient(90deg,#C9A227,#0F5132 50%,#C9A227); }
+         .hero-lk .ring { width:112px; height:105px; margin:0 auto 12px; border-radius:0; border:0; background:none; padding:0; display:flex; }
+         .hero-lk .ring img { width:100%; height:100%; border-radius:0; object-fit:contain; background:transparent; border:0; }
+-        .hero-lk h2 { font-family:'Noto Serif',Georgia,'Noto Naskh Arabic',serif; color:#fff; font-size:30px; line-height:1.3; margin:0 0 14px; font-weight:700; }
++        .hero-lk h2 { font-family:'Noto Serif',Georgia,'CustomSindhi','Noto Naskh Arabic',serif; color:#fff; font-size:30px; line-height:1.3; margin:0 0 14px; font-weight:700; }
+         .hero-lk .pill { display:inline-block; background:rgba(255,255,255,.14); border-radius:999px; padding:10px 22px; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; font-weight:600; }
+         .hero-lk .dev { display:block; margin-top:20px; opacity:.55; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:13px; letter-spacing:.12em; }
+         .lk-card { background:#fff; border:1px solid #E9E2CC; border-radius:24px; padding:26px 22px; box-shadow:0 1px 2px rgba(15,81,50,.04), 0 10px 24px -8px rgba(15,81,50,.14); margin:0 0 20px; }
+@@ -106,7 +107,7 @@
+         .pane { background:#fff; border:1px solid #E9E2CC; border-radius:26px; overflow:hidden; box-shadow:0 10px 26px -8px rgba(15,81,50,.16); margin:0 0 22px; }
+         .pane-h { display:flex; align-items:center; gap:16px; padding:22px; color:#fff; background:linear-gradient(135deg,#0F6B47,#2d3a1a 120%); }
+         .pane-h .ico { width:60px; height:60px; border-radius:18px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.18); display:flex; align-items:center; justify-content:center; font-size:28px; flex:none; }
+-        .pane-h b { display:block; font-family:'Noto Serif','Noto Naskh Arabic',serif; font-size:24px; }
++        .pane-h b { display:block; font-family:'Noto Serif','CustomSindhi','Noto Naskh Arabic',serif; font-size:24px; }
+         .pane-h small { display:block; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:13px; letter-spacing:.16em; text-transform:uppercase; color:#e8d79a; margin-top:2px; }
+         .pane-b { padding:22px; }
+         .pane-b .tiles { margin:0; }
+@@ -116,13 +117,13 @@
+         .wel .av img, .wel .av div { width:100%; height:100%; border-radius:50%; object-fit:cover; background:#fff; color:#0F5132; display:flex; align-items:center; justify-content:center; font-size:30px; }
+         .wel h2 { color:#fff; margin:0; font-size:32px; line-height:1.15; }
+         .wel .sub { font-family:'JetBrains Mono',ui-monospace,monospace; color:#e8d79a; font-size:14px; letter-spacing:.06em; margin-top:6px; }
+-        .wel .r { text-align:right; } .wel .r b { display:block; color:#D9A91A; font-size:18px; } .wel .r span { font-family:'Noto Serif','Noto Naskh Arabic',serif; font-size:26px; font-weight:700; }
++        .wel .r { text-align:right; } .wel .r b { display:block; color:#D9A91A; font-size:18px; } .wel .r span { font-family:'Noto Serif','CustomSindhi','Noto Naskh Arabic',serif; font-size:26px; font-weight:700; }
+         .tb-grid { display:grid; grid-template-columns:1fr; gap:18px; } @media (min-width:700px){ .tb-grid { grid-template-columns:repeat(3,1fr); } }
+         .tb { background:#fff; border:1px solid #E9E2CC; border-radius:22px; overflow:hidden; box-shadow:0 10px 24px -8px rgba(15,81,50,.14); }
+         .tb .cover { height:150px; background:#E8F1EA; display:flex; align-items:center; justify-content:center; font-size:54px; }
+         .tb .cover img { width:100%; height:100%; object-fit:cover; }
+         .tb .bd { padding:16px 18px 18px; } .tb .bd small { display:block; font-family:'JetBrains Mono',monospace; color:#8B7B1E; font-weight:700; font-size:13px; }
+-        .tb .bd b { display:block; font-family:'Noto Serif','Noto Naskh Arabic',serif; font-size:18px; color:#0F5132; margin:4px 0 12px; }
++        .tb .bd b { display:block; font-family:'Noto Serif','CustomSindhi','Noto Naskh Arabic',serif; font-size:18px; color:#0F5132; margin:4px 0 12px; }
+         .tb .open { display:block; text-align:center; background:#12513a; color:#fff; border-radius:12px; padding:12px; text-decoration:none; font-weight:700; }
+         .fb-sum { display:flex; align-items:center; gap:12px; margin:8px 0 14px; font-weight:600; } .fb-sum .st { color:#D9A91A; font-size:30px; letter-spacing:4px; }
+         .fb-item { background:#fff; border:1px solid #E9E2CC; border-radius:18px; padding:16px 18px; margin-bottom:12px; box-shadow:0 6px 16px -8px rgba(15,81,50,.16); }
+@@ -442,5 +443,27 @@
+ </main>
+ 
+ <footer class="site-foot">{{ $schoolName }} &mdash; records maintained per General Register &middot; <a href="{{ route('public.privacy', [], false) }}">Privacy</a></footer>
++<script>
++(function () {
++    // Wrap whole words containing ڄ (U+0684) so they are drawn in Noto Naskh Arabic, which has the right glyph.
++    function wrap(root) {
++        var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), nodes = [], n;
++        while ((n = w.nextNode())) {
++            var p = n.parentNode && n.parentNode.nodeName;
++            if (n.nodeValue.indexOf('\u0684') > -1 && p !== 'SCRIPT' && p !== 'STYLE' && p !== 'TEXTAREA') { nodes.push(n); }
++        }
++        nodes.forEach(function (t) {
++            var frag = document.createDocumentFragment();
++            t.nodeValue.split(/(\s+)/).forEach(function (part) {
++                if (part.indexOf('\u0684') > -1) {
++                    var s = document.createElement('span'); s.className = 'sd-j'; s.textContent = part; frag.appendChild(s);
++                } else { frag.appendChild(document.createTextNode(part)); }
++            });
++            t.parentNode.replaceChild(frag, t);
++        });
++    }
++    document.addEventListener('DOMContentLoaded', function () { wrap(document.body); });
++})();
++</script>
+ </body>
+ </html>
+diff --git a/resources/views/pages/home.blade.php b/resources/views/pages/home.blade.php
+index 2f34189..09039d4 100644
+--- a/resources/views/pages/home.blade.php
++++ b/resources/views/pages/home.blade.php
+@@ -9,8 +9,8 @@
+     .hm-hero .in { position:relative; text-align:center; padding:48px 20px; }
+     .hm-pill { display:inline-flex; align-items:center; gap:8px; padding:6px 16px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid #D9A91A88; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:11px; font-weight:700; letter-spacing:1.5px; color:#D9A91A; backdrop-filter:blur(6px); }
+     .hm-pill:before { content:""; width:6px; height:6px; border-radius:99px; background:#D9A91A; box-shadow:0 0 8px #D9A91A; }
+-    .hm-hero h1 { font-family:'Baloo 2','Noto Serif','Noto Naskh Arabic',serif; font-weight:800; font-size:clamp(30px,6vw,52px); line-height:1.12; text-shadow:0 4px 20px rgba(0,0,0,.35); max-width:760px; margin:18px auto 0; color:#fff; }
+-    .hm-tag { max-width:520px; margin:16px auto 0; font-family:'Baloo 2','Noto Naskh Arabic',serif; font-weight:600; font-size:16px; background:linear-gradient(90deg,#D9A91A,#3AA982,#D9A91A); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
++    .hm-hero h1 { font-family:'Baloo 2','Noto Serif','CustomSindhi','Noto Naskh Arabic',serif; font-weight:800; font-size:clamp(30px,6vw,52px); line-height:1.12; text-shadow:0 4px 20px rgba(0,0,0,.35); max-width:760px; margin:18px auto 0; color:#fff; }
++    .hm-tag { max-width:520px; margin:16px auto 0; font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif; font-weight:600; font-size:16px; background:linear-gradient(90deg,#D9A91A,#3AA982,#D9A91A); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+     .hm-motto { max-width:460px; margin:12px auto 0; color:#F8FAF8CC; font-size:15px; }
+     .hm-btns { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-top:30px; }
+     .hm-btns a { padding:10px 24px; border-radius:999px; font-size:14px; font-weight:700; text-decoration:none; transition:transform .15s; }
+@@ -24,27 +24,27 @@
+     .hm-stat { position:relative; overflow:hidden; background:#fff; border:1px solid #E4EBE7; border-radius:16px; padding:20px 10px; text-align:center; box-shadow:0 4px 16px rgba(11,79,74,.08); }
+     .hm-stat:before { content:""; position:absolute; top:0; left:0; right:0; height:3px; background:var(--c); }
+     .hm-stat .ic { font-size:20px; }
+-    .hm-stat b { display:block; font-family:'Baloo 2','Noto Naskh Arabic',serif; font-weight:800; font-size:28px; color:#075C42; }
++    .hm-stat b { display:block; font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif; font-weight:800; font-size:28px; color:#075C42; }
+     .hm-stat span { font-size:12px; color:#66736D; font-family:'JetBrains Mono',ui-monospace,monospace; }
+     .hm-head { text-align:center; margin: 0 0 22px; }
+     .hm-head small { display:block; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:11px; letter-spacing:2px; color:#B98D08; font-weight:700; }
+-    .hm-head h2 { font-family:'Baloo 2','Noto Naskh Arabic',serif; font-weight:700; font-size:24px; color:#075C42; margin:4px 0 0; }
++    .hm-head h2 { font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif; font-weight:700; font-size:24px; color:#075C42; margin:4px 0 0; }
+     .hm-sec { margin-bottom:40px; }
+     .hm-two { display:grid; grid-template-columns:1fr; gap:20px; } @media (min-width:800px){ .hm-two { grid-template-columns:1fr 1fr; } }
+     .hm-green { border-radius:16px; padding:24px; background:linear-gradient(160deg,#0B7A5B,#063F31); color:#F8FAF8; box-shadow:0 10px 28px rgba(6,54,50,.28); }
+-    .hm-green h3 { color:#fff; margin:0; font-family:'Baloo 2','Noto Naskh Arabic',serif; font-size:16px; }
++    .hm-green h3 { color:#fff; margin:0; font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif; font-size:16px; }
+     .hm-green .tot { padding:3px 12px; border-radius:999px; font-size:12px; font-weight:700; background:rgba(217,169,26,.2); color:#D9A91A; border:1px solid #D9A91A66; }
+     .hm-bar { display:flex; align-items:center; gap:10px; margin:14px 0; font-size:13px; }
+     .hm-bar b { width:58px; color:#9be0c6; font-weight:600; }
+     .hm-bar i { display:block; height:14px; border-radius:7px; background:linear-gradient(90deg,#D9A91A,#3AA982); }
+     .hm-bar span { color:#D9A91A; font-weight:700; }
+     .hm-white { border-radius:16px; padding:24px; background:#fff; border:1px solid #E4EBE7; box-shadow:0 6px 18px rgba(11,79,74,.07); }
+-    .hm-white h3 { margin:0 0 6px; font-family:'Baloo 2','Noto Naskh Arabic',serif; font-size:16px; }
++    .hm-white h3 { margin:0 0 6px; font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif; font-size:16px; }
+     .hm-feat { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; } @media (min-width:800px){ .hm-feat { grid-template-columns:repeat(4,1fr); } }
+     .hm-fc { position:relative; overflow:hidden; background:#fff; border:1px solid #E4EBE7; border-radius:18px; padding:20px; box-shadow:0 6px 18px rgba(11,79,74,.07); }
+     .hm-fc:before { content:""; position:absolute; top:0; left:0; right:0; height:4px; background:var(--c); }
+     .hm-fc .ico { width:48px; height:48px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:14px; background:var(--t); }
+-    .hm-fc b { display:block; font-family:'Baloo 2','Noto Naskh Arabic',serif; font-size:15px; color:#075C42; margin-bottom:4px; }
++    .hm-fc b { display:block; font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif; font-size:15px; color:#075C42; margin-bottom:4px; }
+     .hm-fc div.sd { font-size:13px; color:#17231F; line-height:1.7; }
+     .hm-label { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:11px; font-weight:700; letter-spacing:2px; color:#D9A91A; }
+     .hm-mod { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:18px; } @media (min-width:800px){ .hm-mod { grid-template-columns:repeat(4,1fr); } }
+@@ -65,7 +65,7 @@
+     .hm-t:before { content:""; position:absolute; top:0; left:0; right:0; height:5px; background:linear-gradient(90deg,#C9A227,#0B7A5B,#C9A227); }
+     .hm-t .av { width:76px; height:76px; margin:4px auto 10px; border-radius:50%; padding:3px; background:linear-gradient(135deg,#C9A227,#0F5132); }
+     .hm-t .av img, .hm-t .av .ph { width:100%; height:100%; border-radius:50%; object-fit:cover; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; color:#075C42; }
+-    .hm-t b { display:block; font-family:'Noto Serif','Noto Naskh Arabic',serif; font-size:15px; color:#075C42; }
++    .hm-t b { display:block; font-family:'Noto Serif','CustomSindhi','Noto Naskh Arabic',serif; font-size:15px; color:#075C42; }
+     .hm-t .sub { display:inline-block; margin:6px 0; padding:3px 14px; border-radius:999px; background:#FDF1E1; color:#B98D08; font-size:13px; font-weight:600; }
+     .hm-t p { font-style:italic; font-size:13px; color:#1F2A24; margin:6px 0 10px; }
+     .hm-t a { display:inline-block; padding:6px 18px; border-radius:999px; border:1px solid #0B7A5B44; background:#E4F3F1; color:#0B7A5B; font-weight:700; font-size:13px; text-decoration:none; }
+@@ -79,7 +79,7 @@
+     .hm-lp { display:none; gap:16px; align-items:flex-start; } .hm-lp.on { display:flex; }
+     .hm-lp .ph { width:70px; height:70px; flex:none; border-radius:50%; overflow:hidden; border:3px solid #fff; box-shadow:0 0 0 2px #0B7A5B; background:#E4F3F1; display:flex; align-items:center; justify-content:center; font-size:26px; }
+     .hm-lp .ph img { width:100%; height:100%; object-fit:cover; }
+-    .hm-lp q { display:block; font-family:'Noto Serif','Noto Naskh Arabic',serif; font-style:italic; font-size:16px; line-height:1.7; color:#17231F; quotes:"\201C" "\201D"; }
++    .hm-lp q { display:block; font-family:'Noto Serif','CustomSindhi','Noto Naskh Arabic',serif; font-style:italic; font-size:16px; line-height:1.7; color:#17231F; quotes:"\201C" "\201D"; }
+     .hm-lp .who { color:#075C42; font-weight:700; margin-top:10px; font-size:15px; }
+     .hm-lp details summary { cursor:pointer; color:#0B7A5B; font-weight:700; font-size:13px; margin-top:6px; }
+ </style>
+@@ -144,7 +144,7 @@
+ 
+ <div class="hm-sec">
+     <div class="hm-label">DIGITAL SCHOOL</div>
+-    <h2 style="font-family:'Baloo 2','Noto Naskh Arabic',serif;font-size:28px;font-weight:800;color:#075C42;margin:4px 0 0">A School Powered by Technology</h2>
++    <h2 style="font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif;font-size:28px;font-weight:800;color:#075C42;margin:4px 0 0">A School Powered by Technology</h2>
+     <p style="color:#66736D;font-size:14px;max-width:650px">A complete digital school experience — connecting teachers, students and parents through practical tools.</p>
+     <div class="hm-mod">
+         <a class="hm-m" href="{{ route('login', [], false) }}"><i class="g">✓</i>Smart Attendance</a>
+@@ -198,7 +198,7 @@
+ 
+ @php
+     $leaders = [];
+-    foreach ([['minister', 'Minister', 'Minister for Education, Sindh'], ['secretary', 'Secretary', 'Secretary School Education, Sindh'], ['principal', 'Head Master', 'Head Master'], ['teo', 'TEO', 'Taluka Education Officer'], ['deo', 'DEO', 'District Education Officer']] as [$k, $tab, $full]) {
++    foreach ([['minister', 'Minister', 'Minister for Education, Sindh'], ['secretary', 'Secretary', 'Secretary School Education, Sindh'], ['deo', 'DEO', 'District Education Officer'], ['teo', 'TEO', 'Taluka Education Officer'], ['principal', 'Head Master', 'Head Master']] as [$k, $tab, $full]) {
+         $m = $info->{$k.'_message'} ?? null;
+         if (!empty($m)) { $leaders[] = ['tab' => $tab, 'name' => $info->{$k.'_name'} ?? '', 'photo' => $info->{$k.'_photo_url'} ?? '', 'msg' => $m]; }
+     }
+diff --git a/resources/views/pages/results.blade.php b/resources/views/pages/results.blade.php
+index ad75906..6dd0942 100644
+--- a/resources/views/pages/results.blade.php
++++ b/resources/views/pages/results.blade.php
+@@ -4,7 +4,7 @@
+ 
+ @section('content')
+     <style>
+-        .rs-title { text-align:center; margin:28px 0 6px; font-family:'Noto Serif',Georgia,'Noto Naskh Arabic',serif; font-weight:800; font-size:42px; color:#C9A227; }
++        .rs-title { text-align:center; margin:28px 0 6px; font-family:'Noto Serif',Georgia,'CustomSindhi','Noto Naskh Arabic',serif; font-weight:800; font-size:42px; color:#C9A227; }
+         .rs-sub { text-align:center; font-size:20px; color:#0F5132; margin:0 0 22px; }
+         .rs-tabs { display:flex; gap:6px; background:#fff; border:1px solid #E9E2CC; border-radius:18px; padding:8px; flex-wrap:wrap; margin:16px 0; }
+         .rs-tabs button { margin:0; flex:1; min-width:90px; padding:11px 10px; border-radius:12px; background:transparent; color:#0F5132; font-weight:600; box-shadow:none; }
+-- 
+2.43.0
+
