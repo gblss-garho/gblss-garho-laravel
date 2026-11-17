@@ -1,7 +1,7 @@
 @php
     $year = $teacher->entry_in_service ? \Carbon\Carbon::parse($teacher->entry_in_service)->year : now()->year;
     $idText = 'GBLSS-GARHO-STAFF-'.$year.'-'.strtoupper($teacher->pid ?: substr($teacher->id, -6));
-    $qr = app(\App\Services\QrCodeService::class)->dataUri($teacher->qr_code ?: $idText, 300, 1);
+    $qr = app(\App\Services\QrCodeService::class)->dataUri($teacher->ensureQrCode(), 300, 1);
 @endphp
 <!DOCTYPE html>
 <html lang="en">

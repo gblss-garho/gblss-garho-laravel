@@ -42,18 +42,23 @@ class TeacherQrScanController extends Controller
         }
 
         $code = strtoupper(trim((string) $request->input('qr_code')));
-        if ($code === '' || strlen($code) > 32) {
+        if ($code === '' || strlen($code) > 64) {
             return $this->error('QR code sahi nahi hai.', 422);
         }
 
         $student = Student::where('qr_code', $code)->first();
+        // Cards printed before a qr_code was assigned carry GBLSS-GARHO-<year>-<GR>.
+        if (! $student && preg_match('/^GBLSS-GARHO-\d{4}-(\d+)$/', $code, $m)) {
+            $student = Student::all()->first(fn ($s) => (int) $s->gr_number === (int) $m[1]);
+        }
         if (! $student) {
             return $this->error('Yeh QR code kisi student ka nahi hai.', 404);
         }
         if ($student->passed_out) {
             return $this->error($student->name.' passed out hai, attendance nahi lag sakti.', 422);
         }
-        if (! in_array($student->class, $teacher->assigned_classes_list, true)) {
+        $norm = fn ($c) => mb_strtolower(preg_replace('/\s+/', '', (string) $c));
+        if (! in_array($norm($student->class), array_map($norm, $teacher->assigned_classes_list), true)) {
             return $this->error($student->name.' aapki class ka student nahi hai.', 403);
         }
 

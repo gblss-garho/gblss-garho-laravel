@@ -35,7 +35,11 @@ class PdfPhoto
     /** Raw bytes for a URL or public-path photo, or null. Only http(s) to public hosts is allowed. */
     private static function load(string $src): ?string
     {
+        if (str_starts_with($src, '//')) {
+            $src = 'https:'.$src;
+        }
         if (preg_match('#^https?://#i', $src)) {
+            $src = str_replace(' ', '%20', $src);
             $host = parse_url($src, PHP_URL_HOST);
             $ip = $host ? gethostbyname($host) : null;
             if (! $ip || ! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
@@ -44,7 +48,12 @@ class PdfPhoto
             try {
                 $r = Http::timeout(8)->withHeaders(['Accept' => 'image/*'])->get($src);
             } catch (\Throwable $e) {
+                \Log::warning('PdfPhoto fetch failed: '.$e->getMessage(), ['src' => $src]);
+
                 return null;
+            }
+            if (! $r->successful()) {
+                \Log::warning('PdfPhoto HTTP '.$r->status(), ['src' => $src]);
             }
 
             return $r->successful() && strlen($r->body()) < 12_000_000 ? $r->body() : null;

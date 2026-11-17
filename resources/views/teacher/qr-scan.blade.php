@@ -17,8 +17,9 @@
         <canvas id="canvas" hidden></canvas>
         <p id="result" style="font-weight: bold;"></p>
 
+        <p style="color:#6b6b5c;font-size:13px">Card ko 15-25 cm door rakhein, roshni mein, QR seedha ho aur camera focus ho.</p>
         <p>Camera na chale to code khud likhein:</p>
-        <input type="text" id="manual_code" maxlength="32" autocapitalize="characters">
+        <input type="text" id="manual_code" maxlength="64" autocapitalize="characters">
         <button type="button" id="manual_submit">Mark Present</button>
 
         <p>Ya gallery/screenshot se QR image select karein:</p>
@@ -33,7 +34,7 @@
             const CSRF = @json(csrf_token());
             const SAME_CODE_MS = 5000;
             const TICK_MS = 250;
-            const MAX_WIDTH = 640;
+            const MAX_WIDTH = 960;
             const video = document.getElementById('video');
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -86,7 +87,7 @@
                     canvas.height = Math.round(video.videoHeight * scale);
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                     const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                    const found = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+                    const found = jsQR(img.data, img.width, img.height, { inversionAttempts: 'attemptBoth' });
                     if (found && found.data) {
                         const code = found.data.trim().toUpperCase();
                         const now = Date.now();
@@ -110,7 +111,7 @@
                     return;
                 }
                 try {
-                    video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } });
                     await video.play();
                     requestAnimationFrame(tick);
                 } catch (e) {
@@ -134,7 +135,7 @@
                 canvas.height = Math.round(img.height * scale);
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 const data = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                const found = jsQR(data.data, data.width, data.height, { inversionAttempts: 'dontInvert' });
+                const found = jsQR(data.data, data.width, data.height, { inversionAttempts: 'attemptBoth' });
                 if (found && found.data) {
                     submitCode(found.data.trim().toUpperCase());
                 } else {

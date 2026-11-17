@@ -23,4 +23,14 @@ trait HasQrCode
 
         return $code;
     }
+
+    /** Make sure the record has a persisted qr_code (old imported rows may lack one). */
+    public function ensureQrCode(): string
+    {
+        if (empty($this->qr_code)) {
+            $this->forceFill(['qr_code' => static::generateUniqueQrCode()])->saveQuietly();
+        }
+
+        return $this->qr_code;
+    }
 }
