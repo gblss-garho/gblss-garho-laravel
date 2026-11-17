@@ -9,8 +9,8 @@
     .hm-hero .in { position:relative; text-align:center; padding:48px 20px; }
     .hm-pill { display:inline-flex; align-items:center; gap:8px; padding:6px 16px; border-radius:999px; background:rgba(255,255,255,.08); border:1px solid #D9A91A88; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:11px; font-weight:700; letter-spacing:1.5px; color:#D9A91A; backdrop-filter:blur(6px); }
     .hm-pill:before { content:""; width:6px; height:6px; border-radius:99px; background:#D9A91A; box-shadow:0 0 8px #D9A91A; }
-    .hm-hero h1 { font-family:'Baloo 2','Noto Serif','Noto Naskh Arabic',serif; font-weight:800; font-size:clamp(30px,6vw,52px); line-height:1.12; text-shadow:0 4px 20px rgba(0,0,0,.35); max-width:760px; margin:18px auto 0; color:#fff; }
-    .hm-tag { max-width:520px; margin:16px auto 0; font-family:'Baloo 2','Noto Naskh Arabic',serif; font-weight:600; font-size:16px; background:linear-gradient(90deg,#D9A91A,#3AA982,#D9A91A); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
+    .hm-hero h1 { font-family:'Baloo 2','Noto Serif','CustomSindhi','Noto Naskh Arabic',serif; font-weight:800; font-size:clamp(30px,6vw,52px); line-height:1.12; text-shadow:0 4px 20px rgba(0,0,0,.35); max-width:760px; margin:18px auto 0; color:#fff; }
+    .hm-tag { max-width:520px; margin:16px auto 0; font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif; font-weight:600; font-size:16px; background:linear-gradient(90deg,#D9A91A,#3AA982,#D9A91A); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; }
     .hm-motto { max-width:460px; margin:12px auto 0; color:#F8FAF8CC; font-size:15px; }
     .hm-btns { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin-top:30px; }
     .hm-btns a { padding:10px 24px; border-radius:999px; font-size:14px; font-weight:700; text-decoration:none; transition:transform .15s; }
@@ -24,27 +24,27 @@
     .hm-stat { position:relative; overflow:hidden; background:#fff; border:1px solid #E4EBE7; border-radius:16px; padding:20px 10px; text-align:center; box-shadow:0 4px 16px rgba(11,79,74,.08); }
     .hm-stat:before { content:""; position:absolute; top:0; left:0; right:0; height:3px; background:var(--c); }
     .hm-stat .ic { font-size:20px; }
-    .hm-stat b { display:block; font-family:'Baloo 2','Noto Naskh Arabic',serif; font-weight:800; font-size:28px; color:#075C42; }
+    .hm-stat b { display:block; font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif; font-weight:800; font-size:28px; color:#075C42; }
     .hm-stat span { font-size:12px; color:#66736D; font-family:'JetBrains Mono',ui-monospace,monospace; }
     .hm-head { text-align:center; margin: 0 0 22px; }
     .hm-head small { display:block; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:11px; letter-spacing:2px; color:#B98D08; font-weight:700; }
-    .hm-head h2 { font-family:'Baloo 2','Noto Naskh Arabic',serif; font-weight:700; font-size:24px; color:#075C42; margin:4px 0 0; }
+    .hm-head h2 { font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif; font-weight:700; font-size:24px; color:#075C42; margin:4px 0 0; }
     .hm-sec { margin-bottom:40px; }
     .hm-two { display:grid; grid-template-columns:1fr; gap:20px; } @media (min-width:800px){ .hm-two { grid-template-columns:1fr 1fr; } }
     .hm-green { border-radius:16px; padding:24px; background:linear-gradient(160deg,#0B7A5B,#063F31); color:#F8FAF8; box-shadow:0 10px 28px rgba(6,54,50,.28); }
-    .hm-green h3 { color:#fff; margin:0; font-family:'Baloo 2','Noto Naskh Arabic',serif; font-size:16px; }
+    .hm-green h3 { color:#fff; margin:0; font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif; font-size:16px; }
     .hm-green .tot { padding:3px 12px; border-radius:999px; font-size:12px; font-weight:700; background:rgba(217,169,26,.2); color:#D9A91A; border:1px solid #D9A91A66; }
     .hm-bar { display:flex; align-items:center; gap:10px; margin:14px 0; font-size:13px; }
     .hm-bar b { width:58px; color:#9be0c6; font-weight:600; }
     .hm-bar i { display:block; height:14px; border-radius:7px; background:linear-gradient(90deg,#D9A91A,#3AA982); }
     .hm-bar span { color:#D9A91A; font-weight:700; }
     .hm-white { border-radius:16px; padding:24px; background:#fff; border:1px solid #E4EBE7; box-shadow:0 6px 18px rgba(11,79,74,.07); }
-    .hm-white h3 { margin:0 0 6px; font-family:'Baloo 2','Noto Naskh Arabic',serif; font-size:16px; }
+    .hm-white h3 { margin:0 0 6px; font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif; font-size:16px; }
     .hm-feat { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; } @media (min-width:800px){ .hm-feat { grid-template-columns:repeat(4,1fr); } }
     .hm-fc { position:relative; overflow:hidden; background:#fff; border:1px solid #E4EBE7; border-radius:18px; padding:20px; box-shadow:0 6px 18px rgba(11,79,74,.07); }
     .hm-fc:before { content:""; position:absolute; top:0; left:0; right:0; height:4px; background:var(--c); }
     .hm-fc .ico { width:48px; height:48px; border-radius:16px; display:flex; align-items:center; justify-content:center; font-size:24px; margin-bottom:14px; background:var(--t); }
-    .hm-fc b { display:block; font-family:'Baloo 2','Noto Naskh Arabic',serif; font-size:15px; color:#075C42; margin-bottom:4px; }
+    .hm-fc b { display:block; font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif; font-size:15px; color:#075C42; margin-bottom:4px; }
     .hm-fc div.sd { font-size:13px; color:#17231F; line-height:1.7; }
     .hm-label { font-family:'JetBrains Mono',ui-monospace,monospace; font-size:11px; font-weight:700; letter-spacing:2px; color:#D9A91A; }
     .hm-mod { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; margin-top:18px; } @media (min-width:800px){ .hm-mod { grid-template-columns:repeat(4,1fr); } }
@@ -65,7 +65,7 @@
     .hm-t:before { content:""; position:absolute; top:0; left:0; right:0; height:5px; background:linear-gradient(90deg,#C9A227,#0B7A5B,#C9A227); }
     .hm-t .av { width:76px; height:76px; margin:4px auto 10px; border-radius:50%; padding:3px; background:linear-gradient(135deg,#C9A227,#0F5132); }
     .hm-t .av img, .hm-t .av .ph { width:100%; height:100%; border-radius:50%; object-fit:cover; background:#fff; display:flex; align-items:center; justify-content:center; font-size:26px; color:#075C42; }
-    .hm-t b { display:block; font-family:'Noto Serif','Noto Naskh Arabic',serif; font-size:15px; color:#075C42; }
+    .hm-t b { display:block; font-family:'Noto Serif','CustomSindhi','Noto Naskh Arabic',serif; font-size:15px; color:#075C42; }
     .hm-t .sub { display:inline-block; margin:6px 0; padding:3px 14px; border-radius:999px; background:#FDF1E1; color:#B98D08; font-size:13px; font-weight:600; }
     .hm-t p { font-style:italic; font-size:13px; color:#1F2A24; margin:6px 0 10px; }
     .hm-t a { display:inline-block; padding:6px 18px; border-radius:999px; border:1px solid #0B7A5B44; background:#E4F3F1; color:#0B7A5B; font-weight:700; font-size:13px; text-decoration:none; }
@@ -79,7 +79,7 @@
     .hm-lp { display:none; gap:16px; align-items:flex-start; } .hm-lp.on { display:flex; }
     .hm-lp .ph { width:70px; height:70px; flex:none; border-radius:50%; overflow:hidden; border:3px solid #fff; box-shadow:0 0 0 2px #0B7A5B; background:#E4F3F1; display:flex; align-items:center; justify-content:center; font-size:26px; }
     .hm-lp .ph img { width:100%; height:100%; object-fit:cover; }
-    .hm-lp q { display:block; font-family:'Noto Serif','Noto Naskh Arabic',serif; font-style:italic; font-size:16px; line-height:1.7; color:#17231F; quotes:"\201C" "\201D"; }
+    .hm-lp q { display:block; font-family:'Noto Serif','CustomSindhi','Noto Naskh Arabic',serif; font-style:italic; font-size:16px; line-height:1.7; color:#17231F; quotes:"\201C" "\201D"; }
     .hm-lp .who { color:#075C42; font-weight:700; margin-top:10px; font-size:15px; }
     .hm-lp details summary { cursor:pointer; color:#0B7A5B; font-weight:700; font-size:13px; margin-top:6px; }
 </style>
@@ -144,7 +144,7 @@
 
 <div class="hm-sec">
     <div class="hm-label">DIGITAL SCHOOL</div>
-    <h2 style="font-family:'Baloo 2','Noto Naskh Arabic',serif;font-size:28px;font-weight:800;color:#075C42;margin:4px 0 0">A School Powered by Technology</h2>
+    <h2 style="font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif;font-size:28px;font-weight:800;color:#075C42;margin:4px 0 0">A School Powered by Technology</h2>
     <p style="color:#66736D;font-size:14px;max-width:650px">A complete digital school experience — connecting teachers, students and parents through practical tools.</p>
     <div class="hm-mod">
         <a class="hm-m" href="{{ route('login', [], false) }}"><i class="g">✓</i>Smart Attendance</a>
@@ -198,7 +198,7 @@
 
 @php
     $leaders = [];
-    foreach ([['minister', 'Minister', 'Minister for Education, Sindh'], ['secretary', 'Secretary', 'Secretary School Education, Sindh'], ['principal', 'Head Master', 'Head Master'], ['teo', 'TEO', 'Taluka Education Officer'], ['deo', 'DEO', 'District Education Officer']] as [$k, $tab, $full]) {
+    foreach ([['minister', 'Minister', 'Minister for Education, Sindh'], ['secretary', 'Secretary', 'Secretary School Education, Sindh'], ['deo', 'DEO', 'District Education Officer'], ['teo', 'TEO', 'Taluka Education Officer'], ['principal', 'Head Master', 'Head Master']] as [$k, $tab, $full]) {
         $m = $info->{$k.'_message'} ?? null;
         if (!empty($m)) { $leaders[] = ['tab' => $tab, 'name' => $info->{$k.'_name'} ?? '', 'photo' => $info->{$k.'_photo_url'} ?? '', 'msg' => $m]; }
     }

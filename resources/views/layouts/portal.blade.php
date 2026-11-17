@@ -16,15 +16,16 @@
         :root { --g:#0F5132; --g2:#1B7A4D; --g3:#0a3a24; --gold:#DBB43C; --gold2:#c9a22c; --bg:#F7F5EE; --ink:#2b2b2b; --muted:#6b6b6b; --red:#9b2c2c; }
         * { box-sizing: border-box; }
         html { -webkit-text-size-adjust: 100%; }
-        body { margin:0; background:var(--bg); color:var(--ink); font-family: 'Inter',system-ui,-apple-system,'Segoe UI',Roboto,'Noto Naskh Arabic','CustomSindhi',sans-serif; line-height:1.55; min-height:100vh; display:flex; flex-direction:column; }
+        body { margin:0; background:var(--bg); color:var(--ink); font-family: 'Inter',system-ui,-apple-system,'Segoe UI',Roboto,'CustomSindhi','Noto Naskh Arabic',sans-serif; line-height:1.55; min-height:100vh; display:flex; flex-direction:column; }
         a { color: var(--g2); }
-        h1, h2, h3, .brand b { font-family: 'Noto Serif',Georgia,'Noto Naskh Arabic',serif; }
+        h1, h2, h3, .brand b { font-family: 'Noto Serif',Georgia,'CustomSindhi','Noto Naskh Arabic',serif; }
         body.has-bg::before { content:""; position:fixed; inset:0; z-index:-1; background: linear-gradient(#F7F5EFF2,#F7F5EFF2), var(--bgimg) center/cover no-repeat; }
         .wrap { width:100%; max-width: 1000px; margin: 0 auto; padding: 0 16px; }
 
-        /* Sindhi / Urdu text: Noto Naskh Arabic has the full Sindhi letter set (ڄ ڃ ڻ ڙ ڪ ڳ ھ); CustomSindhi is only the fallback */
+        /* Sindhi text uses CustomSindhi (the home-page hero look). Its ڄ looks like ڃ, so words containing ڄ get Noto Naskh Arabic (.sd-j, added by script below). */
+        .sd-j { font-family: 'Noto Naskh Arabic', serif !important; }
         .sd, .err, .ok { unicode-bidi: plaintext; }
-        .sd, :lang(sd) { font-family: 'Noto Naskh Arabic', 'CustomSindhi', 'Noto Nastaliq Urdu', serif !important; font-size: 1.08em; line-height: 1.9; }
+        .sd, :lang(sd) { font-family: 'CustomSindhi','Noto Naskh Arabic', 'Noto Nastaliq Urdu', serif !important; font-size: 1.08em; line-height: 1.9; }
         .sd-note { color: var(--muted); }
         .highlights { display:grid; grid-template-columns:1fr; gap:10px; margin: 6px 0 18px; }
         @media (min-width:700px){ .highlights { grid-template-columns: repeat(2,1fr); } }
@@ -88,7 +89,7 @@
         .hero-lk:after { content:""; position:absolute; left:0; right:0; bottom:0; height:6px; background:linear-gradient(90deg,#C9A227,#0F5132 50%,#C9A227); }
         .hero-lk .ring { width:112px; height:105px; margin:0 auto 12px; border-radius:0; border:0; background:none; padding:0; display:flex; }
         .hero-lk .ring img { width:100%; height:100%; border-radius:0; object-fit:contain; background:transparent; border:0; }
-        .hero-lk h2 { font-family:'Noto Serif',Georgia,'Noto Naskh Arabic',serif; color:#fff; font-size:30px; line-height:1.3; margin:0 0 14px; font-weight:700; }
+        .hero-lk h2 { font-family:'Noto Serif',Georgia,'CustomSindhi','Noto Naskh Arabic',serif; color:#fff; font-size:30px; line-height:1.3; margin:0 0 14px; font-weight:700; }
         .hero-lk .pill { display:inline-block; background:rgba(255,255,255,.14); border-radius:999px; padding:10px 22px; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:12px; letter-spacing:.14em; text-transform:uppercase; font-weight:600; }
         .hero-lk .dev { display:block; margin-top:20px; opacity:.55; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:13px; letter-spacing:.12em; }
         .lk-card { background:#fff; border:1px solid #E9E2CC; border-radius:24px; padding:26px 22px; box-shadow:0 1px 2px rgba(15,81,50,.04), 0 10px 24px -8px rgba(15,81,50,.14); margin:0 0 20px; }
@@ -106,7 +107,7 @@
         .pane { background:#fff; border:1px solid #E9E2CC; border-radius:26px; overflow:hidden; box-shadow:0 10px 26px -8px rgba(15,81,50,.16); margin:0 0 22px; }
         .pane-h { display:flex; align-items:center; gap:16px; padding:22px; color:#fff; background:linear-gradient(135deg,#0F6B47,#2d3a1a 120%); }
         .pane-h .ico { width:60px; height:60px; border-radius:18px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.18); display:flex; align-items:center; justify-content:center; font-size:28px; flex:none; }
-        .pane-h b { display:block; font-family:'Noto Serif','Noto Naskh Arabic',serif; font-size:24px; }
+        .pane-h b { display:block; font-family:'Noto Serif','CustomSindhi','Noto Naskh Arabic',serif; font-size:24px; }
         .pane-h small { display:block; font-family:'JetBrains Mono',ui-monospace,monospace; font-size:13px; letter-spacing:.16em; text-transform:uppercase; color:#e8d79a; margin-top:2px; }
         .pane-b { padding:22px; }
         .pane-b .tiles { margin:0; }
@@ -116,13 +117,13 @@
         .wel .av img, .wel .av div { width:100%; height:100%; border-radius:50%; object-fit:cover; background:#fff; color:#0F5132; display:flex; align-items:center; justify-content:center; font-size:30px; }
         .wel h2 { color:#fff; margin:0; font-size:32px; line-height:1.15; }
         .wel .sub { font-family:'JetBrains Mono',ui-monospace,monospace; color:#e8d79a; font-size:14px; letter-spacing:.06em; margin-top:6px; }
-        .wel .r { text-align:right; } .wel .r b { display:block; color:#D9A91A; font-size:18px; } .wel .r span { font-family:'Noto Serif','Noto Naskh Arabic',serif; font-size:26px; font-weight:700; }
+        .wel .r { text-align:right; } .wel .r b { display:block; color:#D9A91A; font-size:18px; } .wel .r span { font-family:'Noto Serif','CustomSindhi','Noto Naskh Arabic',serif; font-size:26px; font-weight:700; }
         .tb-grid { display:grid; grid-template-columns:1fr; gap:18px; } @media (min-width:700px){ .tb-grid { grid-template-columns:repeat(3,1fr); } }
         .tb { background:#fff; border:1px solid #E9E2CC; border-radius:22px; overflow:hidden; box-shadow:0 10px 24px -8px rgba(15,81,50,.14); }
         .tb .cover { height:150px; background:#E8F1EA; display:flex; align-items:center; justify-content:center; font-size:54px; }
         .tb .cover img { width:100%; height:100%; object-fit:cover; }
         .tb .bd { padding:16px 18px 18px; } .tb .bd small { display:block; font-family:'JetBrains Mono',monospace; color:#8B7B1E; font-weight:700; font-size:13px; }
-        .tb .bd b { display:block; font-family:'Noto Serif','Noto Naskh Arabic',serif; font-size:18px; color:#0F5132; margin:4px 0 12px; }
+        .tb .bd b { display:block; font-family:'Noto Serif','CustomSindhi','Noto Naskh Arabic',serif; font-size:18px; color:#0F5132; margin:4px 0 12px; }
         .tb .open { display:block; text-align:center; background:#12513a; color:#fff; border-radius:12px; padding:12px; text-decoration:none; font-weight:700; }
         .fb-sum { display:flex; align-items:center; gap:12px; margin:8px 0 14px; font-weight:600; } .fb-sum .st { color:#D9A91A; font-size:30px; letter-spacing:4px; }
         .fb-item { background:#fff; border:1px solid #E9E2CC; border-radius:18px; padding:16px 18px; margin-bottom:12px; box-shadow:0 6px 16px -8px rgba(15,81,50,.16); }
@@ -442,5 +443,27 @@
 </main>
 
 <footer class="site-foot">{{ $schoolName }} &mdash; records maintained per General Register &middot; <a href="{{ route('public.privacy', [], false) }}">Privacy</a></footer>
+<script>
+(function () {
+    // Wrap whole words containing ڄ (U+0684) so they are drawn in Noto Naskh Arabic, which has the right glyph.
+    function wrap(root) {
+        var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null), nodes = [], n;
+        while ((n = w.nextNode())) {
+            var p = n.parentNode && n.parentNode.nodeName;
+            if (n.nodeValue.indexOf('\u0684') > -1 && p !== 'SCRIPT' && p !== 'STYLE' && p !== 'TEXTAREA') { nodes.push(n); }
+        }
+        nodes.forEach(function (t) {
+            var frag = document.createDocumentFragment();
+            t.nodeValue.split(/(\s+)/).forEach(function (part) {
+                if (part.indexOf('\u0684') > -1) {
+                    var s = document.createElement('span'); s.className = 'sd-j'; s.textContent = part; frag.appendChild(s);
+                } else { frag.appendChild(document.createTextNode(part)); }
+            });
+            t.parentNode.replaceChild(frag, t);
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function () { wrap(document.body); });
+})();
+</script>
 </body>
 </html>
