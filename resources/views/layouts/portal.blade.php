@@ -243,8 +243,11 @@
             ['Chehra Enroll', route('teacher.face.enroll', [], false), 'teacher/face*'],
             ['QR Attendance', route('teacher.qr.scan', [], false), 'teacher/qr*'],
             ['Absentees', route('teacher.absentees', [], false), 'teacher/absentees*'],
+            ['Students Record', route('teacher.class-attendance', [], false), 'teacher/class-attendance*'],
+            ['Book Bank', route('teacher.bookbank.index', [], false), 'teacher/bookbank*'],
             ['Homework', route('teacher.homework.index', [], false), 'teacher/homework*'],
             ['Chhutti', route('teacher.leave.index', [], false), 'teacher/leave*'],
+            ['Downloads', route('downloads.index', [], false), 'downloads*'],
         ];
     } elseif ($role === 'admin') {
         $nav = [
@@ -259,6 +262,7 @@
             ['Leaving Certs', route('admin.leaving-certificates.index', [], false), 'admin/leaving-certificates*'],
             ['Promotions', route('admin.promotions.history', [], false), 'admin/promotions*'],
             ['Book Bank', route('admin.bookbank.index', [], false), 'admin/bookbank*'],
+            ['Downloads', route('downloads.index', [], false), 'downloads*'],
             ['Teacher Leave', route('admin.leave.index', [], false), 'admin/leave*'],
             ['Gallery', route('admin.media.index', [], false), 'admin/media*'],
             ['Contact Msgs', route('admin.contact.index', [], false), 'admin/contact*'],
@@ -281,6 +285,7 @@
             ['Gallery', route('public.gallery', [], false), 'gallery*'],
             ['Textbooks', route('public.textbooks', [], false), 'textbooks*'],
             ['Calendar', route('public.calendar', [], false), 'calendar*'],
+            ['Downloads', route('downloads.index', [], false), 'downloads*'],
             ['About', route('public.about', [], false), 'about*'],
             ['Contact Us', route('public.contact', [], false), 'contact*'],
             ['Feedback', route('public.feedback', [], false), 'feedback*'],
@@ -347,6 +352,7 @@
             ['Leaving Certificates', route('admin.leaving-certificates.index', [], false), 'admin/leaving-certificates*', '📄'],
             ['Promotions', route('admin.promotions.history', [], false), 'admin/promotions*', '🎓'],
             ['Book Bank', route('admin.bookbank.index', [], false), 'admin/bookbank*', '📖'],
+            ['Downloads', route('downloads.index', [], false), 'downloads*', '⬇️'],
             ['Teacher Leave', route('admin.leave.index', [], false), 'admin/leave*', '🏖️'],
             ['Gallery & Textbooks', route('admin.media.index', [], false), 'admin/media*', '🖼️'],
             ['School Settings', route('admin.settings.edit', [], false), 'admin/settings*', '⚙️'],
@@ -367,6 +373,9 @@
                 ['Chehra Enroll', route('teacher.face.enroll', [], false), 'teacher/face*', '🔒'],
                 ['QR Attendance', route('teacher.qr.scan', [], false), 'teacher/qr*', '📷'],
                 ['Absentees', route('teacher.absentees', [], false), 'teacher/absentees*', '📋'],
+                ['Students Record', route('teacher.class-attendance', [], false), 'teacher/class-attendance*', '📊'],
+                ['Book Bank', route('teacher.bookbank.index', [], false), 'teacher/bookbank*', '📖'],
+                ['Downloads', route('downloads.index', [], false), 'downloads*', '⬇️'],
                 ['Chhutti', route('teacher.leave.index', [], false), 'teacher/leave*', '🏖️'],
             ];
         }

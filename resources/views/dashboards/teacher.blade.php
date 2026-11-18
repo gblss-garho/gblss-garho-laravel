@@ -34,6 +34,7 @@
         <div class="pane-h"><span class="ico">📋</span><div><b>Class Work</b><small>Absentees &middot; homework &middot; leave</small></div></div>
         <div class="pane-b">
             <div class="tiles">
+                <a class="tile" href="{{ route('teacher.bookbank.index', [], false) }}"><b>Book Bank</b><span>Kitab issue, wapsi, register</span></a>
                 <a class="tile" href="{{ route('teacher.class-attendance', [], false) }}"><b>Students ka Record</b><span>Weekly / monthly, status, search</span></a>
                 <a class="tile" href="{{ route('teacher.absentees', [], false) }}"><b>Absentees</b><span>Ghair haazir students (WhatsApp)</span></a>
                 <a class="tile" href="{{ route('teacher.homework.index', [], false) }}"><b>Homework</b><span>Daily diary / homework</span></a>

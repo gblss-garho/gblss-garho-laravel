@@ -51,6 +51,9 @@ Route::middleware(['auth', 'role:teacher'])->group(function () {
     Route::get('/teacher/face-enroll', [FaceEnrollController::class, 'show'])->name('teacher.face.enroll');
     Route::post('/teacher/face-enroll', [FaceEnrollController::class, 'store'])->name('teacher.face.enroll.store');
     Route::get('/teacher/class-attendance', [\App\Http\Controllers\ClassAttendanceController::class, 'index'])->name('teacher.class-attendance');
+    Route::get('/teacher/bookbank', [\App\Http\Controllers\AdminBookBankController::class, 'index'])->name('teacher.bookbank.index');
+    Route::post('/teacher/bookbank/issue', [\App\Http\Controllers\AdminBookBankController::class, 'issue'])->name('teacher.bookbank.issue');
+    Route::post('/teacher/bookbank/issues/{id}/return', [\App\Http\Controllers\AdminBookBankController::class, 'giveBack'])->name('teacher.bookbank.return');
     Route::get('/teacher/qr-scan', [TeacherQrScanController::class, 'show'])->name('teacher.qr.scan');
     Route::post('/teacher/qr-scan', [TeacherQrScanController::class, 'store'])->name('teacher.qr.scan.store');
 });
@@ -169,3 +172,10 @@ Route::middleware(['auth', 'role:admin,teacher'])->group(function () {
 });
 
 Route::post('/parent-lookup/ai-tutor', [\App\Http\Controllers\AiTutorController::class, 'chat'])->middleware('throttle:20,1')->name('public.ai-tutor');
+
+Route::get('/downloads', [\App\Http\Controllers\DownloadsController::class, 'index'])->name('downloads.index');
+Route::get('/downloads/{id}/file', [\App\Http\Controllers\DownloadsController::class, 'file'])->name('downloads.file');
+Route::middleware(['auth', 'role:admin'])->group(function () {
+    Route::post('/downloads', [\App\Http\Controllers\DownloadsController::class, 'store'])->name('downloads.store');
+    Route::delete('/downloads/{id}', [\App\Http\Controllers\DownloadsController::class, 'destroy'])->name('downloads.destroy');
+});
