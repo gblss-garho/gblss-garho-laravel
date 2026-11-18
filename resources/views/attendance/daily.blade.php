@@ -57,38 +57,51 @@
                 @endforelse
             </div>
 
+            <div class="da-savebar"><span class="da-note" id="daNote"></span><button type="button" id="daSave" class="da-save">Save Attendance</button></div>
+
             <script>
                 (function () {
                     var URL = @json($saveUrl), CSRF = @json(csrf_token()), CLASS = @json($class), DATE = @json($date), CIRC = {{ $circ }};
-                    var list = document.getElementById('daList'), msg = document.getElementById('daMsg');
-                    function paint(t) {
-                        ['kT:total', 'kP:present', 'kA:absent', 'kL:leave'].forEach(function (p) { var a = p.split(':'); document.getElementById(a[0]).textContent = t[a[1]]; });
-                        document.getElementById('kC').textContent = t.percent + '%';
-                        document.getElementById('daPct').textContent = t.percent + '%';
-                        document.getElementById('daArc').setAttribute('stroke-dasharray', (CIRC * t.percent / 100) + ' ' + CIRC);
-                        document.getElementById('daLeft').textContent = t.unmarked > 0 ? t.unmarked + ' students not yet marked' : 'Sab students mark ho gaye';
-                        var marks = t.marks || {};
+                    var saved = @json($t['marks']), cur = Object.assign({}, saved), TOTAL = {{ $t['total'] }};
+                    var list = document.getElementById('daList'), msg = document.getElementById('daMsg'), btn = document.getElementById('daSave'), note = document.getElementById('daNote');
+                    function dirty() { var ids = new Set(Object.keys(saved).concat(Object.keys(cur))); var out = {}; ids.forEach(function (id) { if (saved[id] !== cur[id]) out[id] = cur[id] || 'clear'; }); return out; }
+                    function paint() {
+                        var c = { P: 0, A: 0, L: 0 };
+                        Object.keys(cur).forEach(function (k) { if (c[cur[k]] !== undefined) c[cur[k]]++; });
+                        var pct = TOTAL ? Math.round(c.P / TOTAL * 100) : 0, un = TOTAL - c.P - c.A - c.L;
+                        document.getElementById('kT').textContent = TOTAL; document.getElementById('kP').textContent = c.P;
+                        document.getElementById('kA').textContent = c.A; document.getElementById('kL').textContent = c.L;
+                        document.getElementById('kC').textContent = pct + '%'; document.getElementById('daPct').textContent = pct + '%';
+                        document.getElementById('daArc').setAttribute('stroke-dasharray', (CIRC * pct / 100) + ' ' + CIRC);
+                        document.getElementById('daLeft').textContent = un > 0 ? un + ' students not yet marked' : 'Sab students mark ho gaye';
                         [].forEach.call(list.querySelectorAll('.da-row'), function (row) {
-                            [].forEach.call(row.querySelectorAll('button'), function (b) {
-                                var on = marks[row.dataset.id] === b.dataset.s;
-                                b.className = on ? 'on k' + b.dataset.s : '';
-                            });
+                            [].forEach.call(row.querySelectorAll('button'), function (b) { b.className = cur[row.dataset.id] === b.dataset.s ? 'on k' + b.dataset.s : ''; });
                         });
-                    }
-                    function send(body) {
-                        msg.hidden = true;
-                        body.class = CLASS; body.date = DATE;
-                        return fetch(URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF }, body: JSON.stringify(body) })
-                            .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || 'Save nahi hua'); return j; }); })
-                            .then(paint)
-                            .catch(function (e) { msg.textContent = e.message; msg.hidden = false; });
+                        var n = Object.keys(dirty()).length;
+                        note.textContent = n ? n + ' tabdeeliyan save hona baqi hain' : 'Sab tabdeeliyan save hain';
+                        note.className = n ? 'da-note warn' : 'da-note';
+                        btn.disabled = !n;
                     }
                     list.addEventListener('click', function (e) {
                         var b = e.target.closest('button'); if (!b) return;
-                        var row = b.closest('.da-row');
-                        send({ student_id: row.dataset.id, status: b.classList.contains('on') ? 'clear' : b.dataset.s });
+                        var id = b.closest('.da-row').dataset.id;
+                        if (cur[id] === b.dataset.s) delete cur[id]; else cur[id] = b.dataset.s;
+                        paint();
                     });
-                    document.getElementById('daAll').onclick = function () { if (confirm('Sab students Present mark karein? (Leave wale same rahenge)')) send({ status: 'all_present' }); };
+                    document.getElementById('daAll').onclick = function () {
+                        list.querySelectorAll('.da-row').forEach(function (r) { if (cur[r.dataset.id] !== 'L') cur[r.dataset.id] = 'P'; });
+                        paint();
+                    };
+                    btn.onclick = function () {
+                        var changes = dirty(); if (!Object.keys(changes).length) return;
+                        btn.disabled = true; btn.textContent = 'Save ho raha hai...'; msg.hidden = true;
+                        fetch(URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF }, body: JSON.stringify({ class: CLASS, date: DATE, marks: changes }) })
+                            .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || 'Save nahi hua'); return j; }); })
+                            .then(function (j) { saved = Object.assign({}, j.marks || {}); cur = Object.assign({}, saved); btn.textContent = '\u2713 Save ho gaya'; setTimeout(function () { btn.textContent = 'Save Attendance'; paint(); }, 1500); paint(); })
+                            .catch(function (e) { msg.textContent = e.message; msg.hidden = false; btn.textContent = 'Save Attendance'; paint(); });
+                    };
+                    window.addEventListener('beforeunload', function (e) { if (Object.keys(dirty()).length) { e.preventDefault(); e.returnValue = ''; } });
+                    paint();
                 })();
             </script>
         @endif

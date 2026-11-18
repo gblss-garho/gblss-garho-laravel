@@ -25,3 +25,7 @@
 .da-row button.kP { background:#16A34A; border-color:#16A34A; color:#fff; }
 .da-row button.kA { background:#B91C1C; border-color:#B91C1C; color:#fff; }
 .da-row button.kL { background:#A8861F; border-color:#A8861F; color:#fff; }
+.da-savebar { position:sticky; bottom:84px; display:flex; align-items:center; justify-content:space-between; gap:10px; background:#fff; border:1px solid #E3DCC7; border-radius:18px; padding:10px 12px; margin:14px 0; box-shadow:0 10px 28px rgba(0,0,0,.12); }
+.da-note { font-size:13px; color:#6b6450; } .da-note.warn { color:#B45309; font-weight:700; }
+.da-save { font:inherit; font-weight:800; font-size:15px; border:0; border-radius:999px; padding:12px 26px; background:#0F5132; color:#FAF6EC; cursor:pointer; }
+.da-save:disabled { background:#CFC8AE; color:#fff; cursor:default; }

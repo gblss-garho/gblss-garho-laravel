@@ -43,6 +43,12 @@ class DailyAttendanceTest extends TestCase
             ->assertOk()->assertJson(['present' => 2, 'percent' => 100]);
         $this->assertSame(1, DB::table('attendance_records')->count());
 
+        // Save button: bulk staged changes
+        $this->postJson('/teacher/daily-attendance', ['class' => 'Class VI', 'date' => $today, 'marks' => ['s1' => 'A', 's2' => 'L', 'zzz' => 'P']])
+            ->assertOk()->assertJson(['present' => 0, 'absent' => 1, 'leave' => 1]);
+        $this->postJson('/teacher/daily-attendance', ['class' => 'Class VI', 'date' => $today, 'marks' => ['s1' => 'clear']])
+            ->assertOk()->assertJson(['absent' => 0, 'unmarked' => 1]);
+
         // other class / future date refused
         $this->postJson('/teacher/daily-attendance', ['class' => 'Class VII', 'date' => $today, 'student_id' => 's3', 'status' => 'P'])->assertStatus(403);
         $this->postJson('/teacher/daily-attendance', ['class' => 'Class VI', 'date' => now()->addDay()->toDateString(), 'student_id' => 's1', 'status' => 'P'])->assertStatus(422);

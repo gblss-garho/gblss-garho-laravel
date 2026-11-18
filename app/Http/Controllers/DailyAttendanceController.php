@@ -82,7 +82,8 @@ class DailyAttendanceController extends Controller
     {
         $d = $request->validate([
             'class' => 'required|string', 'date' => 'required|date_format:Y-m-d',
-            'student_id' => 'nullable|string', 'status' => 'required|in:P,A,L,clear,all_present',
+            'student_id' => 'nullable|string', 'status' => 'required_without:marks|nullable|in:P,A,L,clear,all_present',
+            'marks' => 'nullable|array', 'marks.*' => 'in:P,A,L,clear',
         ]);
         if (! in_array($d['class'], $this->classes($request), true)) {
             return response()->json(['message' => 'Yeh class aapki nahi hai.'], 403);
@@ -95,7 +96,21 @@ class DailyAttendanceController extends Controller
         $record = $this->record($date, $d['class']);
         $students = Student::where('passed_out', false)->where('class', $d['class'])->get();
 
-        if ($d['status'] === 'all_present') {
+        if (! empty($d['marks'])) {
+            // Save button: apply every staged change in one go.
+            $valid = $students->pluck('id')->flip();
+            foreach ($d['marks'] as $sid => $st) {
+                if (! isset($valid[$sid])) {
+                    continue;
+                }
+                $keys = ['attendance_record_id' => $record->id, 'student_id' => $sid];
+                if ($st === 'clear') {
+                    AttendanceMark::where($keys)->delete();
+                } else {
+                    AttendanceMark::updateOrCreate($keys, ['status' => $st, 'marked_via' => 'manual']);
+                }
+            }
+        } elseif (($d['status'] ?? null) === 'all_present') {
             foreach ($students as $s) {
                 $m = AttendanceMark::where(['attendance_record_id' => $record->id, 'student_id' => $s->id])->first();
                 if (! $m) {
