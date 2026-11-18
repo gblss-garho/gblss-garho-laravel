@@ -1,0 +1,957 @@
+From 587fa76b453750262f8abb99d04741dd1746719f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 18 Nov 2026 17:21:07 +0500
+Subject: [PATCH] Book Bank matrix register, hand-marked Daily Attendance
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HttsdfoZKD8pHnvrLZEBS2
+---
+ .../Controllers/AdminBookBankController.php   |  99 +++++++
+ .../Controllers/DailyAttendanceController.php | 136 +++++++++
+ public/css/bookbank.css                       |  47 +++
+ public/css/daily-attendance.css               |  27 ++
+ resources/views/admin/bookbank.blade.php      | 273 +++++++++++-------
+ resources/views/attendance/daily.blade.php    |  96 ++++++
+ resources/views/dashboards/admin.blade.php    |   1 +
+ resources/views/dashboards/teacher.blade.php  |   1 +
+ routes/web.php                                |   6 +
+ tests/Feature/DailyAttendanceTest.php         |  50 ++++
+ tests/Feature/DownloadsBookBankTest.php       |  26 +-
+ 11 files changed, 651 insertions(+), 111 deletions(-)
+ create mode 100644 app/Http/Controllers/DailyAttendanceController.php
+ create mode 100644 public/css/daily-attendance.css
+ create mode 100644 resources/views/attendance/daily.blade.php
+ create mode 100644 tests/Feature/DailyAttendanceTest.php
+
+diff --git a/app/Http/Controllers/AdminBookBankController.php b/app/Http/Controllers/AdminBookBankController.php
+index 657b481..78c5b09 100644
+--- a/app/Http/Controllers/AdminBookBankController.php
++++ b/app/Http/Controllers/AdminBookBankController.php
+@@ -9,6 +9,9 @@ use Illuminate\Support\Str;
+ 
+ class AdminBookBankController extends Controller
+ {
++    /** Column order of the printed Book Bank register. */
++    public const SUBJECTS = ['English', 'General Science', 'Mathematics', 'P/SST', 'Sindhi', 'Islamiat', 'Arabic', 'Urdu'];
++
+     private function isAdmin(): bool
+     {
+         return auth()->user()->role === 'admin';
+@@ -67,7 +70,35 @@ class AdminBookBankController extends Controller
+ 
+         $grById = Student::whereIn('id', $issues->pluck('student_id')->filter()->all())->pluck('gr_number', 'id');
+ 
++        // Matrix: student_id => subject => 'D' (distributed) | 'C' (collected)
++        $subjects = collect(self::SUBJECTS)->merge($classCatalog->pluck('subject'))->unique(fn ($x) => mb_strtolower($x))->values()->all();
++        $titleToSubject = $classCatalog->pluck('subject', 'book_title');
++        $matrix = [];
++        foreach (DB::table('bookbank_issues')->get()->filter(fn ($i) => $this->norm($i->class) === $n) as $i) {
++            $sub = $titleToSubject[$i->book_title] ?? null;
++            if (! $sub || ! $i->student_id) {
++                continue;
++            }
++            $state = $i->status === 'Returned' ? 'C' : 'D';
++            if (($matrix[$i->student_id][$sub] ?? '') !== 'C') {
++                $matrix[$i->student_id][$sub] = $state;
++            }
++        }
++        $stock = [
++            'total' => (int) $classCatalog->sum(fn ($b) => $b->available_qty + $b->issued_qty),
++            'issued' => (int) $classCatalog->sum('issued_qty'),
++            'remaining' => (int) $classCatalog->sum('available_qty'),
++        ];
++        $allStock = [
++            'total' => (int) $catalog->sum(fn ($b) => $b->available_qty + $b->issued_qty),
++            'issued' => (int) $catalog->sum('issued_qty'),
++            'remaining' => (int) $catalog->sum('available_qty'),
++        ];
++
+         return view('admin.bookbank', [
++            'view' => $request->query('view') === 'catalog' ? 'catalog' : 'register',
++            'subjects' => $subjects, 'matrix' => $matrix, 'stock' => $stock, 'allStock' => $allStock,
++            'catalogSubjects' => $classCatalog->pluck('subject')->map(fn ($x) => mb_strtolower($x))->all(),
+             'isAdmin' => $this->isAdmin(), 'classes' => $classes, 'class' => $class, 'st' => $st, 'q' => $q,
+             'catalog' => $this->isAdmin() ? $catalog : $classCatalog, 'classCatalog' => $classCatalog,
+             'students' => $class === '' ? collect() : Student::where('passed_out', false)->orderBy('name')->get()->filter(fn ($s) => $this->norm($s->class) === $n)->values(),
+@@ -151,4 +182,72 @@ class AdminBookBankController extends Controller
+         });
+         return $this->back('Kitaab wapas le li gayi.');
+     }
++
++    /** "+ Issue / Update Record": set distributed / collected per subject for one student. */
++    public function matrixSave(Request $r)
++    {
++        $d = $r->validate([
++            'student_id' => 'required|string', 'class' => 'nullable|string',
++            'dist' => 'nullable|array', 'dist.*' => 'string', 'coll' => 'nullable|array', 'coll.*' => 'string',
++        ]);
++        $student = Student::where('id', $d['student_id'])->where('passed_out', false)->first();
++        if (! $student || ! $this->canUseClass($student->class)) {
++            return back()->withErrors(['student_id' => 'Student nahi mila ya aapki class ka nahi.']);
++        }
++        $n = $this->norm($student->class);
++        $coll = array_map('mb_strtolower', $d['coll'] ?? []);
++        $dist = array_unique(array_merge(array_map('mb_strtolower', $d['dist'] ?? []), $coll)); // collected implies distributed
++        $errors = [];
++
++        DB::transaction(function () use ($student, $n, $coll, $dist, &$errors) {
++            $catalog = DB::table('bookbank_catalog')->get()->filter(fn ($b) => $this->norm($b->class) === $n);
++            foreach ($catalog as $b) {
++                $key = mb_strtolower($b->subject);
++                $b = DB::table('bookbank_catalog')->where('id', $b->id)->first();
++                $row = DB::table('bookbank_issues')->where('student_id', $student->id)->where('book_title', $b->book_title)->orderByDesc('created_at')->first();
++                $wantD = in_array($key, $dist, true);
++                $wantC = in_array($key, $coll, true);
++
++                if (! $wantD) {
++                    if ($row) {
++                        DB::table('bookbank_issues')->where('student_id', $student->id)->where('book_title', $b->book_title)->delete();
++                        if ($row->status === 'Issued') {
++                            DB::table('bookbank_catalog')->where('id', $b->id)->update(['available_qty' => $b->available_qty + 1, 'issued_qty' => max(0, $b->issued_qty - 1), 'updated_at' => now()]);
++                        }
++                    }
++                    continue;
++                }
++                if (! $row) {
++                    if ($b->available_qty < 1) {
++                        $errors[] = $b->subject.' ki copy maujood nahi.';
++                        continue;
++                    }
++                    DB::table('bookbank_issues')->insert([
++                        'id' => Str::random(8), 'student_id' => $student->id, 'student_name' => $student->name, 'class' => $student->class,
++                        'book_title' => $b->book_title, 'issue_date' => now()->toDateString(), 'condition' => 'Good',
++                        'status' => $wantC ? 'Returned' : 'Issued', 'return_date' => $wantC ? now()->toDateString() : null,
++                        'created_at' => now(), 'updated_at' => now(),
++                    ]);
++                    if (! $wantC) {
++                        DB::table('bookbank_catalog')->where('id', $b->id)->update(['available_qty' => $b->available_qty - 1, 'issued_qty' => $b->issued_qty + 1, 'updated_at' => now()]);
++                    }
++                } elseif ($wantC && $row->status === 'Issued') {
++                    DB::table('bookbank_issues')->where('id', $row->id)->update(['status' => 'Returned', 'return_date' => now()->toDateString(), 'updated_at' => now()]);
++                    DB::table('bookbank_catalog')->where('id', $b->id)->update(['available_qty' => $b->available_qty + 1, 'issued_qty' => max(0, $b->issued_qty - 1), 'updated_at' => now()]);
++                } elseif (! $wantC && $row->status === 'Returned') {
++                    if ($b->available_qty < 1) {
++                        $errors[] = $b->subject.' ki copy maujood nahi (dobara issue nahi ho saki).';
++                        continue;
++                    }
++                    DB::table('bookbank_issues')->where('id', $row->id)->update(['status' => 'Issued', 'return_date' => null, 'updated_at' => now()]);
++                    DB::table('bookbank_catalog')->where('id', $b->id)->update(['available_qty' => $b->available_qty - 1, 'issued_qty' => $b->issued_qty + 1, 'updated_at' => now()]);
++                }
++            }
++        });
++
++        $r->merge(['class' => $student->class]);
++        $resp = $this->back($student->name.' ka record update ho gaya.');
++
++        return $errors ? $resp->withErrors($errors) : $resp;
++    }
+ }
+diff --git a/app/Http/Controllers/DailyAttendanceController.php b/app/Http/Controllers/DailyAttendanceController.php
+new file mode 100644
+index 0000000..3b85c69
+--- /dev/null
++++ b/app/Http/Controllers/DailyAttendanceController.php
+@@ -0,0 +1,136 @@
++<?php
++
++namespace App\Http\Controllers;
++
++use App\Models\AttendanceMark;
++use App\Models\AttendanceRecord;
++use App\Models\Student;
++use Carbon\Carbon;
++use Illuminate\Database\QueryException;
++use Illuminate\Http\JsonResponse;
++use Illuminate\Http\Request;
++use Illuminate\Support\Str;
++
++/** Hand-marked daily attendance (Present / Absent / Leave) for teachers (own classes) and admin. */
++class DailyAttendanceController extends Controller
++{
++    private function isAdmin(Request $r): bool
++    {
++        return $r->user()->role === 'admin';
++    }
++
++    private function classes(Request $r): array
++    {
++        if ($this->isAdmin($r)) {
++            return Student::where('passed_out', false)->distinct()->orderBy('class')->pluck('class')->filter()->values()->all();
++        }
++
++        return array_values($r->user()->teacher?->assigned_classes_list ?? []);
++    }
++
++    private function date(Request $r): string
++    {
++        $d = (string) $r->input('date', '');
++        $d = preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) ? $d : Carbon::now()->toDateString();
++
++        return $d > Carbon::now()->toDateString() ? Carbon::now()->toDateString() : $d;
++    }
++
++    private function totals(string $date, string $class, $students): array
++    {
++        $record = AttendanceRecord::whereDate('date', $date)->where('class_name', $class)->first();
++        $marks = $record ? AttendanceMark::where('attendance_record_id', $record->id)->pluck('status', 'student_id') : collect();
++        $ids = $students->pluck('id');
++        $c = ['P' => 0, 'A' => 0, 'L' => 0];
++        foreach ($ids as $id) {
++            if (isset($marks[$id])) {
++                $c[$marks[$id]]++;
++            }
++        }
++        $total = $ids->count();
++        $marked = $c['P'] + $c['A'] + $c['L'];
++
++        return [
++            'marks' => $marks, 'total' => $total, 'present' => $c['P'], 'absent' => $c['A'], 'leave' => $c['L'],
++            'unmarked' => $total - $marked, 'percent' => $total > 0 ? (int) round($c['P'] / $total * 100) : 0,
++        ];
++    }
++
++    public function index(Request $request)
++    {
++        $classes = $this->classes($request);
++        $class = (string) $request->query('class', $classes[0] ?? '');
++        if ($class !== '' && ! in_array($class, $classes, true)) {
++            $class = $classes[0] ?? '';
++        }
++        $date = $this->date($request);
++        $students = $class === '' ? collect() : Student::where('passed_out', false)->where('class', $class)->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('name')->get();
++        $isAdmin = $this->isAdmin($request);
++
++        return view('attendance.daily', [
++            'classes' => $classes, 'class' => $class, 'date' => $date, 'students' => $students,
++            't' => $this->totals($date, $class, $students), 'isAdmin' => $isAdmin,
++            'base' => route($isAdmin ? 'admin.daily-attendance' : 'teacher.daily-attendance', [], false),
++            'saveUrl' => route($isAdmin ? 'admin.daily-attendance.mark' : 'teacher.daily-attendance.mark', [], false),
++            'scanUrl' => $isAdmin ? null : route('teacher.qr.scan', [], false),
++            'back' => route($isAdmin ? 'admin.dashboard' : 'teacher.dashboard', [], false),
++        ]);
++    }
++
++    /** Set (or clear) one student's status, or everyone's present. */
++    public function mark(Request $request): JsonResponse
++    {
++        $d = $request->validate([
++            'class' => 'required|string', 'date' => 'required|date_format:Y-m-d',
++            'student_id' => 'nullable|string', 'status' => 'required|in:P,A,L,clear,all_present',
++        ]);
++        if (! in_array($d['class'], $this->classes($request), true)) {
++            return response()->json(['message' => 'Yeh class aapki nahi hai.'], 403);
++        }
++        $date = $this->date(new Request(['date' => $d['date']]));
++        if ($date !== $d['date']) {
++            return response()->json(['message' => 'Aane wale din ki attendance nahi lag sakti.'], 422);
++        }
++
++        $record = $this->record($date, $d['class']);
++        $students = Student::where('passed_out', false)->where('class', $d['class'])->get();
++
++        if ($d['status'] === 'all_present') {
++            foreach ($students as $s) {
++                $m = AttendanceMark::where(['attendance_record_id' => $record->id, 'student_id' => $s->id])->first();
++                if (! $m) {
++                    AttendanceMark::create(['attendance_record_id' => $record->id, 'student_id' => $s->id, 'status' => 'P', 'marked_via' => 'manual']);
++                } elseif ($m->status === 'A') {
++                    $m->update(['status' => 'P', 'marked_via' => 'manual']);
++                }
++            }
++        } else {
++            $student = $students->firstWhere('id', $d['student_id'] ?? null);
++            if (! $student) {
++                return response()->json(['message' => 'Student nahi mila.'], 404);
++            }
++            $keys = ['attendance_record_id' => $record->id, 'student_id' => $student->id];
++            if ($d['status'] === 'clear') {
++                AttendanceMark::where($keys)->delete();
++            } else {
++                AttendanceMark::updateOrCreate($keys, ['status' => $d['status'], 'marked_via' => 'manual']);
++            }
++        }
++
++        return response()->json(['ok' => true] + $this->totals($date, $d['class'], $students));
++    }
++
++    private function record(string $date, string $class): AttendanceRecord
++    {
++        $find = fn () => AttendanceRecord::whereDate('date', $date)->where('class_name', $class)->first();
++
++        if ($r = $find()) {
++            return $r;
++        }
++        try {
++            return AttendanceRecord::create(['id' => str_replace('-', '', (string) Str::uuid()), 'date' => $date, 'class_name' => $class]);
++        } catch (QueryException $e) {
++            return $find() ?? throw $e;
++        }
++    }
++}
+diff --git a/public/css/bookbank.css b/public/css/bookbank.css
+index 1e2b1bb..131d108 100644
+--- a/public/css/bookbank.css
++++ b/public/css/bookbank.css
+@@ -25,7 +25,54 @@ table.bb-t { width:100%; border-collapse:collapse; font-size:13.5px; min-width:6
+ .bb-ok { background:#DCFCE7; color:#14532D; border-radius:12px; padding:9px 12px; margin:8px 0; }
+ .bb-er { background:#FEE2E2; color:#991B1B; border-radius:12px; padding:9px 12px; margin:8px 0; }
+ .bb-pr { display:none; }
++.bb { max-width: 1100px; }
++.bb-title { margin:4px 0 8px; font-family:'Noto Serif',Georgia,serif; font-size:22px; color:#1B7A4D; }
++.bb-top { display:flex; justify-content:flex-end; margin:4px 0 8px; }
++.bb-seg { display:inline-flex; gap:8px; }
++.bb-seg a { text-decoration:none; font-weight:700; font-size:13px; padding:8px 16px; border-radius:999px; background:#FBF9F2; border:1px solid #E3DCC7; color:#6b6450; }
++.bb-seg a.on { background:#0F5132; color:#FAF6EC; border-color:#0F5132; }
++.bb-bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:6px 0 12px; }
++.bb-bar form { margin:0; }
++.bb-bar select { font:inherit; font-size:14px; padding:10px 14px; border:2px solid #DBB43C; border-radius:12px; background:#fff; }
++.bb-btn.out { background:#fff; color:#0F5132; border:2px solid #0F5132; }
++.bb-panel { background:#FDF8EC; border:1px solid #E2C468; border-radius:16px; padding:14px; margin:10px 0; }
++.bb-ph { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; color:#0F5132; }
++.bb-x { border:0; background:none; font:inherit; font-size:13px; color:#6b6450; cursor:pointer; }
++.bb-l { display:block; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8a8470; margin:4px 0; }
++.bb-panel select { width:100%; font:inherit; font-size:15px; padding:10px; border:1px solid #D9D3BD; border-radius:12px; background:#fff; }
++.bb-sub { margin:12px 0; background:#fff; border:1px solid #EEE8D6; border-radius:12px; overflow:hidden; }
++.bb-sh, .bb-sr { display:grid; grid-template-columns:1fr 90px 90px; align-items:center; padding:8px 12px; }
++.bb-sh { background:#F4F0E3; font-size:11.5px; font-weight:800; color:#6b6450; text-transform:uppercase; letter-spacing:.05em; }
++.bb-sh span:not(:first-child), .bb-sr label { text-align:center; }
++.bb-sr { border-top:1px solid #F0EAD8; font-size:14px; font-weight:600; }
++.bb-sr.off { opacity:.45; } .bb-sr small { font-weight:400; font-size:11px; }
++.bb-sr label { display:block; cursor:pointer; padding:8px 0; }
++.bb-sr input { position:absolute; opacity:0; width:0; height:0; }
++.bb-sr label i { display:inline-block; width:26px; height:26px; border-radius:8px; border:2px solid #CFC8AE; background:#fff; vertical-align:middle; }
++.bb-sr input:checked + i { background:#0F5132; border-color:#0F5132; }
++.bb-sr input:checked + i::after { content:'\2713'; color:#fff; display:block; text-align:center; line-height:22px; font-weight:800; }
++.bb-muted { color:#8a8470; font-size:13px; }
++table.bb-m { border-collapse:separate; border-spacing:0; width:100%; font-size:13px; }
++.bb-m th { background:#F4F0E3; color:#0F5132; padding:8px 10px; font-size:12px; white-space:nowrap; text-align:center; border-bottom:1px solid #E3DCC7; }
++.bb-m th.grp { font-size:12.5px; border-left:1px solid #E3DCC7; }
++.bb-m td { padding:9px 10px; border-bottom:1px solid #EEE8D6; text-align:center; white-space:nowrap; }
++.bb-m .bl { border-left:1px solid #E3DCC7; }
++.bb-m .bb-sn { position:sticky; left:0; background:#fff; text-align:left; font-weight:700; z-index:1; min-width:130px; }
++.bb-m th.bb-sn { background:#F4F0E3; }
++.bb-m .ok { color:#0F5132; font-size:16px; } .bb-m .no { color:#C9C3AB; }
++.bb-sh2 { display:flex; justify-content:space-between; align-items:center; }
++.bb-chip { font-family:monospace; font-size:12px; background:#EAF3EF; color:#0F5132; padding:6px 12px; border-radius:999px; }
++.bb-ov { display:flex; flex-wrap:wrap; gap:18px; align-items:center; margin:8px 0 14px; }
++.bb-donut { position:relative; width:150px; height:150px; }
++.bb-donut div { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
++.bb-donut b { font-size:26px; color:#0F5132; } .bb-donut small { font-size:10px; color:#8a8470; }
++.bb-leg { list-style:none; margin:0; padding:0; font-size:13px; } .bb-leg li { display:flex; align-items:center; gap:8px; padding:4px 0; } .bb-leg i { width:10px; height:10px; border-radius:3px; } .bb-leg b { margin-left:auto; padding-left:18px; }
++.bb-k { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
++.bb-k div { background:#F4F0E3; border-radius:14px; padding:14px 8px; text-align:center; font-size:13px; color:#6b6450; }
++.bb-k b { display:block; font-size:26px; color:#0F5132; } .bb-k b.g { color:#A8861F; } .bb-k b.b { color:#1E4D6B; }
+ @media print {
++  .bb-m .bb-sn { position:static; } .bb-m th, .bb-m td { border:1px solid #888 !important; padding:3px 4px; font-size:10.5px; } .bb-m th { background:#eee !important; -webkit-print-color-adjust:exact; }
++  .bb-panel, .bb-bar, .bb-top { display:none !important; }
+   .site-head, .site-foot, .m-nav, .more-sheet, .more-backdrop, nav, .bb-noprint, .bb-tabs, .bb-form, .bb-tools, .bb-hero, .page-title { display:none !important; }
+   .bb-pr { display:block; text-align:center; margin-bottom:10px; }
+   .bb-pr h2 { margin:0; font-size:18px; } .bb-pr p { margin:2px 0; font-size:12.5px; }
+diff --git a/public/css/daily-attendance.css b/public/css/daily-attendance.css
+new file mode 100644
+index 0000000..34522c1
+--- /dev/null
++++ b/public/css/daily-attendance.css
+@@ -0,0 +1,27 @@
++.da { max-width: 760px; margin: 4px 0 40px; }
++.da-title { margin:4px 0 2px; font-family:'Noto Serif',Georgia,serif; color:#1B7A4D; }
++.da-err { background:#FEE2E2; color:#991B1B; border-radius:12px; padding:10px 14px; margin:10px 0; font-size:14px; }
++.da-form { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0; }
++.da-form label { display:flex; flex-direction:column; gap:4px; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:#8a8470; font-weight:700; }
++.da-form input, .da-form select { font:inherit; font-size:15px; padding:11px 12px; border:1px solid #E3DCC7; border-radius:14px; background:#F1EFE8; text-transform:none; letter-spacing:0; color:#222; width:100%; box-sizing:border-box; }
++.da-scan { display:inline-block; text-decoration:none; font-weight:700; background:linear-gradient(180deg,#DBB43C,#C9A02B); color:#2b2200; padding:13px 22px; border-radius:999px; margin:4px 0 12px; box-shadow:0 6px 16px rgba(201,160,43,.3); }
++.da-sum { background:#fff; border:1px solid #E3DCC7; border-radius:22px; padding:16px; display:flex; flex-wrap:wrap; gap:16px; align-items:center; box-shadow:0 8px 24px rgba(0,0,0,.05); }
++.da-donut { position:relative; width:130px; height:130px; flex:none; }
++.da-donut div { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
++.da-donut b { font-family:'Noto Serif',Georgia,serif; font-size:24px; color:#0F5132; } .da-donut small { font-size:11px; color:#A8861F; font-weight:700; }
++.da-k { flex:1 1 260px; display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
++.da-k div { background:#F5F1E4; border:1px solid #E8E1CA; border-radius:16px; padding:10px 6px; text-align:center; }
++.da-k small { display:block; font-size:10.5px; letter-spacing:.12em; color:#8a8470; font-weight:700; }
++.da-k b { display:block; font-family:'Noto Serif',Georgia,serif; font-size:24px; color:#222; margin-top:2px; }
++.da-k b.g { color:#0F5132; } .da-k b.r { color:#8A2232; } .da-k b.y { color:#A8861F; }
++.da-bar { display:flex; justify-content:space-between; align-items:center; margin:16px 2px 8px; font-weight:700; color:#A8861F; font-size:14px; }
++.da-bar button { font:inherit; font-weight:700; font-size:13px; border:2px solid #0F5132; color:#0F5132; background:#fff; border-radius:999px; padding:7px 16px; cursor:pointer; }
++.da-list { background:#fff; border:1px solid #E3DCC7; border-radius:20px; overflow:hidden; }
++.da-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; padding:11px 14px; border-bottom:1px solid #EFE9D6; }
++.da-row:last-child { border-bottom:0; }
++.da-row .n { font-weight:700; font-size:15px; color:#222; flex:1 1 150px; } .da-row .n i { font-style:normal; color:#8a8470; font-weight:600; margin-right:8px; }
++.da-row .b { display:flex; gap:6px; }
++.da-row button { font:inherit; font-weight:700; font-size:13px; padding:8px 14px; border-radius:999px; border:1.5px solid #E3DCC7; background:#fff; color:#6b6450; cursor:pointer; min-width:70px; }
++.da-row button.kP { background:#16A34A; border-color:#16A34A; color:#fff; }
++.da-row button.kA { background:#B91C1C; border-color:#B91C1C; color:#fff; }
++.da-row button.kL { background:#A8861F; border-color:#A8861F; color:#fff; }
+diff --git a/resources/views/admin/bookbank.blade.php b/resources/views/admin/bookbank.blade.php
+index fb40953..5abe36d 100644
+--- a/resources/views/admin/bookbank.blade.php
++++ b/resources/views/admin/bookbank.blade.php
+@@ -7,12 +7,14 @@
+     @php
+         $nm = fn ($c) => preg_replace('/^class|\s+/i', '', mb_strtolower((string) $c));
+         $schoolName = \Illuminate\Support\Facades\DB::table('school_info')->value('name') ?? 'Government Boys Lower Secondary School Garho';
+-        $keep = ['class' => $class];
++        $short = fn ($c) => trim(preg_replace('/^class\s*/i', '', (string) $c));
++        $s = $stock;
++        $pct = $s['total'] > 0 ? round($s['issued'] / $s['total'] * 100, 1) : 0;
++        $circ = 2 * M_PI * 52;
+     @endphp
+     <div class="bb">
+         <p class="bb-noprint" style="margin:0"><a href="{{ $back }}">&larr; Dashboard</a></p>
+-        <h1 class="bb-noprint" style="margin:4px 0 2px">Book Bank Register</h1>
+-        <p class="sd sd-note bb-noprint" style="margin:0">مٿي مان ڪلاس چونڊيو ته رجسٽر نظر اچي — ڪاغذي بوڪ بينڪ رجسٽر وانگر، هر ڪلاس جو رڪارڊ الڳ ڏٺو ويندو آهي.</p>
++        <h1 class="bb-noprint bb-title">Book Bank &mdash; Sindh Textbook Board Distribution</h1>
+ 
+         @if (session('ok'))<div class="bb-ok bb-noprint">{{ session('ok') }}</div>@endif
+         @foreach ($errors->all() as $e)<div class="bb-er bb-noprint">{{ $e }}</div>@endforeach
+@@ -20,124 +22,177 @@
+         @if (count($classes) === 0)
+             <div class="bb-er">Koi class assign nahi hai.</div>
+         @else
+-            <div class="bb-tabs">
+-                @foreach ($classes as $c)
+-                    <a href="{{ $base }}?class={{ urlencode($c) }}" @class(['on' => $nm($c) === $nm($class)])>{{ $c }}</a>
+-                @endforeach
++            <div class="bb-top bb-noprint">
++                <div class="bb-seg">
++                    <a href="{{ $base }}?class={{ urlencode($class) }}" @class(['on' => $view === 'register'])>Student Register</a>
++                    <a href="{{ $base }}?class={{ urlencode($class) }}&view=catalog" @class(['on' => $view === 'catalog'])>Book Catalog</a>
++                </div>
+             </div>
+-
+-            <section class="bb-hero"><i></i><div>
+-                <b>{{ $class }} &mdash; Book Bank</b>
+-                <span>{{ $openCount }} kitaabein abhi issue &middot; {{ $classCatalog->count() }} titles &middot; {{ $students->count() }} students</span>
+-            </div></section>
+-
+-            <div class="bb-card bb-noprint">
+-                <h2>Kitaab issue karein</h2>
+-                <form method="POST" action="{{ route($prefix.'.bookbank.issue', [], false) }}" class="bb-form">
+-                    @csrf
+-                    <input type="hidden" name="class" value="{{ $class }}">
+-                    <select name="catalog_id" required>
+-                        <option value="">Kitaab chunein</option>
+-                        @foreach ($classCatalog as $b)
+-                            @if ($b->available_qty > 0)<option value="{{ $b->id }}">{{ $b->subject }} &ndash; {{ $b->book_title }} ({{ $b->available_qty }})</option>@endif
+-                        @endforeach
+-                    </select>
+-                    <select name="student_id" required>
+-                        <option value="">Student chunein</option>
+-                        @foreach ($students as $s)<option value="{{ $s->id }}">{{ $s->name }} (GR {{ $s->gr_number }})</option>@endforeach
++            <div class="bb-bar bb-noprint">
++                <form method="GET" action="{{ $base }}">
++                    <input type="hidden" name="view" value="{{ $view }}">
++                    <select name="class" onchange="this.form.submit()" aria-label="Class">
++                        @foreach ($classes as $c)<option value="{{ $c }}" @selected($nm($c) === $nm($class))>{{ str_starts_with(strtolower($c), 'class') ? $c : 'Class '.$c }}</option>@endforeach
+                     </select>
+-                    <button type="submit">Issue</button>
+                 </form>
+-                @if ($classCatalog->isEmpty())<p style="color:#8a8470;font-size:13px">Is class ke liye abhi koi kitaab catalog mein nahi.@if ($isAdmin) Neeche se add karein.@else Admin se catalog mein add karwayein.@endif</p>@endif
++                @if ($view === 'register')
++                    <button type="button" class="bb-btn" id="bbOpen">+ Issue / Update Record</button>
++                @elseif ($isAdmin)
++                    <button type="button" class="bb-btn" id="bbOpenCat">+ Add Book to Catalog</button>
++                @endif
++                <button type="button" class="bb-btn out" onclick="window.print()">&#128424; Print / Save as PDF</button>
+             </div>
+ 
+-            <div class="bb-card">
+-                <div class="bb-pr">
+-                    <h2>{{ $schoolName }}</h2>
+-                    <p><b>Book Bank Register &mdash; {{ $class }}</b></p>
+-                    <p>Print date: {{ now()->format('d M Y') }}@if ($st !== 'all') &middot; {{ $st }}@endif</p>
+-                </div>
+-                <form method="GET" action="{{ $base }}" class="bb-tools">
+-                    <input type="hidden" name="class" value="{{ $class }}">
+-                    <select name="st" onchange="this.form.submit()">
+-                        <option value="all" @selected($st === 'all')>Sab record</option>
+-                        <option value="Issued" @selected($st === 'Issued')>Abhi issue (wapas nahi aayi)</option>
+-                        <option value="Returned" @selected($st === 'Returned')>Wapas aa chuki</option>
+-                    </select>
+-                    <input type="search" name="q" value="{{ $q }}" placeholder="Student ya kitaab search">
+-                    <button class="bb-btn" type="submit">Dhundein</button>
+-                    <button class="bb-btn gold" type="button" onclick="window.print()">&#128424; Print Register</button>
+-                </form>
+-                <div class="bb-scroll">
+-                    <table class="bb-t">
+-                        <tr><th>#</th><th>Student</th><th>GR</th><th>Kitaab</th><th>Issue</th><th>Wapsi</th><th>Halat</th><th>Status</th><th class="bb-noprint"></th></tr>
+-                        @forelse ($issues as $n => $i)
+-                            <tr>
+-                                <td>{{ $n + 1 }}</td><td>{{ $i->student_name }}</td><td>{{ $grById[$i->student_id] ?? '' }}</td><td>{{ $i->book_title }}</td>
+-                                <td>{{ substr((string) $i->issue_date, 0, 10) }}</td><td>{{ substr((string) $i->return_date, 0, 10) }}</td>
+-                                <td>@if ($i->status === 'Returned')<span class="pill {{ $i->condition === 'Damaged' ? 'dm' : 'r' }}">{{ $i->condition }}</span>@endif</td>
+-                                <td><span class="pill {{ $i->status === 'Issued' ? 'i' : 'r' }}">{{ $i->status === 'Issued' ? 'Issued' : 'Returned' }}</span></td>
+-                                <td class="bb-noprint">
+-                                    @if ($i->status === 'Issued')
+-                                        <form method="POST" action="{{ route($prefix.'.bookbank.return', $i->id, false) }}" class="bb-form" style="flex-wrap:nowrap">
+-                                            @csrf
+-                                            <input type="hidden" name="class" value="{{ $class }}">
+-                                            <select name="condition" style="flex:0 0 90px"><option>Good</option><option>Fair</option><option>Damaged</option></select>
+-                                            <button type="submit">Wapas</button>
+-                                        </form>
+-                                    @endif
+-                                </td>
+-                            </tr>
+-                        @empty
+-                            <tr><td colspan="9"><span class="sd">هن ڪلاس جو ڪو رڪارڊ ناهي.</span></td></tr>
+-                        @endforelse
+-                    </table>
+-                </div>
++            <div class="bb-pr">
++                <h2>{{ $schoolName }}</h2>
++                <p><b>Book Bank &mdash; {{ $view === 'catalog' ? 'Stock' : 'Student Register' }} &mdash; Class {{ $short($class) }}</b></p>
++                <p>Print date: {{ now()->format('d M Y') }}</p>
+             </div>
+ 
+-            <div class="bb-card">
+-                <h2>Stock (catalog){{ $isAdmin ? ' — sab classes' : '' }}</h2>
+-                <div class="bb-scroll">
+-                    <table class="bb-t">
+-                        <tr><th>Class</th><th>Subject</th><th>Kitaab</th><th>Maujood</th><th>Issue</th>@if ($isAdmin)<th class="bb-noprint"></th>@endif</tr>
+-                        @foreach ($catalog as $b)
+-                            <tr>
+-                                <td>{{ $b->class }}</td><td>{{ $b->subject }}</td><td>{{ $b->book_title }}</td>
+-                                <td>
+-                                    @if ($isAdmin)
+-                                        <form method="POST" action="{{ route('admin.bookbank.catalog.qty', $b->id, false) }}" class="bb-form bb-noprint" style="flex-wrap:nowrap">
+-                                            @csrf <input type="hidden" name="class" value="{{ $class }}">
+-                                            <input type="number" name="available_qty" value="{{ $b->available_qty }}" min="0" style="flex:0 0 70px">
+-                                            <button type="submit">Save</button>
+-                                        </form>
+-                                        <span class="bb-pr">{{ $b->available_qty }}</span>
+-                                    @else {{ $b->available_qty }} @endif
+-                                </td>
+-                                <td>{{ $b->issued_qty }}</td>
+-                                @if ($isAdmin)
+-                                    <td class="bb-noprint">
+-                                        <form method="POST" action="{{ route('admin.bookbank.catalog.delete', $b->id, false) }}" onsubmit="return confirm('Hata dein?')">
+-                                            @csrf @method('DELETE') <input type="hidden" name="class" value="{{ $class }}">
+-                                            <button type="submit" class="bb-btn red">Hatayen</button>
+-                                        </form>
+-                                    </td>
+-                                @endif
+-                            </tr>
+-                        @endforeach
+-                    </table>
++            @if ($view === 'register')
++                <div class="bb-panel bb-noprint" id="bbPanel" hidden>
++                    <div class="bb-ph"><b>Issue / Update Record</b><button type="button" class="bb-x" id="bbClose">&times; Close</button></div>
++                    @if ($classCatalog->isEmpty())
++                        <p class="bb-muted">Is class ke liye catalog mein koi kitaab nahi.@if ($isAdmin) &ldquo;Book Catalog&rdquo; mein add karein.@else Admin se catalog mein add karwayein.@endif</p>
++                    @else
++                    <form method="POST" action="{{ route($prefix.'.bookbank.matrix', [], false) }}" id="bbForm">
++                        @csrf
++                        <label class="bb-l">Student</label>
++                        <select name="student_id" id="bbStu" required>
++                            <option value="">&mdash; Student chunein &mdash;</option>
++                            @foreach ($students as $st2)<option value="{{ $st2->id }}">{{ $st2->gr_number }} &middot; {{ $st2->name }}</option>@endforeach
++                        </select>
++                        <div class="bb-sub">
++                            <div class="bb-sh"><span>Subject</span><span>Distributed</span><span>Collected</span></div>
++                            @foreach ($subjects as $sub)
++                                @php $has = in_array(mb_strtolower($sub), $catalogSubjects, true); @endphp
++                                <div class="bb-sr @if(! $has) off @endif">
++                                    <span>{{ $sub }}@if (! $has) <small>(catalog mein nahi)</small>@endif</span>
++                                    <label><input type="checkbox" name="dist[]" value="{{ $sub }}" data-d="{{ $sub }}" @disabled(! $has)><i></i></label>
++                                    <label><input type="checkbox" name="coll[]" value="{{ $sub }}" data-c="{{ $sub }}" @disabled(! $has)><i></i></label>
++                                </div>
++                            @endforeach
++                        </div>
++                        <button class="bb-btn gold" type="submit">Save Record</button>
++                    </form>
++                    @endif
++                </div>
++
++                <div class="bb-card">
++                    <div class="bb-scroll">
++                        <table class="bb-m">
++                            <thead>
++                                <tr>
++                                    <th rowspan="2" class="bb-sn">Student</th><th rowspan="2">GR#</th>
++                                    <th colspan="{{ count($subjects) }}" class="grp">Books Distributed</th>
++                                    <th colspan="{{ count($subjects) }}" class="grp">Books Collected</th>
++                                </tr>
++                                <tr>
++                                    @foreach (['D', 'C'] as $_)@foreach ($subjects as $sub)<th class="sb @if($loop->first) bl @endif">{{ $sub }}</th>@endforeach @endforeach
++                                </tr>
++                            </thead>
++                            <tbody>
++                                @forelse ($students as $st2)
++                                    <tr>
++                                        <td class="bb-sn">{{ $st2->name }}</td><td>{{ $st2->gr_number }}</td>
++                                        @foreach (['D', 'C'] as $col)
++                                            @foreach ($subjects as $sub)
++                                                @php $v = $matrix[$st2->id][$sub] ?? null; $on = $col === 'D' ? $v !== null : $v === 'C'; @endphp
++                                                <td class="c @if($loop->first) bl @endif">{!! $on ? '<b class="ok">&#10003;</b>' : '<span class="no">&ndash;</span>' !!}</td>
++                                            @endforeach
++                                        @endforeach
++                                    </tr>
++                                @empty
++                                    <tr><td colspan="{{ 2 + count($subjects) * 2 }}"><span class="sd">هن ڪلاس ۾ ڪو شاگرد ناهي.</span></td></tr>
++                                @endforelse
++                            </tbody>
++                        </table>
++                    </div>
+                 </div>
++                <script>
++                    (function () {
++                        var M = @json($matrix), panel = document.getElementById('bbPanel');
++                        var open = document.getElementById('bbOpen'), close = document.getElementById('bbClose'), stu = document.getElementById('bbStu');
++                        if (open) open.onclick = function () { panel.hidden = !panel.hidden; if (!panel.hidden) panel.scrollIntoView({behavior: 'smooth', block: 'start'}); };
++                        if (close) close.onclick = function () { panel.hidden = true; };
++                        if (!stu) return;
++                        var D = [].slice.call(document.querySelectorAll('[data-d]')), C = [].slice.call(document.querySelectorAll('[data-c]'));
++                        function load() {
++                            var m = M[stu.value] || {};
++                            D.forEach(function (b) { b.checked = !!m[b.dataset.d]; });
++                            C.forEach(function (b) { b.checked = m[b.dataset.c] === 'C'; });
++                        }
++                        stu.onchange = load;
++                        C.forEach(function (b) { b.onchange = function () { if (b.checked) D.filter(function (d) { return d.dataset.d === b.dataset.c; })[0].checked = true; }; });
++                        D.forEach(function (b) { b.onchange = function () { if (!b.checked) C.filter(function (c) { return c.dataset.c === b.dataset.d; })[0].checked = false; }; });
++                    })();
++                </script>
++            @else
+                 @if ($isAdmin)
+-                    <h3 class="bb-noprint">Nayi kitaab</h3>
+-                    <form method="POST" action="{{ route('admin.bookbank.catalog.add', [], false) }}" class="bb-form bb-noprint">
++                <div class="bb-panel bb-noprint" id="bbCat" hidden>
++                    <div class="bb-ph"><b>Add Book to Catalog</b><button type="button" class="bb-x" onclick="document.getElementById('bbCat').hidden=true">&times; Close</button></div>
++                    <form method="POST" action="{{ route('admin.bookbank.catalog.add', [], false) }}" class="bb-form">
+                         @csrf
+-                        <input name="class" placeholder="Class (VI)" value="{{ $class }}" required style="flex:0 0 90px">
+-                        <input name="subject" placeholder="Subject" required>
+-                        <input name="book_title" placeholder="Kitaab ka naam" required>
+-                        <input type="number" name="available_qty" placeholder="Tadaad" min="0" required style="flex:0 0 90px">
+-                        <button type="submit">Add</button>
++                        <input name="class" placeholder="Class (VI)" value="{{ $short($class) }}" required style="flex:0 0 90px">
++                        <input name="subject" placeholder="Subject" required list="bbSubj">
++                        <datalist id="bbSubj">@foreach (\App\Http\Controllers\AdminBookBankController::SUBJECTS as $x)<option value="{{ $x }}">@endforeach</datalist>
++                        <input name="book_title" placeholder="Book title" required>
++                        <input type="number" name="available_qty" placeholder="Total quantity" min="0" required style="flex:0 0 130px">
++                        <button type="submit">Save Catalog Entry</button>
+                     </form>
++                    <p class="bb-muted">&ldquo;Total quantity&rdquo; = abhi school ke paas maujood copies. Issued khud update hoti hai.</p>
++                </div>
++                <script>document.getElementById('bbOpenCat').onclick=function(){var p=document.getElementById('bbCat');p.hidden=!p.hidden;};</script>
+                 @endif
+-            </div>
++
++                <div class="bb-card bb-stock">
++                    <div class="bb-sh2"><h2>Stock Overview</h2><span class="bb-chip">Class {{ $short($class) }}</span></div>
++                    <div class="bb-ov">
++                        <div class="bb-donut">
++                            <svg viewBox="0 0 120 120" width="150" height="150" role="img" aria-label="Stock">
++                                <circle cx="60" cy="60" r="52" fill="none" stroke="#0F5132" stroke-width="14"/>
++                                @if ($s['issued'] > 0)<circle cx="60" cy="60" r="52" fill="none" stroke="#DBB43C" stroke-width="14" stroke-dasharray="{{ max(3, $circ * $s['issued'] / max(1, $s['total'])) }} {{ $circ }}" transform="rotate(-90 60 60)"/>@endif
++                            </svg>
++                            <div><b>{{ $s['total'] }}</b><small>Total Books</small></div>
++                        </div>
++                        <ul class="bb-leg"><li><i style="background:#0F5132"></i>Available (unissued) <b>{{ $s['remaining'] }}</b></li><li><i style="background:#DBB43C"></i>Currently Issued <b>{{ $s['issued'] }}</b></li></ul>
++                    </div>
++                    <div class="bb-k"><div><b>{{ $s['total'] }}</b>Total Received</div><div><b class="g">{{ $s['issued'] }}</b>Issued</div><div><b class="b">{{ $s['remaining'] }}</b>Remaining</div></div>
++                </div>
++
++                <div class="bb-card">
++                    <div class="bb-scroll">
++                        <table class="bb-t">
++                            <tr><th>Class</th><th>Subject</th><th>Book Title</th><th>Total</th><th>Issued</th><th>Remaining</th>@if ($isAdmin)<th class="bb-noprint">Actions</th>@endif</tr>
++                            @foreach ($classCatalog as $b)
++                                <tr>
++                                    <td>{{ $b->class }}</td><td>{{ $b->subject }}</td><td>{{ $b->book_title }}</td>
++                                    <td>{{ $b->available_qty + $b->issued_qty }}</td><td>{{ $b->issued_qty }}</td>
++                                    <td>
++                                        @if ($isAdmin)
++                                            <form method="POST" action="{{ route('admin.bookbank.catalog.qty', $b->id, false) }}" class="bb-form bb-noprint" style="flex-wrap:nowrap">
++                                                @csrf <input type="hidden" name="class" value="{{ $class }}">
++                                                <input type="number" name="available_qty" value="{{ $b->available_qty }}" min="0" style="flex:0 0 70px">
++                                                <button type="submit">Save</button>
++                                            </form>
++                                            <span class="bb-pr">{{ $b->available_qty }}</span>
++                                        @else {{ $b->available_qty }} @endif
++                                    </td>
++                                    @if ($isAdmin)
++                                        <td class="bb-noprint">
++                                            <form method="POST" action="{{ route('admin.bookbank.catalog.delete', $b->id, false) }}" onsubmit="return confirm('Hata dein?')">
++                                                @csrf @method('DELETE') <input type="hidden" name="class" value="{{ $class }}">
++                                                <button type="submit" class="bb-btn red">Delete</button>
++                                            </form>
++                                        </td>
++                                    @endif
++                                </tr>
++                            @endforeach
++                            @if ($classCatalog->isEmpty())<tr><td colspan="7">Is class ke liye catalog khali hai.</td></tr>@endif
++                        </table>
++                    </div>
++                </div>
++            @endif
+         @endif
+     </div>
+ @endsection
+diff --git a/resources/views/attendance/daily.blade.php b/resources/views/attendance/daily.blade.php
+new file mode 100644
+index 0000000..50bd6e9
+--- /dev/null
++++ b/resources/views/attendance/daily.blade.php
+@@ -0,0 +1,96 @@
++@extends('layouts.portal')
++
++@section('title', 'Daily Attendance')
++
++@section('content')
++    <link rel="stylesheet" href="{{ asset('css/daily-attendance.css') }}">
++    @php $circ = 2 * M_PI * 52; @endphp
++    <div class="da">
++        <p style="margin:0"><a href="{{ $back }}">&larr; Dashboard</a></p>
++        <h1 class="da-title">Daily Attendance</h1>
++        <p class="sd sd-note" style="margin:0">روزاني حاضري: Present، Absent يا Leave چونڊيو.</p>
++
++        @if (count($classes) === 0)
++            <div class="da-err">Koi class assign nahi hai.</div>
++        @else
++            <form method="GET" action="{{ $base }}" class="da-form">
++                <label>Date<input type="date" name="date" value="{{ $date }}" max="{{ now()->toDateString() }}" onchange="this.form.submit()"></label>
++                <label>Class<select name="class" onchange="this.form.submit()">@foreach ($classes as $c)<option value="{{ $c }}" @selected($c === $class)>{{ $c }}</option>@endforeach</select></label>
++            </form>
++
++            @if ($scanUrl)<a class="da-scan" href="{{ $scanUrl }}">&#128247; Scan ID Card to Mark Present</a>@endif
++
++            <section class="da-sum">
++                <div class="da-donut">
++                    <svg viewBox="0 0 120 120" width="130" height="130"><circle cx="60" cy="60" r="52" fill="none" stroke="#E3DDC9" stroke-width="12"/>
++                        <circle id="daArc" cx="60" cy="60" r="52" fill="none" stroke="#0F5132" stroke-width="12" stroke-linecap="round" stroke-dasharray="{{ $circ * $t['percent'] / 100 }} {{ $circ }}" transform="rotate(-90 60 60)"/></svg>
++                    <div><b id="daPct">{{ $t['percent'] }}%</b><small>Present</small></div>
++                </div>
++                <div class="da-k">
++                    <div><small>TOTAL</small><b id="kT">{{ $t['total'] }}</b></div>
++                    <div><small>PRESENT</small><b class="g" id="kP">{{ $t['present'] }}</b></div>
++                    <div><small>ABSENT</small><b class="r" id="kA">{{ $t['absent'] }}</b></div>
++                    <div><small>LEAVE</small><b class="y" id="kL">{{ $t['leave'] }}</b></div>
++                    <div><small>PERCENTAGE</small><b class="y" id="kC">{{ $t['percent'] }}%</b></div>
++                </div>
++            </section>
++
++            <div class="da-bar">
++                <span id="daLeft">{{ $t['unmarked'] > 0 ? $t['unmarked'].' students not yet marked' : 'Sab students mark ho gaye' }}</span>
++                <button type="button" id="daAll">Sab Present</button>
++            </div>
++            <div class="da-err" id="daMsg" hidden></div>
++
++            <div class="da-list" id="daList">
++                @forelse ($students as $s)
++                    @php $m = $t['marks'][$s->id] ?? null; @endphp
++                    <div class="da-row" data-id="{{ $s->id }}">
++                        <div class="n"><i>{{ $s->gr_number }}</i> {{ $s->name }}</div>
++                        <div class="b">
++                            @foreach (['P' => 'Present', 'A' => 'Absent', 'L' => 'Leave'] as $k => $lab)
++                                <button type="button" data-s="{{ $k }}" class="{{ $m === $k ? 'on k'.$k : '' }}">{{ $lab }}</button>
++                            @endforeach
++                        </div>
++                    </div>
++                @empty
++                    <div class="da-err">Is class mein koi student nahi.</div>
++                @endforelse
++            </div>
++
++            <script>
++                (function () {
++                    var URL = @json($saveUrl), CSRF = @json(csrf_token()), CLASS = @json($class), DATE = @json($date), CIRC = {{ $circ }};
++                    var list = document.getElementById('daList'), msg = document.getElementById('daMsg');
++                    function paint(t) {
++                        ['kT:total', 'kP:present', 'kA:absent', 'kL:leave'].forEach(function (p) { var a = p.split(':'); document.getElementById(a[0]).textContent = t[a[1]]; });
++                        document.getElementById('kC').textContent = t.percent + '%';
++                        document.getElementById('daPct').textContent = t.percent + '%';
++                        document.getElementById('daArc').setAttribute('stroke-dasharray', (CIRC * t.percent / 100) + ' ' + CIRC);
++                        document.getElementById('daLeft').textContent = t.unmarked > 0 ? t.unmarked + ' students not yet marked' : 'Sab students mark ho gaye';
++                        var marks = t.marks || {};
++                        [].forEach.call(list.querySelectorAll('.da-row'), function (row) {
++                            [].forEach.call(row.querySelectorAll('button'), function (b) {
++                                var on = marks[row.dataset.id] === b.dataset.s;
++                                b.className = on ? 'on k' + b.dataset.s : '';
++                            });
++                        });
++                    }
++                    function send(body) {
++                        msg.hidden = true;
++                        body.class = CLASS; body.date = DATE;
++                        return fetch(URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': CSRF }, body: JSON.stringify(body) })
++                            .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.message || 'Save nahi hua'); return j; }); })
++                            .then(paint)
++                            .catch(function (e) { msg.textContent = e.message; msg.hidden = false; });
++                    }
++                    list.addEventListener('click', function (e) {
++                        var b = e.target.closest('button'); if (!b) return;
++                        var row = b.closest('.da-row');
++                        send({ student_id: row.dataset.id, status: b.classList.contains('on') ? 'clear' : b.dataset.s });
++                    });
++                    document.getElementById('daAll').onclick = function () { if (confirm('Sab students Present mark karein? (Leave wale same rahenge)')) send({ status: 'all_present' }); };
++                })();
++            </script>
++        @endif
++    </div>
++@endsection
+diff --git a/resources/views/dashboards/admin.blade.php b/resources/views/dashboards/admin.blade.php
+index 559c81b..7081fab 100644
+--- a/resources/views/dashboards/admin.blade.php
++++ b/resources/views/dashboards/admin.blade.php
+@@ -9,6 +9,7 @@
+ 
+     <div class="tiles">
+         <a class="tile" href="{{ route('admin.students.index', [], false) }}"><b>Students</b><span>Register, edit, add</span></a>
++        <a class="tile" href="{{ route('admin.daily-attendance', [], false) }}"><b>Daily Attendance</b><span>Present / Absent / Leave hath se</span></a>
+         <a class="tile" href="{{ route('admin.class-attendance', [], false) }}"><b>Students Attendance</b><span>Weekly / monthly record aur status</span></a>
+         <a class="tile" href="{{ route('admin.gr-register', [], false) }}"><b>General Register (GR)</b><span>GR 1 se aakhri tak, purane bhi</span></a>
+         <a class="tile" href="{{ route('admin.teachers.index', [], false) }}"><b>Teachers</b><span>Staff records aur PIN</span></a>
+diff --git a/resources/views/dashboards/teacher.blade.php b/resources/views/dashboards/teacher.blade.php
+index a9fc631..a8f2830 100644
+--- a/resources/views/dashboards/teacher.blade.php
++++ b/resources/views/dashboards/teacher.blade.php
+@@ -26,6 +26,7 @@
+             <div class="tiles">
+                 <a class="tile" href="{{ route('teacher.attendance.index', [], false) }}"><b>Attendance</b><span>Check In / Check Out (face se)</span></a>
+                 <a class="tile" href="{{ route('teacher.face.enroll', [], false) }}"><b>Chehra Enroll Karen</b><span>Apna chehra register karein</span></a>
++                <a class="tile" href="{{ route('teacher.daily-attendance', [], false) }}"><b>Daily Attendance</b><span>Present / Absent / Leave hath se</span></a>
+                 <a class="tile" href="{{ route('teacher.qr.scan', [], false) }}"><b>QR Attendance</b><span>Students ki attendance</span></a>
+             </div>
+         </div>
+diff --git a/routes/web.php b/routes/web.php
+index 967a535..4306aa6 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -20,6 +20,8 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+ 
+ Route::middleware(['auth', 'role:admin'])->group(function () {
+     Route::get('/admin/dashboard', fn () => view('dashboards.admin'))->name('admin.dashboard');
++    Route::get('/admin/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'index'])->name('admin.daily-attendance');
++    Route::post('/admin/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'mark'])->name('admin.daily-attendance.mark');
+     Route::get('/admin/class-attendance', [\App\Http\Controllers\ClassAttendanceController::class, 'index'])->name('admin.class-attendance');
+     Route::get('/admin/gr-register', [\App\Http\Controllers\AdminGrRegisterController::class, 'index'])->name('admin.gr-register');
+     Route::get('/admin/gr-register/{reg}/edit', [\App\Http\Controllers\AdminGrRegisterController::class, 'edit'])->whereNumber('reg')->name('admin.gr-register.edit');
+@@ -50,9 +52,12 @@ Route::middleware(['auth', 'role:teacher'])->group(function () {
+     Route::post('/teacher/attendance/checkout', [TeacherAttendanceController::class, 'checkOut'])->name('teacher.attendance.checkout');
+     Route::get('/teacher/face-enroll', [FaceEnrollController::class, 'show'])->name('teacher.face.enroll');
+     Route::post('/teacher/face-enroll', [FaceEnrollController::class, 'store'])->name('teacher.face.enroll.store');
++    Route::get('/teacher/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'index'])->name('teacher.daily-attendance');
++    Route::post('/teacher/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'mark'])->name('teacher.daily-attendance.mark');
+     Route::get('/teacher/class-attendance', [\App\Http\Controllers\ClassAttendanceController::class, 'index'])->name('teacher.class-attendance');
+     Route::get('/teacher/bookbank', [\App\Http\Controllers\AdminBookBankController::class, 'index'])->name('teacher.bookbank.index');
+     Route::post('/teacher/bookbank/issue', [\App\Http\Controllers\AdminBookBankController::class, 'issue'])->name('teacher.bookbank.issue');
++    Route::post('/teacher/bookbank/matrix', [\App\Http\Controllers\AdminBookBankController::class, 'matrixSave'])->name('teacher.bookbank.matrix');
+     Route::post('/teacher/bookbank/issues/{id}/return', [\App\Http\Controllers\AdminBookBankController::class, 'giveBack'])->name('teacher.bookbank.return');
+     Route::get('/teacher/qr-scan', [TeacherQrScanController::class, 'show'])->name('teacher.qr.scan');
+     Route::post('/teacher/qr-scan', [TeacherQrScanController::class, 'store'])->name('teacher.qr.scan.store');
+@@ -138,6 +143,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/bookbank')->name('admin
+     Route::post('/catalog/{id}/qty', [\App\Http\Controllers\AdminBookBankController::class, 'catalogQty'])->name('catalog.qty');
+     Route::delete('/catalog/{id}', [\App\Http\Controllers\AdminBookBankController::class, 'catalogDelete'])->name('catalog.delete');
+     Route::post('/issue', [\App\Http\Controllers\AdminBookBankController::class, 'issue'])->name('issue');
++    Route::post('/matrix', [\App\Http\Controllers\AdminBookBankController::class, 'matrixSave'])->name('matrix');
+     Route::post('/issues/{id}/return', [\App\Http\Controllers\AdminBookBankController::class, 'giveBack'])->name('return');
+ });
+ 
+diff --git a/tests/Feature/DailyAttendanceTest.php b/tests/Feature/DailyAttendanceTest.php
+new file mode 100644
+index 0000000..101ba4d
+--- /dev/null
++++ b/tests/Feature/DailyAttendanceTest.php
+@@ -0,0 +1,50 @@
++<?php
++
++namespace Tests\Feature;
++
++use App\Models\Student;
++use App\Models\Teacher;
++use App\Models\User;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Illuminate\Support\Facades\DB;
++use Tests\TestCase;
++
++class DailyAttendanceTest extends TestCase
++{
++    use RefreshDatabase;
++
++    private function teacher(): User
++    {
++        $u = User::forceCreate(['name' => 'T', 'email' => 't@example.test', 'password' => bcrypt('x'), 'role' => 'teacher', 'is_active' => 1]);
++        Teacher::forceCreate(['id' => 'tchdaily01', 'user_id' => $u->id, 'name' => 'T', 'auth_email' => 't@example.test', 'assigned_class' => 'Class VI', 'created_at' => now()]);
++
++        return $u;
++    }
++
++    public function test_teacher_marks_attendance_by_hand(): void
++    {
++        Student::create(['id' => 's1', 'gr_number' => '5', 'name' => 'Ali', 'class' => 'Class VI', 'passed_out' => 0]);
++        Student::create(['id' => 's2', 'gr_number' => '6', 'name' => 'Bilal', 'class' => 'Class VI', 'passed_out' => 0]);
++        Student::create(['id' => 's3', 'gr_number' => '7', 'name' => 'Other', 'class' => 'Class VII', 'passed_out' => 0]);
++        $today = now()->toDateString();
++        $this->actingAs($this->teacher());
++
++        $this->get('/teacher/daily-attendance')->assertOk()->assertSee('Daily Attendance')->assertSee('Ali')->assertDontSee('Other');
++
++        $this->postJson('/teacher/daily-attendance', ['class' => 'Class VI', 'date' => $today, 'student_id' => 's1', 'status' => 'P'])
++            ->assertOk()->assertJson(['present' => 1, 'total' => 2, 'unmarked' => 1, 'percent' => 50]);
++        $this->postJson('/teacher/daily-attendance', ['class' => 'Class VI', 'date' => $today, 'student_id' => 's2', 'status' => 'A'])
++            ->assertOk()->assertJson(['absent' => 1, 'unmarked' => 0]);
++        $this->postJson('/teacher/daily-attendance', ['class' => 'Class VI', 'date' => $today, 'student_id' => 's2', 'status' => 'L'])
++            ->assertOk()->assertJson(['absent' => 0, 'leave' => 1]);
++        $this->postJson('/teacher/daily-attendance', ['class' => 'Class VI', 'date' => $today, 'student_id' => 's2', 'status' => 'clear'])
++            ->assertOk()->assertJson(['leave' => 0, 'unmarked' => 1]);
++        $this->postJson('/teacher/daily-attendance', ['class' => 'Class VI', 'date' => $today, 'status' => 'all_present'])
++            ->assertOk()->assertJson(['present' => 2, 'percent' => 100]);
++        $this->assertSame(1, DB::table('attendance_records')->count());
++
++        // other class / future date refused
++        $this->postJson('/teacher/daily-attendance', ['class' => 'Class VII', 'date' => $today, 'student_id' => 's3', 'status' => 'P'])->assertStatus(403);
++        $this->postJson('/teacher/daily-attendance', ['class' => 'Class VI', 'date' => now()->addDay()->toDateString(), 'student_id' => 's1', 'status' => 'P'])->assertStatus(422);
++    }
++}
+diff --git a/tests/Feature/DownloadsBookBankTest.php b/tests/Feature/DownloadsBookBankTest.php
+index b3fcf94..0cdefa6 100644
+--- a/tests/Feature/DownloadsBookBankTest.php
++++ b/tests/Feature/DownloadsBookBankTest.php
+@@ -53,14 +53,14 @@ class DownloadsBookBankTest extends TestCase
+         DB::table('bookbank_catalog')->insert(['id' => 'b1', 'class' => 'VI', 'subject' => 'English', 'book_title' => 'English VI', 'available_qty' => 3, 'issued_qty' => 0, 'created_at' => now(), 'updated_at' => now()]);
+ 
+         $this->actingAs($this->teacher('Class VI'));
+-        $this->get('/teacher/bookbank')->assertOk()->assertSee('Book Bank')->assertSee('English VI');
++        $this->get('/teacher/bookbank?view=catalog')->assertOk()->assertSee('Book Bank')->assertSee('English VI');
+ 
+         $this->post('/teacher/bookbank/issue', ['catalog_id' => 'b1', 'student_id' => 's2'])->assertSessionHasErrors('gr_number');
+         $this->post('/teacher/bookbank/issue', ['catalog_id' => 'b1', 'student_id' => 's1', 'class' => 'Class VI'])->assertRedirect();
+         $this->assertSame(2, (int) DB::table('bookbank_catalog')->where('id', 'b1')->value('available_qty'));
+ 
+         $issue = DB::table('bookbank_issues')->first();
+-        $this->get('/teacher/bookbank?class=Class+VI')->assertOk()->assertSee('Ali')->assertSee('Print Register');
++        $this->get('/teacher/bookbank?class=Class+VI')->assertOk()->assertSee('Ali')->assertSee('Books Distributed');
+         $this->post('/teacher/bookbank/issues/'.$issue->id.'/return', ['condition' => 'Fair'])->assertRedirect();
+         $this->assertSame(3, (int) DB::table('bookbank_catalog')->where('id', 'b1')->value('available_qty'));
+ 
+@@ -68,6 +68,28 @@ class DownloadsBookBankTest extends TestCase
+         $this->post('/admin/bookbank/catalog', ['class' => 'VI', 'subject' => 'x', 'book_title' => 'y', 'available_qty' => 1])->assertStatus(403);
+     }
+ 
++    public function test_book_bank_matrix_distribute_and_collect(): void
++    {
++        Student::create(['id' => 's1', 'gr_number' => '5', 'name' => 'Ali', 'class' => 'Class VI', 'passed_out' => 0]);
++        foreach ([['b1', 'English', 'English VI'], ['b2', 'Urdu', 'Urdu VI']] as [$id, $sub, $title]) {
++            DB::table('bookbank_catalog')->insert(['id' => $id, 'class' => 'VI', 'subject' => $sub, 'book_title' => $title, 'available_qty' => 2, 'issued_qty' => 0, 'created_at' => now(), 'updated_at' => now()]);
++        }
++        $this->actingAs($this->teacher('Class VI'));
++
++        $this->post('/teacher/bookbank/matrix', ['student_id' => 's1', 'dist' => ['English', 'Urdu']])->assertRedirect();
++        $this->assertSame(1, (int) DB::table('bookbank_catalog')->where('id', 'b1')->value('available_qty'));
++        $this->assertSame(2, DB::table('bookbank_issues')->where('status', 'Issued')->count());
++
++        $this->post('/teacher/bookbank/matrix', ['student_id' => 's1', 'dist' => ['English', 'Urdu'], 'coll' => ['English']])->assertRedirect();
++        $this->assertSame(2, (int) DB::table('bookbank_catalog')->where('id', 'b1')->value('available_qty'));
++        $this->assertSame('Returned', DB::table('bookbank_issues')->where('book_title', 'English VI')->value('status'));
++        $this->get('/teacher/bookbank?class=Class+VI')->assertOk()->assertSee('Ali')->assertSee('✓', false);
++
++        $this->post('/teacher/bookbank/matrix', ['student_id' => 's1'])->assertRedirect();
++        $this->assertSame(0, DB::table('bookbank_issues')->count());
++        $this->assertSame(2, (int) DB::table('bookbank_catalog')->where('id', 'b2')->value('available_qty'));
++    }
++
+     public function test_qr_scan_page_has_round_scanner(): void
+     {
+         \Carbon\Carbon::setTestNow(\Carbon\Carbon::parse('2026-11-18 09:30'));
+-- 
+2.43.0
+
