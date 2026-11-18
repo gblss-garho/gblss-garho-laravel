@@ -83,7 +83,7 @@ class DownloadsBookBankTest extends TestCase
         $this->post('/teacher/bookbank/matrix', ['student_id' => 's1', 'dist' => ['English', 'Urdu'], 'coll' => ['English']])->assertRedirect();
         $this->assertSame(2, (int) DB::table('bookbank_catalog')->where('id', 'b1')->value('available_qty'));
         $this->assertSame('Returned', DB::table('bookbank_issues')->where('book_title', 'English VI')->value('status'));
-        $this->get('/teacher/bookbank?class=Class+VI')->assertOk()->assertSee('Ali')->assertSee('✓', false);
+        $this->get('/teacher/bookbank?class=Class+VI')->assertOk()->assertSee('Ali')->assertSee('&#10003;', false);
 
         $this->post('/teacher/bookbank/matrix', ['student_id' => 's1'])->assertRedirect();
         $this->assertSame(0, DB::table('bookbank_issues')->count());
