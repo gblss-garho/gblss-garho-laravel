@@ -20,6 +20,8 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/dashboard', fn () => view('dashboards.admin'))->name('admin.dashboard');
+    Route::get('/admin/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'index'])->name('admin.daily-attendance');
+    Route::post('/admin/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'mark'])->name('admin.daily-attendance.mark');
     Route::get('/admin/class-attendance', [\App\Http\Controllers\ClassAttendanceController::class, 'index'])->name('admin.class-attendance');
     Route::get('/admin/gr-register', [\App\Http\Controllers\AdminGrRegisterController::class, 'index'])->name('admin.gr-register');
     Route::get('/admin/gr-register/{reg}/edit', [\App\Http\Controllers\AdminGrRegisterController::class, 'edit'])->whereNumber('reg')->name('admin.gr-register.edit');
@@ -50,9 +52,12 @@ Route::middleware(['auth', 'role:teacher'])->group(function () {
     Route::post('/teacher/attendance/checkout', [TeacherAttendanceController::class, 'checkOut'])->name('teacher.attendance.checkout');
     Route::get('/teacher/face-enroll', [FaceEnrollController::class, 'show'])->name('teacher.face.enroll');
     Route::post('/teacher/face-enroll', [FaceEnrollController::class, 'store'])->name('teacher.face.enroll.store');
+    Route::get('/teacher/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'index'])->name('teacher.daily-attendance');
+    Route::post('/teacher/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'mark'])->name('teacher.daily-attendance.mark');
     Route::get('/teacher/class-attendance', [\App\Http\Controllers\ClassAttendanceController::class, 'index'])->name('teacher.class-attendance');
     Route::get('/teacher/bookbank', [\App\Http\Controllers\AdminBookBankController::class, 'index'])->name('teacher.bookbank.index');
     Route::post('/teacher/bookbank/issue', [\App\Http\Controllers\AdminBookBankController::class, 'issue'])->name('teacher.bookbank.issue');
+    Route::post('/teacher/bookbank/matrix', [\App\Http\Controllers\AdminBookBankController::class, 'matrixSave'])->name('teacher.bookbank.matrix');
     Route::post('/teacher/bookbank/issues/{id}/return', [\App\Http\Controllers\AdminBookBankController::class, 'giveBack'])->name('teacher.bookbank.return');
     Route::get('/teacher/qr-scan', [TeacherQrScanController::class, 'show'])->name('teacher.qr.scan');
     Route::post('/teacher/qr-scan', [TeacherQrScanController::class, 'store'])->name('teacher.qr.scan.store');
@@ -138,6 +143,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/bookbank')->name('admin
     Route::post('/catalog/{id}/qty', [\App\Http\Controllers\AdminBookBankController::class, 'catalogQty'])->name('catalog.qty');
     Route::delete('/catalog/{id}', [\App\Http\Controllers\AdminBookBankController::class, 'catalogDelete'])->name('catalog.delete');
     Route::post('/issue', [\App\Http\Controllers\AdminBookBankController::class, 'issue'])->name('issue');
+    Route::post('/matrix', [\App\Http\Controllers\AdminBookBankController::class, 'matrixSave'])->name('matrix');
     Route::post('/issues/{id}/return', [\App\Http\Controllers\AdminBookBankController::class, 'giveBack'])->name('return');
 });
 

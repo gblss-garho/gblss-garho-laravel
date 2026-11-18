@@ -26,6 +26,7 @@
             <div class="tiles">
                 <a class="tile" href="{{ route('teacher.attendance.index', [], false) }}"><b>Attendance</b><span>Check In / Check Out (face se)</span></a>
                 <a class="tile" href="{{ route('teacher.face.enroll', [], false) }}"><b>Chehra Enroll Karen</b><span>Apna chehra register karein</span></a>
+                <a class="tile" href="{{ route('teacher.daily-attendance', [], false) }}"><b>Daily Attendance</b><span>Present / Absent / Leave hath se</span></a>
                 <a class="tile" href="{{ route('teacher.qr.scan', [], false) }}"><b>QR Attendance</b><span>Students ki attendance</span></a>
             </div>
         </div>

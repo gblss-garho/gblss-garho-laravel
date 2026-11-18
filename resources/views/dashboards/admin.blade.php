@@ -9,6 +9,7 @@
 
     <div class="tiles">
         <a class="tile" href="{{ route('admin.students.index', [], false) }}"><b>Students</b><span>Register, edit, add</span></a>
+        <a class="tile" href="{{ route('admin.daily-attendance', [], false) }}"><b>Daily Attendance</b><span>Present / Absent / Leave hath se</span></a>
         <a class="tile" href="{{ route('admin.class-attendance', [], false) }}"><b>Students Attendance</b><span>Weekly / monthly record aur status</span></a>
         <a class="tile" href="{{ route('admin.gr-register', [], false) }}"><b>General Register (GR)</b><span>GR 1 se aakhri tak, purane bhi</span></a>
         <a class="tile" href="{{ route('admin.teachers.index', [], false) }}"><b>Teachers</b><span>Staff records aur PIN</span></a>

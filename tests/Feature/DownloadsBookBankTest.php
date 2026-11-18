@@ -53,19 +53,41 @@ class DownloadsBookBankTest extends TestCase
         DB::table('bookbank_catalog')->insert(['id' => 'b1', 'class' => 'VI', 'subject' => 'English', 'book_title' => 'English VI', 'available_qty' => 3, 'issued_qty' => 0, 'created_at' => now(), 'updated_at' => now()]);
 
         $this->actingAs($this->teacher('Class VI'));
-        $this->get('/teacher/bookbank')->assertOk()->assertSee('Book Bank')->assertSee('English VI');
+        $this->get('/teacher/bookbank?view=catalog')->assertOk()->assertSee('Book Bank')->assertSee('English VI');
 
         $this->post('/teacher/bookbank/issue', ['catalog_id' => 'b1', 'student_id' => 's2'])->assertSessionHasErrors('gr_number');
         $this->post('/teacher/bookbank/issue', ['catalog_id' => 'b1', 'student_id' => 's1', 'class' => 'Class VI'])->assertRedirect();
         $this->assertSame(2, (int) DB::table('bookbank_catalog')->where('id', 'b1')->value('available_qty'));
 
         $issue = DB::table('bookbank_issues')->first();
-        $this->get('/teacher/bookbank?class=Class+VI')->assertOk()->assertSee('Ali')->assertSee('Print Register');
+        $this->get('/teacher/bookbank?class=Class+VI')->assertOk()->assertSee('Ali')->assertSee('Books Distributed');
         $this->post('/teacher/bookbank/issues/'.$issue->id.'/return', ['condition' => 'Fair'])->assertRedirect();
         $this->assertSame(3, (int) DB::table('bookbank_catalog')->where('id', 'b1')->value('available_qty'));
 
         // teacher cannot touch the catalog
         $this->post('/admin/bookbank/catalog', ['class' => 'VI', 'subject' => 'x', 'book_title' => 'y', 'available_qty' => 1])->assertStatus(403);
+    }
+
+    public function test_book_bank_matrix_distribute_and_collect(): void
+    {
+        Student::create(['id' => 's1', 'gr_number' => '5', 'name' => 'Ali', 'class' => 'Class VI', 'passed_out' => 0]);
+        foreach ([['b1', 'English', 'English VI'], ['b2', 'Urdu', 'Urdu VI']] as [$id, $sub, $title]) {
+            DB::table('bookbank_catalog')->insert(['id' => $id, 'class' => 'VI', 'subject' => $sub, 'book_title' => $title, 'available_qty' => 2, 'issued_qty' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        }
+        $this->actingAs($this->teacher('Class VI'));
+
+        $this->post('/teacher/bookbank/matrix', ['student_id' => 's1', 'dist' => ['English', 'Urdu']])->assertRedirect();
+        $this->assertSame(1, (int) DB::table('bookbank_catalog')->where('id', 'b1')->value('available_qty'));
+        $this->assertSame(2, DB::table('bookbank_issues')->where('status', 'Issued')->count());
+
+        $this->post('/teacher/bookbank/matrix', ['student_id' => 's1', 'dist' => ['English', 'Urdu'], 'coll' => ['English']])->assertRedirect();
+        $this->assertSame(2, (int) DB::table('bookbank_catalog')->where('id', 'b1')->value('available_qty'));
+        $this->assertSame('Returned', DB::table('bookbank_issues')->where('book_title', 'English VI')->value('status'));
+        $this->get('/teacher/bookbank?class=Class+VI')->assertOk()->assertSee('Ali')->assertSee('✓', false);
+
+        $this->post('/teacher/bookbank/matrix', ['student_id' => 's1'])->assertRedirect();
+        $this->assertSame(0, DB::table('bookbank_issues')->count());
+        $this->assertSame(2, (int) DB::table('bookbank_catalog')->where('id', 'b2')->value('available_qty'));
     }
 
     public function test_qr_scan_page_has_round_scanner(): void
