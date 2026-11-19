@@ -247,6 +247,7 @@
             ['Book Bank', route('teacher.bookbank.index', [], false), 'teacher/bookbank*'],
             ['Homework', route('teacher.homework.index', [], false), 'teacher/homework*'],
             ['Chhutti', route('teacher.leave.index', [], false), 'teacher/leave*'],
+            ['Student Leave', route('teacher.student-leave.index', [], false), 'teacher/student-leave*'],
             ['Downloads', route('downloads.index', [], false), 'downloads*'],
         ];
     } elseif ($role === 'admin') {
@@ -264,6 +265,7 @@
             ['Book Bank', route('admin.bookbank.index', [], false), 'admin/bookbank*'],
             ['Downloads', route('downloads.index', [], false), 'downloads*'],
             ['Teacher Leave', route('admin.leave.index', [], false), 'admin/leave*'],
+            ['Student Leave', route('admin.student-leave.index', [], false), 'admin/student-leave*'],
             ['Gallery', route('admin.media.index', [], false), 'admin/media*'],
             ['Contact Msgs', route('admin.contact.index', [], false), 'admin/contact*'],
             ['Security', route('admin.security.index', [], false), 'admin/security*'],
@@ -354,6 +356,7 @@
             ['Book Bank', route('admin.bookbank.index', [], false), 'admin/bookbank*', '📖'],
             ['Downloads', route('downloads.index', [], false), 'downloads*', '⬇️'],
             ['Teacher Leave', route('admin.leave.index', [], false), 'admin/leave*', '🏖️'],
+            ['Student Leave', route('admin.student-leave.index', [], false), 'admin/student-leave*', '📝'],
             ['Gallery & Textbooks', route('admin.media.index', [], false), 'admin/media*', '🖼️'],
             ['School Settings', route('admin.settings.edit', [], false), 'admin/settings*', '⚙️'],
             ['Contact Messages', route('admin.contact.index', [], false), 'admin/contact*', '📞'],
@@ -377,6 +380,7 @@
                 ['Book Bank', route('teacher.bookbank.index', [], false), 'teacher/bookbank*', '📖'],
                 ['Downloads', route('downloads.index', [], false), 'downloads*', '⬇️'],
                 ['Chhutti', route('teacher.leave.index', [], false), 'teacher/leave*', '🏖️'],
+                ['Student Leave', route('teacher.student-leave.index', [], false), 'teacher/student-leave*', '📝'],
             ];
         }
     }

@@ -23,6 +23,7 @@
         <a class="tile" href="{{ route('admin.staff-id-cards.index', [], false) }}"><b>Staff ID Cards</b><span>Teachers ke ID card</span></a>
         <a class="tile" href="{{ route('admin.settings.edit', [], false) }}"><b>School Settings</b><span>School ki maloomat</span></a>
         <a class="tile" href="{{ route('admin.bookbank.index', [], false) }}"><b>Book Bank</b><span>Kitabon ka stock</span></a>
+        <a class="tile" href="{{ route('admin.student-leave.index', [], false) }}"><b>Student Leave Applications</b><span>Walidain ki arziyan</span></a>
         <a class="tile" href="{{ route('admin.leave.index', [], false) }}"><b>Teacher Leave Requests</b><span>Chhutti ki arziyan</span></a>
         <a class="tile" href="{{ route('admin.media.index', [], false) }}"><b>Gallery, Textbooks &amp; Feedback</b><span>Photos, kitabein, rai</span></a>
         <a class="tile" href="{{ route('admin.contact.index', [], false) }}"><b>Contact Messages</b><span>Parents ke paighamat</span></a>

@@ -84,10 +84,45 @@ class PublicLookupController extends Controller
             return view('pages.lookup', ['student' => null, 'exams' => [], 'error' => $error]);
         }
 
-        return view('pages.lookup', ['student' => $student, 'exams' => $this->publishedExams($student), 'homework' => \App\Models\Homework::where('class_name', $student->class)->where('status', 'published')->orderByDesc('date')->limit(15)->get(), 'error' => null] + $this->extras($student));
+        return $this->renderStudent($student, $request->input('dob'));
     }
 
-    private function extras($student): array
+    /** The parent's page for one verified student. */
+    protected function renderStudent(Student $student, ?string $dob, ?string $ok = null, ?string $leaveError = null)
+    {
+        $exams = $this->publishedExams($student);
+        $homework = \App\Models\Homework::where('class_name', $student->class)->where('status', 'published')->orderByDesc('date')->limit(120)->get();
+
+        return view('pages.lookup', [
+            'student' => $student, 'exams' => $exams, 'homework' => $homework, 'error' => null,
+            'dob' => $dob, 'ok' => $ok, 'leaveError' => $leaveError,
+            'att' => $this->attendanceSummary($student), 'progress' => $this->progress($exams),
+            'leaves' => DB::table('student_leave_applications')->where('student_id', $student->id)->orderByDesc('leave_date')->limit(10)->get(),
+        ] + $this->extras($student));
+    }
+
+    /** Days present (P or L) out of the days this class had attendance taken. */
+    private function attendanceSummary(Student $student): array
+    {
+        $days = DB::table('attendance_records')->where('class_name', $student->class)->count();
+        $present = DB::table('attendance_marks')->join('attendance_records', 'attendance_records.id', '=', 'attendance_marks.attendance_record_id')
+            ->where('attendance_marks.student_id', $student->id)->where('attendance_records.class_name', $student->class)
+            ->whereIn('attendance_marks.status', ['P', 'L'])->count();
+
+        return ['days' => $days, 'present' => $present, 'percent' => $days > 0 ? (int) round($present / $days * 100) : null];
+    }
+
+    /** Overall % over all published results (each subject out of 100). */
+    private function progress($exams): array
+    {
+        $rows = collect($exams)->flatten(1);
+        $max = $rows->filter(fn ($r) => $r->score !== null)->count() * 100;
+        $got = (int) $rows->sum('score');
+
+        return ['got' => $got, 'max' => $max, 'percent' => $max > 0 ? (int) round($got / $max * 100) : null];
+    }
+
+    protected function extras($student): array
     {
         $marks = DB::table('attendance_marks')
             ->join('attendance_records', 'attendance_records.id', '=', 'attendance_marks.attendance_record_id')

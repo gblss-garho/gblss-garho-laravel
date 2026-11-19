@@ -114,6 +114,18 @@ Route::middleware(['auth', 'role:teacher'])->prefix('teacher/leave')->name('teac
     Route::post('/', [\App\Http\Controllers\TeacherLeaveController::class, 'store'])->name('store');
 });
 
+Route::middleware(['auth', 'role:teacher'])->prefix('teacher/student-leave')->name('teacher.student-leave.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\StudentLeaveController::class, 'index'])->name('index');
+    Route::put('/{id}', [\App\Http\Controllers\StudentLeaveController::class, 'update'])->name('update');
+    Route::get('/{id}/file', [\App\Http\Controllers\StudentLeaveController::class, 'file'])->name('file');
+});
+Route::middleware(['auth', 'role:admin'])->prefix('admin/student-leave')->name('admin.student-leave.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\StudentLeaveController::class, 'index'])->name('index');
+    Route::put('/{id}', [\App\Http\Controllers\StudentLeaveController::class, 'update'])->name('update');
+    Route::get('/{id}/file', [\App\Http\Controllers\StudentLeaveController::class, 'file'])->name('file');
+});
+Route::post('/parent-lookup/leave', [\App\Http\Controllers\PublicLeaveController::class, 'store'])->middleware('throttle:10,1')->name('public.lookup.leave');
+
 Route::middleware(['auth', 'role:admin'])->prefix('admin/leave')->name('admin.leave.')->group(function () {
     Route::get('/', [\App\Http\Controllers\AdminLeaveController::class, 'index'])->name('index');
     Route::put('/{id}', [\App\Http\Controllers\AdminLeaveController::class, 'update'])->name('update');
