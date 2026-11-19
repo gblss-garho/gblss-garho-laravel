@@ -1,0 +1,66 @@
+diff --git a/tests/Feature/CardPreviewTest.php b/tests/Feature/CardPreviewTest.php
+index 59f7dea..d1ed491 100644
+--- a/tests/Feature/CardPreviewTest.php
++++ b/tests/Feature/CardPreviewTest.php
+@@ -44,6 +44,14 @@ class CardPreviewTest extends TestCase
+         $this->get('/admin/admit-cards?class=VII')->assertOk()->assertSee('Print All (1)', false)->assertSee('Ali Khan');
+     }
+ 
++    /** DomPDF needs the PHP GD extension (present on the live server, missing in some dev containers). */
++    private function needsGd(): void
++    {
++        if (! extension_loaded('gd')) {
++            $this->markTestSkipped('PHP GD extension not installed here; PDF rendering not tested.');
++        }
++    }
++
+     private function pdfHref(string $html, string $needle): string
+     {
+         $this->assertSame(1, preg_match('#href="([^"]*'.preg_quote($needle, '#').'[^"]*)"#', html_entity_decode($html), $m));
+@@ -57,8 +65,9 @@ class CardPreviewTest extends TestCase
+         $html = $this->post('/id-cards', ['gr_number' => '77', 'dob' => '2012-01-02'])
+             ->assertOk()->assertDontSee('Date of Birth')->assertDontSee('Jan 02, 2012')->getContent();
+         $href = $this->pdfHref($html, '/id-cards/pdf/');
+-        $this->get($href)->assertOk()->assertHeader('content-type', 'application/pdf');
+         $this->get('/id-cards/pdf/s1')->assertForbidden();          // unsigned link refused
++        $this->needsGd();
++        $this->get($href)->assertOk()->assertHeader('content-type', 'application/pdf');
+     }
+ 
+     public function test_public_teacher_card_masks_pid_and_signed_pdf_works(): void
+@@ -66,16 +75,20 @@ class CardPreviewTest extends TestCase
+         Teacher::forceCreate(['id' => 'tchcard001', 'name' => 'Waris', 'pid' => '10829975', 'cnic' => '41234-1234567-1', 'dob' => '1990-05-05', 'designation' => 'JEST', 'created_at' => now()]);
+         $html = $this->post('/id-cards/teacher', ['cnic_pid' => '10829975'])
+             ->assertOk()->assertDontSee('10829975')->assertSee('*****975')->assertDontSee('May 05, 1990')->assertDontSee('Date of Birth')->getContent();
+-        $this->get($this->pdfHref($html, '/id-cards/teacher/pdf/'))->assertOk()->assertHeader('content-type', 'application/pdf');
++        $href = $this->pdfHref($html, '/id-cards/teacher/pdf/');
+         $this->get('/id-cards/teacher/pdf/tchcard001')->assertForbidden();
++        $this->needsGd();
++        $this->get($href)->assertOk()->assertHeader('content-type', 'application/pdf');
+     }
+ 
+     public function test_admit_pdf_uses_signed_get(): void
+     {
+         $this->student();
+         $html = $this->post('/admit-card', ['gr_number' => '77', 'dob' => '2012-01-02'])->assertOk()->getContent();
+-        $this->get($this->pdfHref($html, '/admit-card/pdf/'))->assertOk()->assertHeader('content-type', 'application/pdf');
++        $href = $this->pdfHref($html, '/admit-card/pdf/');
+         $this->get('/admit-card/pdf/s1')->assertForbidden();
++        $this->needsGd();
++        $this->get($href)->assertOk()->assertHeader('content-type', 'application/pdf');
+     }
+ 
+     public function test_admin_new_student_gets_short_id_and_gr_register_row(): void
+diff --git a/tests/Feature/ParentPortalTest.php b/tests/Feature/ParentPortalTest.php
+index 9c06e27..c53ac17 100644
+--- a/tests/Feature/ParentPortalTest.php
++++ b/tests/Feature/ParentPortalTest.php
+@@ -30,7 +30,7 @@ class ParentPortalTest extends TestCase
+         Homework::create(['id' => 'h2', 'date' => now()->subDays(10)->toDateString(), 'text' => 'Old work', 'subject' => 'math', 'class_name' => 'VII', 'status' => 'published']);
+ 
+         $this->post('/parent-lookup', ['gr_number' => '55', 'dob' => '2012-01-02'])->assertOk()
+-            ->assertSee('50%')->assertSee('1 / 2 din')->assertSee('Today&#039;s Homework', false)->assertSee('Do exercise 1')->assertSee('Old work')
++            ->assertSee('50%')->assertSee('1 / 2 din')->assertSee("Today's Homework", false)->assertSee('Do exercise 1')->assertSee('Old work')
+             ->assertSee('Previous Homework')->assertSee('Leave / Absence Application');
+     }
+ 
