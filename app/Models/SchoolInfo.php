@@ -9,6 +9,7 @@ class SchoolInfo extends Model
     protected $table = 'school_info';
 
     protected $fillable = [
+        'total_classes', 'established_year', 'current_exam_title',
         'name', 'sindhi_name', 'email', 'phone', 'motto', 'shifts', 'address',
         'semis_code', 'about_text', 'school_lat', 'school_lng', 'map_location',
         'deo_name', 'deo_message', 'deo_photo_url',
