@@ -1,0 +1,124 @@
+diff --git a/app/Console/Commands/SendAbsenceAlerts.php b/app/Console/Commands/SendAbsenceAlerts.php
+index dd54000..3b3691f 100644
+--- a/app/Console/Commands/SendAbsenceAlerts.php
++++ b/app/Console/Commands/SendAbsenceAlerts.php
+@@ -45,7 +45,7 @@ class SendAbsenceAlerts extends Command
+                                                                                                                                                                                                                                             ->whereIn('status', ['P', 'L'])->pluck('student_id');
+                                                                                                                                                                                                                                                         $students = Student::where('class', $record->class_name)
+                                                                                                                                                                                                                                                                         ->where('passed_out', false)->whereNotIn('id', $present)
+-                                                                                                                                                                                                                                                                                        ->orderBy('name')->get();
++                                                                                                                                                                                                                                                                                        ->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')->get();
+                                                                                                                                                                                                                                                                                                     foreach ($students as $s) {
+                                                                                                                                                                                                                                                                                                                     $found++;
+                                                                                                                                                                                                                                                                                                                                     $to = $this->phone($s->guardian_phone);
+diff --git a/app/Http/Controllers/AdminBookBankController.php b/app/Http/Controllers/AdminBookBankController.php
+index 78c5b09..c2645d7 100644
+--- a/app/Http/Controllers/AdminBookBankController.php
++++ b/app/Http/Controllers/AdminBookBankController.php
+@@ -101,7 +101,7 @@ class AdminBookBankController extends Controller
+             'catalogSubjects' => $classCatalog->pluck('subject')->map(fn ($x) => mb_strtolower($x))->all(),
+             'isAdmin' => $this->isAdmin(), 'classes' => $classes, 'class' => $class, 'st' => $st, 'q' => $q,
+             'catalog' => $this->isAdmin() ? $catalog : $classCatalog, 'classCatalog' => $classCatalog,
+-            'students' => $class === '' ? collect() : Student::where('passed_out', false)->orderBy('name')->get()->filter(fn ($s) => $this->norm($s->class) === $n)->values(),
++            'students' => $class === '' ? collect() : Student::where('passed_out', false)->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')->get()->filter(fn ($s) => $this->norm($s->class) === $n)->values(),
+             'issues' => $issues, 'grById' => $grById,
+             'openCount' => $issues->where('status', 'Issued')->count(),
+             'base' => route($this->isAdmin() ? 'admin.bookbank.index' : 'teacher.bookbank.index', [], false),
+diff --git a/app/Http/Controllers/AdminIdCardController.php b/app/Http/Controllers/AdminIdCardController.php
+index 1d68bd0..5fb6e12 100644
+--- a/app/Http/Controllers/AdminIdCardController.php
++++ b/app/Http/Controllers/AdminIdCardController.php
+@@ -18,7 +18,7 @@ class AdminIdCardController extends Controller
+             ->when($q !== '', fn ($query) => $query->where(function ($w) use ($q) {
+                 $w->where('name', 'like', "%{$q}%")->orWhere('gr_number', 'like', "%{$q}%");
+             }))
+-            ->orderBy('name')
++            ->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')
+             ->limit(50)
+             ->get();
+ 
+diff --git a/app/Http/Controllers/AdminLeavingCertificateController.php b/app/Http/Controllers/AdminLeavingCertificateController.php
+index 59be67c..784bfce 100644
+--- a/app/Http/Controllers/AdminLeavingCertificateController.php
++++ b/app/Http/Controllers/AdminLeavingCertificateController.php
+@@ -23,7 +23,7 @@ class AdminLeavingCertificateController extends Controller
+ 
+         $eligible = Student::where('passed_out', true)
+             ->whereNotIn('id', $issuedStudentIds)
+-            ->orderBy('name')
++            ->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')
+             ->get();
+ 
+         return view('admin.leaving-certificates.index', compact('certificates', 'eligible'));
+diff --git a/app/Http/Controllers/AdminResultController.php b/app/Http/Controllers/AdminResultController.php
+index c2d0793..bf5de5d 100644
+--- a/app/Http/Controllers/AdminResultController.php
++++ b/app/Http/Controllers/AdminResultController.php
+@@ -27,7 +27,7 @@ class AdminResultController extends Controller
+                 'student' => $g->first()->student,
+                 'scores' => $g->pluck('score', 'subject'),
+                 'total' => $g->sum('score'),
+-            ])->sortBy(fn ($r) => $r['student']->name ?? '')->values();
++            ])->sortBy(fn ($r) => (int) ($r['student']->gr_number ?? 0))->values();
+         }
+ 
+         return view('admin.results.index', compact('years', 'exams', 'classes', 'year', 'exam', 'class', 'rows', 'subjects'));
+diff --git a/app/Http/Controllers/AdminStudentController.php b/app/Http/Controllers/AdminStudentController.php
+index 8ff4e0c..e866822 100644
+--- a/app/Http/Controllers/AdminStudentController.php
++++ b/app/Http/Controllers/AdminStudentController.php
+@@ -36,7 +36,7 @@ class AdminStudentController extends Controller
+                 $w->where('name', 'like', "%{$q}%")->orWhere('gr_number', 'like', "%{$q}%")->orWhere('father_name', 'like', "%{$q}%");
+             }))
+             ->when($class !== '', fn ($x) => $x->where('class', $class))
+-            ->orderBy('class')->orderBy('name')
++            ->orderBy('class')->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')
+             ->simplePaginate(30)->withQueryString();
+ 
+         return view('admin.students.index', compact('students', 'q', 'class', 'classes'));
+diff --git a/app/Http/Controllers/TeacherAbsenteesController.php b/app/Http/Controllers/TeacherAbsenteesController.php
+index e1b4812..a6868a6 100644
+--- a/app/Http/Controllers/TeacherAbsenteesController.php
++++ b/app/Http/Controllers/TeacherAbsenteesController.php
+@@ -39,7 +39,7 @@ class TeacherAbsenteesController extends Controller
+                                                                                                                                                                                                                                                         $absentees = Student::where('class', $class)
+                                                                                                                                                                                                                                                                             ->where('passed_out', false)
+                                                                                                                                                                                                                                                                                                 ->whereNotIn('id', $markedIds)
+-                                                                                                                                                                                                                                                                                                                    ->orderBy('name')
++                                                                                                                                                                                                                                                                                                                    ->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')
+                                                                                                                                                                                                                                                                                                                                         ->get();
+                                                                                                                                                                                                                                                                                                                                                     }
+                                                                                                                                                                                                                                                                                                                                                             }
+diff --git a/app/Services/ClassAttendanceReport.php b/app/Services/ClassAttendanceReport.php
+index dbe1646..4eb23c3 100644
+--- a/app/Services/ClassAttendanceReport.php
++++ b/app/Services/ClassAttendanceReport.php
+@@ -47,7 +47,7 @@ class ClassAttendanceReport
+             ->when($q !== '', fn ($x) => $x->where(function ($w) use ($q) {
+                 $w->where('name', 'like', "%{$q}%")->orWhere('gr_number', 'like', "%{$q}%")->orWhere('father_name', 'like', "%{$q}%");
+             }))
+-            ->orderBy('name')->get();
++            ->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')->get();
+ 
+         $out = [];
+         $sumPct = 0;
+diff --git a/tests/Feature/CardPreviewTest.php b/tests/Feature/CardPreviewTest.php
+index d1ed491..76101dd 100644
+--- a/tests/Feature/CardPreviewTest.php
++++ b/tests/Feature/CardPreviewTest.php
+@@ -107,4 +107,15 @@ class CardPreviewTest extends TestCase
+         $this->assertDatabaseHas('gr_register', ['reg_no' => 11, 'name' => 'Naya Bacha', 'admission_class' => 'VI']);
+         $this->post('/admin/students', ['gr_number' => '10', 'name' => 'Dup', 'class' => 'VI'])->assertSessionHasErrors('gr_number');
+     }
++
++    public function test_admin_student_lists_are_in_gr_order_not_alphabetical(): void
++    {
++        $admin = User::forceCreate(['name' => 'A', 'email' => 'a@example.test', 'password' => bcrypt('x'), 'role' => 'admin', 'is_active' => 1]);
++        $this->actingAs($admin);
++        foreach ([['g1', '2', 'Zubair'], ['g2', '10', 'Ali'], ['g3', '1', 'Maria']] as [$id, $gr, $n]) {
++            Student::forceCreate(['id' => $id, 'gr_number' => $gr, 'name' => $n, 'class' => 'VII', 'passed_out' => 0]);
++        }
++        $this->get('/admin/students')->assertOk()->assertSeeInOrder(['Maria', 'Zubair', 'Ali']);   // GR 1, 2, 10
++        $this->get('/admin/id-cards')->assertOk()->assertSeeInOrder(['Maria', 'Zubair', 'Ali']);
++    }
+ }
