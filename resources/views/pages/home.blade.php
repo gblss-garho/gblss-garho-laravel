@@ -147,13 +147,13 @@
     <h2 style="font-family:'Baloo 2','CustomSindhi','Noto Naskh Arabic',serif;font-size:28px;font-weight:800;color:#075C42;margin:4px 0 0">A School Powered by Technology</h2>
     <p style="color:#66736D;font-size:14px;max-width:650px">A complete digital school experience — connecting teachers, students and parents through practical tools.</p>
     <div class="hm-mod">
-        <a class="hm-m" href="{{ route('login', [], false) }}"><i class="g">✓</i>Smart Attendance</a>
-        <a class="hm-m" href="{{ route('login', [], false) }}"><i>👥</i>Student Register</a>
-        <a class="hm-m" href="{{ route('login', [], false) }}"><i>📚</i>E-Homework</a>
-        <a class="hm-m" href="{{ route('login', [], false) }}"><i>📖</i>Book Bank</a>
+        <a class="hm-m" href="{{ route('public.lookup', [], false) }}"><i class="g">✓</i>Smart Attendance</a>
+        <a class="hm-m" href="{{ route('public.alumni', [], false) }}"><i>👥</i>Student Register</a>
+        <a class="hm-m" href="{{ route('public.lookup', [], false) }}"><i>📚</i>E-Homework</a>
+        <a class="hm-m" href="{{ route('public.textbooks', [], false) }}"><i>📖</i>Book Bank</a>
         <a class="hm-m" href="{{ route('public.toppers', [], false) }}"><i>🏆</i>Results</a>
-        <a class="hm-m" href="{{ route('public.lookup', [], false) }}"><i>🪪</i>ID Cards</a>
-        <a class="hm-m" href="{{ route('public.lookup', [], false) }}"><i>🎫</i>Admit Cards</a>
+        <a class="hm-m" href="{{ route('public.id-cards', [], false) }}"><i>🪪</i>ID Cards</a>
+        <a class="hm-m" href="{{ route('public.admit-card', [], false) }}"><i>🎫</i>Admit Cards</a>
         <a class="hm-m" href="{{ route('public.lookup', [], false) }}"><i class="g">📱</i>Parent Portal</a>
     </div>
 </div>

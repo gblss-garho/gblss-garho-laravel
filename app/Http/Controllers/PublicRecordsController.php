@@ -18,6 +18,10 @@ class PublicRecordsController extends PublicLookupController
     private function admitStudent(Request $request, ?string &$error): ?Student
     {
         $student = $this->lookupStudent($request, $error);
+        if ($student && $student->passed_out) {
+            $student = null;
+            $error = 'Yeh student ab school mein enrolled nahi (passed out / LC issued), is liye admit card jari nahi ho sakta.';
+        }
         $class = trim((string) $request->input('class', ''));
         if ($student && $class !== '' && $student->class !== $class) {
             $student = null;

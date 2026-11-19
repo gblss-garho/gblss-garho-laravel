@@ -23,7 +23,7 @@ class AdminLeavingCertificateController extends Controller
 
         $eligible = Student::where('passed_out', true)
             ->whereNotIn('id', $issuedStudentIds)
-            ->orderBy('name')
+            ->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')
             ->get();
 
         return view('admin.leaving-certificates.index', compact('certificates', 'eligible'));

@@ -11,7 +11,13 @@
     $validUpTo = '30 Jun '.explode('-', $session)[1];
     // DomPDF cannot shape Arabic-script text (Sindhi/Urdu), so cards show the English motto instead.
     $motto = trim((string) ($school['motto'] ?? ''));
+    // The default Sindhi motto ships as a pre-rendered image (public/images/motto-sd.png, Sindhi font).
+    $mottoImg = null;
     if ($motto === '' || preg_match('/\p{Arabic}/u', $motto)) {
+        $img = public_path('images/motto-sd.png');
+        if ($motto !== '' && $motto === \App\Support\CardData::SINDHI_MOTTO && is_file($img)) {
+            $mottoImg = $img;
+        }
         $motto = 'Knowledge · Character · Excellence';
     }
     $sname = mb_strtoupper($school['name']);
@@ -59,17 +65,17 @@
 {{-- FRONT --}}
 <div class="card">
     <table class="w" style="background:#123B7A;"><tr>
-        <td style="width:58px;height:64px;"></td>
+        <td style="width:76px;height:72px;"></td>
         <td style="text-align:center;vertical-align:middle;color:#FAF6EC;padding:6px 0;">
             <div style="font-size:11px;font-weight:bold;">{{ $sname }}</div>
-            <div style="font-size:8px;color:#F0D989;margin-top:3px;">{{ $motto }}</div>
+            @if ($mottoImg)<div style="margin-top:2px;"><img src="{{ $mottoImg }}" height="15"></div>@else<div style="font-size:8px;color:#F0D989;margin-top:3px;">{{ $motto }}</div>@endif
         </td>
-        <td style="width:58px;text-align:right;vertical-align:middle;padding-right:10px;">
-            @if ($logoOk)<img src="{{ $logo }}" height="56">@endif
+        <td style="width:76px;text-align:right;vertical-align:middle;padding-right:8px;">
+            @if ($logoOk)<img src="{{ $logo }}" height="66">@endif
         </td>
     </tr></table>
     <table class="w"><tr>
-        <td style="width:108px;padding:12px 0 0 16px;">
+        <td style="width:108px;padding:6px 0 0 16px;">
             <div style="background:#DBB43C;padding:3px;width:96px;height:96px;">
                 @if ($photoOk)
                     <img src="{{ $smallPhoto }}" width="96" height="96">
@@ -105,7 +111,7 @@
             <div style="font-size:6.5px;color:#8B8371;border-top:1px solid #C9A227;margin-top:2px;padding-top:2px;">GBLSS GARHO</div>
         </td>
     </tr></table>
-    <div style="height:4px;background:#C9A227;margin-top:7px;"></div>
+    <div style="height:4px;background:#C9A227;margin-top:4px;"></div>
     <table class="w" style="background:#0B2C54;color:#F0D989;font-size:6.5px;"><tr>
         <td style="padding:10px 8px;text-align:center;height:34px;">
             {{ $school['address'] ?? '' }}@if ($schoolPhone) &nbsp;|&nbsp; Tel: {{ $schoolPhone }}@endif @if (! empty($school['email'])) &nbsp;|&nbsp; {{ $school['email'] }}@endif

@@ -47,7 +47,7 @@ class ClassAttendanceReport
             ->when($q !== '', fn ($x) => $x->where(function ($w) use ($q) {
                 $w->where('name', 'like', "%{$q}%")->orWhere('gr_number', 'like', "%{$q}%")->orWhere('father_name', 'like', "%{$q}%");
             }))
-            ->orderBy('name')->get();
+            ->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')->get();
 
         $out = [];
         $sumPct = 0;

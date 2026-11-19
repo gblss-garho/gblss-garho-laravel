@@ -61,4 +61,24 @@ class ParentPortalTest extends TestCase
         $this->assertSame('approved', DB::table('student_leave_applications')->value('status'));
         $this->assertSame('L', DB::table('attendance_marks')->where('student_id', $s->id)->value('status'));
     }
+
+    public function test_leave_application_notifies_head_master_by_whatsapp_when_live(): void
+    {
+        \Illuminate\Support\Facades\Http::fake(['graph.facebook.com/*' => \Illuminate\Support\Facades\Http::response(['ok' => 1], 200)]);
+        config(['services.whatsapp.dry_run' => false, 'services.whatsapp.token' => 't', 'services.whatsapp.phone_id' => '1', 'services.whatsapp.hm_phone' => '0300-1234567']);
+        $this->student();
+
+        $this->post('/parent-lookup/leave', ['gr_number' => '55', 'dob' => '2012-01-02', 'leave_date' => now()->toDateString(), 'purpose' => 'Travel', 'reason' => 'Safar'])->assertOk()->assertSee('bhej di gayi');
+        \Illuminate\Support\Facades\Http::assertSent(fn ($r) => str_contains($r->url(), 'graph.facebook.com') && $r['to'] === '923001234567' && $r['template']['name'] === 'student_leave_request');
+    }
+
+    public function test_leave_notice_is_dry_run_by_default_and_never_blocks_submission(): void
+    {
+        \Illuminate\Support\Facades\Http::fake();
+        config(['services.whatsapp.dry_run' => true, 'services.whatsapp.hm_phone' => '03001234567']);
+        $this->student();
+        $this->post('/parent-lookup/leave', ['gr_number' => '55', 'dob' => '2012-01-02', 'leave_date' => now()->toDateString(), 'purpose' => 'Travel', 'reason' => 'Safar'])->assertOk()->assertSee('bhej di gayi');
+        \Illuminate\Support\Facades\Http::assertNothingSent();
+        $this->assertSame(1, DB::table('student_leave_applications')->count());
+    }
 }

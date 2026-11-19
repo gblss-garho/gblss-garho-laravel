@@ -101,7 +101,7 @@ class AdminBookBankController extends Controller
             'catalogSubjects' => $classCatalog->pluck('subject')->map(fn ($x) => mb_strtolower($x))->all(),
             'isAdmin' => $this->isAdmin(), 'classes' => $classes, 'class' => $class, 'st' => $st, 'q' => $q,
             'catalog' => $this->isAdmin() ? $catalog : $classCatalog, 'classCatalog' => $classCatalog,
-            'students' => $class === '' ? collect() : Student::where('passed_out', false)->orderBy('name')->get()->filter(fn ($s) => $this->norm($s->class) === $n)->values(),
+            'students' => $class === '' ? collect() : Student::where('passed_out', false)->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')->get()->filter(fn ($s) => $this->norm($s->class) === $n)->values(),
             'issues' => $issues, 'grById' => $grById,
             'openCount' => $issues->where('status', 'Issued')->count(),
             'base' => route($this->isAdmin() ? 'admin.bookbank.index' : 'teacher.bookbank.index', [], false),

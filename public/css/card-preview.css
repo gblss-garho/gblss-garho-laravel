@@ -2,12 +2,14 @@
 .pc-fit { position:relative; width:100%; min-width:0; max-width:458px; overflow:hidden; }
 .pc-fit > * { transform-origin:0 0; }
 .pc-card { width:458px; height:288px; background:#fff; border:1px solid #DDC77A; overflow:hidden; font-family:'Noto Serif',Georgia,serif; color:#4A4237; box-shadow:0 10px 26px rgba(11,44,84,.18); border-radius:6px; font-size:9.5px; position:relative; }
-.pc-h { background:#123B7A; display:flex; align-items:center; justify-content:space-between; padding:6px 10px 6px 68px; min-height:64px; box-sizing:border-box; }
+@font-face { font-family:'PcSindhi'; src:url('/fonts/CustomSindhi.ttf') format('truetype'); font-display:swap; }
+.pc-h { background:#123B7A; display:flex; align-items:center; justify-content:space-between; padding:5px 8px 5px 76px; min-height:72px; box-sizing:border-box; }
 .pc-hn { flex:1; text-align:center; color:#FAF6EC; font-size:11px; font-weight:700; line-height:1.3; }
 .pc-hn small { display:block; font-size:8px; color:#F0D989; font-weight:400; margin-top:3px; }
-.pc-h img { height:54px; width:auto; }
+.pc-h img { height:64px; width:auto; }
+.pc-hn small.pc-sd { font-family:'PcSindhi','Noto Naskh Arabic',serif; font-size:12px; line-height:1.6; margin-top:1px; }
 .pc-h2 { padding:5px 56px 5px 14px; min-height:46px; } .pc-h2 img { height:36px; margin-right:6px; } .pc-h2 .pc-hn { font-size:10px; }
-.pc-b { display:flex; gap:12px; padding:12px 14px 0 16px; }
+.pc-b { display:flex; gap:12px; padding:7px 14px 0 16px; }
 .pc-ph { width:96px; height:96px; flex:none; background:#DBB43C; padding:3px; box-sizing:content-box; display:flex; align-items:center; justify-content:center; }
 .pc-ph img { width:96px; height:96px; object-fit:cover; display:block; } .pc-ph b { font-size:38px; color:#123B7A; background:#EDE7D3; width:96px; height:96px; display:flex; align-items:center; justify-content:center; }
 .pc-i h4 { margin:0 0 6px; font-size:12.5px; color:#123B7A; }

@@ -12,6 +12,9 @@ use Carbon\Carbon;
 /** Shared data for the on-page ID / admit card previews. */
 class CardData
 {
+    /** The school's Sindhi motto exactly as saved in Settings; PDFs show it from a pre-rendered image. */
+    public const SINDHI_MOTTO = 'علم حاصل ڪريو چاھي اوھان کي چين وڃڻو پوي. (حديث)';
+
     public static function school(): array
     {
         $info = SchoolInfo::first();

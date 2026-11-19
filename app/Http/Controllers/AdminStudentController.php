@@ -36,7 +36,7 @@ class AdminStudentController extends Controller
                 $w->where('name', 'like', "%{$q}%")->orWhere('gr_number', 'like', "%{$q}%")->orWhere('father_name', 'like', "%{$q}%");
             }))
             ->when($class !== '', fn ($x) => $x->where('class', $class))
-            ->orderBy('class')->orderBy('name')
+            ->orderBy('class')->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')
             ->simplePaginate(30)->withQueryString();
 
         return view('admin.students.index', compact('students', 'q', 'class', 'classes'));

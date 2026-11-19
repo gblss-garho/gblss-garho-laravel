@@ -42,6 +42,8 @@ class PublicLeaveController extends PublicLookupController
             'attachment_path' => $path, 'attachment_name' => $name, 'status' => 'pending', 'created_at' => now(), 'updated_at' => now(),
         ]);
 
+        \App\Services\HeadMasterNotifier::leaveApplied($student->name, (string) $student->class, (string) $request->input('leave_date'), (string) $request->input('purpose'));
+
         return $this->renderStudent($student, $request->input('dob'), 'Aap ki arzi school ko bhej di gayi hai. Shukriya.');
     }
 }

@@ -26,7 +26,7 @@
 <div class="pc-wrap">
   <div class="pc-fit" data-w="458" data-h="288"><div class="pc-card">
     <div class="pc-h">
-        <div class="pc-hn">{{ mb_strtoupper($school['name']) }}<small>@if ($motto !== ''){{ $motto }}@else Knowledge · Character · Excellence @endif</small></div>
+        <div class="pc-hn">{{ mb_strtoupper($school['name']) }}<small @if (preg_match('/\p{Arabic}/u', $motto)) class="pc-sd" dir="rtl" @endif>@if ($motto !== ''){{ $motto }}@else Knowledge · Character · Excellence @endif</small></div>
         <img src="{{ $logo }}" alt="">
     </div>
     <div class="pc-b">

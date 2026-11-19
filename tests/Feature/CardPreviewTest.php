@@ -97,4 +97,34 @@ class CardPreviewTest extends TestCase
         $this->assertDatabaseHas('gr_register', ['reg_no' => 11, 'name' => 'Naya Bacha', 'admission_class' => 'VI']);
         $this->post('/admin/students', ['gr_number' => '10', 'name' => 'Dup', 'class' => 'VI'])->assertSessionHasErrors('gr_number');
     }
+
+    public function test_admin_student_lists_are_in_gr_order_not_alphabetical(): void
+    {
+        $admin = User::forceCreate(['name' => 'A', 'email' => 'a@example.test', 'password' => bcrypt('x'), 'role' => 'admin', 'is_active' => 1]);
+        $this->actingAs($admin);
+        foreach ([['g1', '2', 'Zubair'], ['g2', '10', 'Ali'], ['g3', '1', 'Maria']] as [$id, $gr, $n]) {
+            Student::forceCreate(['id' => $id, 'gr_number' => $gr, 'name' => $n, 'class' => 'VII', 'passed_out' => 0]);
+        }
+        $this->get('/admin/students')->assertOk()->assertSeeInOrder(['Maria', 'Zubair', 'Ali']);   // GR 1, 2, 10
+        $this->get('/admin/id-cards')->assertOk()->assertSeeInOrder(['Maria', 'Zubair', 'Ali']);
+    }
+
+    public function test_passed_out_students_get_no_id_or_admit_card_and_are_not_listed(): void
+    {
+        $admin = User::forceCreate(['name' => 'A', 'email' => 'a@example.test', 'password' => bcrypt('x'), 'role' => 'admin', 'is_active' => 1]);
+        $this->student();
+        Student::forceCreate(['id' => 's2', 'gr_number' => '230', 'name' => 'Ahsan Left', 'dob' => '2011-03-04', 'class' => 'VIII', 'passed_out' => 1]);
+
+        $this->actingAs($admin)->get('/admin/id-cards')->assertOk()->assertSee('Ali Khan')->assertDontSee('Ahsan Left');
+        $this->post('/id-cards', ['gr_number' => '230', 'dob' => '2011-03-04'])->assertOk()->assertSee('enrolled nahi')->assertDontSee('AHSAN LEFT');
+        $this->post('/admit-card', ['gr_number' => '230', 'dob' => '2011-03-04'])->assertOk()->assertSee('enrolled nahi')->assertDontSee('Ahsan Left');
+    }
+
+    public function test_preview_shows_sindhi_motto_in_sindhi_font_class(): void
+    {
+        $this->student();
+        \Illuminate\Support\Facades\DB::table('school_info')->insert(['name' => 'GBLSS Garho', 'motto' => \App\Support\CardData::SINDHI_MOTTO]);
+        $this->post('/id-cards', ['gr_number' => '77', 'dob' => '2012-01-02'])->assertOk()->assertSee('class="pc-sd"', false);
+        $this->assertFileExists(public_path('images/motto-sd.png'));
+    }
 }

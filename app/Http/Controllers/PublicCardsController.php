@@ -22,6 +22,10 @@ class PublicCardsController extends PublicLookupController
     {
         $error = null;
         $student = $this->lookupStudent($request, $error);
+        if ($student && $student->passed_out) {
+            $student = null;
+            $error = 'Yeh student ab school mein enrolled nahi (passed out / LC issued), is liye ID card jari nahi ho sakta.';
+        }
         if (! $student) {
             return view('pages.id-cards', ['error' => $error, 'terror' => null, 'card' => null]);
         }

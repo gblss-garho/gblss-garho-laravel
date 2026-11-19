@@ -27,7 +27,7 @@ class AdminResultController extends Controller
                 'student' => $g->first()->student,
                 'scores' => $g->pluck('score', 'subject'),
                 'total' => $g->sum('score'),
-            ])->sortBy(fn ($r) => $r['student']->name ?? '')->values();
+            ])->sortBy(fn ($r) => (int) ($r['student']->gr_number ?? 0))->values();
         }
 
         return view('admin.results.index', compact('years', 'exams', 'classes', 'year', 'exam', 'class', 'rows', 'subjects'));

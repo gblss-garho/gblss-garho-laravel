@@ -15,10 +15,11 @@ class AdminIdCardController extends Controller
         $q = trim((string) $request->query('q', ''));
 
         $students = Student::query()
+            ->where('passed_out', false)   // ID cards are for enrolled students only (not passed out / LC issued)
             ->when($q !== '', fn ($query) => $query->where(function ($w) use ($q) {
                 $w->where('name', 'like', "%{$q}%")->orWhere('gr_number', 'like', "%{$q}%");
             }))
-            ->orderBy('name')
+            ->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')
             ->limit(50)
             ->get();
 
