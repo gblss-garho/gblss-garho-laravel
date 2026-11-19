@@ -1,0 +1,652 @@
+diff --git a/app/Http/Controllers/AdminIdCardController.php b/app/Http/Controllers/AdminIdCardController.php
+index c33aa7c..1d68bd0 100644
+--- a/app/Http/Controllers/AdminIdCardController.php
++++ b/app/Http/Controllers/AdminIdCardController.php
+@@ -27,13 +27,13 @@ class AdminIdCardController extends Controller
+         return view('admin.id-cards.index', compact('students', 'q', 'classes'));
+     }
+ 
+-    public function pdf(Student $student)
++    public function pdf(Student $student, bool $public = false)
+     {
+         @ini_set('memory_limit', '512M');
+         @set_time_limit(120);
+         $school = $this->schoolHeader();
+ 
+-        return Pdf::loadView('admin.id-cards.student', compact('student', 'school'))
++        return Pdf::loadView('admin.id-cards.student', compact('student', 'school', 'public'))
+             ->setPaper('a4')
+             ->stream('id-card-'.($student->gr_number ?: $student->id).'.pdf')
+             ->header('Cache-Control', 'no-store, max-age=0');
+diff --git a/app/Http/Controllers/AdminStaffIdCardController.php b/app/Http/Controllers/AdminStaffIdCardController.php
+index 868d532..6da583f 100644
+--- a/app/Http/Controllers/AdminStaffIdCardController.php
++++ b/app/Http/Controllers/AdminStaffIdCardController.php
+@@ -24,11 +24,11 @@ class AdminStaffIdCardController extends Controller
+         return view('admin.staff-id-cards.index', compact('teachers', 'q'));
+     }
+ 
+-    public function pdf(Teacher $teacher)
++    public function pdf(Teacher $teacher, bool $public = false)
+     {
+         $school = $this->schoolHeader();
+ 
+-        $pdf = Pdf::loadView('admin.staff-id-cards.teacher', compact('teacher', 'school'))
++        $pdf = Pdf::loadView('admin.staff-id-cards.teacher', compact('teacher', 'school', 'public'))
+             ->setPaper('a4');
+ 
+         $name = $teacher->pid ?: $teacher->id;
+diff --git a/app/Http/Controllers/AdminStudentController.php b/app/Http/Controllers/AdminStudentController.php
+index 8e5af67..8ff4e0c 100644
+--- a/app/Http/Controllers/AdminStudentController.php
++++ b/app/Http/Controllers/AdminStudentController.php
+@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
+ 
+ use App\Models\Student;
+ use Illuminate\Http\Request;
++use Illuminate\Support\Facades\DB;
++use Illuminate\Support\Facades\Schema;
+ use Illuminate\Support\Str;
+ use Illuminate\Validation\Rule;
+ 
+@@ -40,19 +42,47 @@ class AdminStudentController extends Controller
+         return view('admin.students.index', compact('students', 'q', 'class', 'classes'));
+     }
+ 
+-    public function create()
++    /** Next free GR number: one above the highest in the students table or the GR register. */
++    private function nextGr(): int
+     {
+-        return view('admin.students.form', ['student' => null]);
++        $max = (int) DB::table('students')->max(DB::raw('CAST(gr_number AS UNSIGNED)'));
++        if (Schema::hasTable('gr_register')) {
++            $max = max($max, (int) DB::table('gr_register')->max('reg_no'));
++        }
++
++        return $max + 1;
++    }
++
++    public function create(Request $request)
++    {
++        $gr = (int) $request->query('gr', 0);
++
++        return view('admin.students.form', ['student' => null, 'nextGr' => $gr > 0 ? $gr : $this->nextGr()]);
+     }
+ 
+     public function store(Request $request)
+     {
+         $data = $request->validate($this->rules());
+-        $data['id'] = (string) Str::uuid();
++        $reg = ctype_digit(trim($data['gr_number'])) ? (int) $data['gr_number'] : null;
++        $hasReg = Schema::hasTable('gr_register');
++        if ($reg && $hasReg && DB::table('gr_register')->where('reg_no', $reg)->exists()) {
++            return back()->withInput()->withErrors(['gr_number' => "GR {$reg} General Register me pehle se maujood hai (purana/left student). Naya GR number likhein."]);
++        }
++        $data['id'] = str_replace('-', '', (string) Str::uuid());   // students.id is varchar(32)
+         $data['passed_out'] = 0;
+-        Student::create($data);
++        DB::transaction(function () use ($data, $reg, $hasReg) {
++            Student::create($data);
++            if ($reg && $hasReg) {
++                DB::table('gr_register')->insert([
++                    'reg_no' => $reg, 'name' => $data['name'], 'father_name' => $data['father_name'] ?? null,
++                    'dob' => $data['dob'] ?? null, 'address' => $data['address'] ?? null,
++                    'admission_date' => $data['admission_date'] ?? now()->toDateString(), 'admission_class' => $data['class'],
++                    'created_at' => now(), 'updated_at' => now(),
++                ]);
++            }
++        });
+ 
+-        return redirect()->route('admin.students.index')->with('ok', 'Student add ho gaya.');
++        return redirect()->route('admin.gr-register', ['q' => $data['gr_number']])->with('ok', 'Naya student add ho gaya aur GR register me darj ho gaya (GR '.$data['gr_number'].').');
+     }
+ 
+     public function edit(Student $student)
+diff --git a/app/Http/Controllers/PublicCardsController.php b/app/Http/Controllers/PublicCardsController.php
+index 70171e1..d29b91f 100644
+--- a/app/Http/Controllers/PublicCardsController.php
++++ b/app/Http/Controllers/PublicCardsController.php
+@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
+ use App\Models\Teacher;
+ use App\Support\CardData;
+ use Illuminate\Http\Request;
++use App\Models\Student;
+ use Illuminate\Support\Facades\DB;
++use Illuminate\Support\Facades\URL;
+ 
+ /** Public ID Cards page: student (GR + DOB) and staff (CNIC / PID) lookup with an on-page preview. */
+ class PublicCardsController extends PublicLookupController
+@@ -27,19 +29,14 @@ class PublicCardsController extends PublicLookupController
+         return view('pages.id-cards', [
+             'error' => null, 'terror' => null,
+             'card' => ['type' => 'student', 'person' => $student, 'idText' => CardData::studentId($student), 'qr' => CardData::qr($student),
+-                'pdfUrl' => route('public.id-cards.pdf', [], false), 'fields' => ['gr_number' => $student->gr_number, 'dob' => $request->input('dob')]],
++                'pdfUrl' => URL::temporarySignedRoute('public.id-cards.pdf', now()->addMinutes(30), ['student' => $student->id], false)],
+         ]);
+     }
+ 
+-    public function pdf(Request $request)
++    /** Signed GET link (works with Android Chrome downloads); the student was already verified by GR + DOB. */
++    public function pdf(Student $student)
+     {
+-        $error = null;
+-        $student = $this->lookupStudent($request, $error);
+-        if (! $student) {
+-            return view('pages.id-cards', ['error' => $error, 'terror' => null, 'card' => null]);
+-        }
+-
+-        return app(AdminIdCardController::class)->pdf($student);
++        return app(AdminIdCardController::class)->pdf($student, true);
+     }
+ 
+     /** Staff: find by PID or CNIC (dashes/spaces ignored). */
+@@ -78,19 +75,13 @@ class PublicCardsController extends PublicLookupController
+ 
+         return view('pages.id-cards', [
+             'error' => null, 'terror' => null,
+-            'card' => ['type' => 'teacher', 'person' => $card, 'idText' => CardData::staffId($teacher), 'qr' => CardData::qr($teacher),
+-                'pdfUrl' => route('public.id-cards.teacher.pdf', [], false), 'fields' => ['cnic_pid' => $request->input('cnic_pid')]],
++            'card' => ['type' => 'teacher', 'person' => $card, 'idText' => CardData::staffId($teacher, true), 'qr' => CardData::qr($teacher),
++                'pdfUrl' => URL::temporarySignedRoute('public.id-cards.teacher.pdf', now()->addMinutes(30), ['teacher' => $teacher->id], false)],
+         ]);
+     }
+ 
+-    public function teacherPdf(Request $request)
++    public function teacherPdf(Teacher $teacher)
+     {
+-        $error = null;
+-        $teacher = $this->lookupTeacher($request, $error);
+-        if (! $teacher) {
+-            return view('pages.id-cards', ['error' => null, 'terror' => $error, 'card' => null]);
+-        }
+-
+-        return app(AdminStaffIdCardController::class)->pdf($teacher);
++        return app(AdminStaffIdCardController::class)->pdf($teacher, true);
+     }
+ }
+diff --git a/app/Http/Controllers/PublicRecordsController.php b/app/Http/Controllers/PublicRecordsController.php
+index 50d107f..cdfe523 100644
+--- a/app/Http/Controllers/PublicRecordsController.php
++++ b/app/Http/Controllers/PublicRecordsController.php
+@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
+ use App\Models\LeavingCertificate;
+ use App\Models\Student;
+ use Illuminate\Http\Request;
++use Illuminate\Support\Facades\URL;
+ 
+ /** Old-site public tabs: Admit Card, Leaving Certificate, Alumni. */
+ class PublicRecordsController extends PublicLookupController
+@@ -37,18 +38,13 @@ class PublicRecordsController extends PublicLookupController
+ 
+         return view('pages.admit-card', ['error' => null, 'card' => [
+             'student' => $student, 'school' => \App\Support\CardData::school(),
+-            'fields' => ['gr_number' => $student->gr_number, 'dob' => $request->input('dob'), 'class' => $request->input('class')],
++            'pdfUrl' => URL::temporarySignedRoute('public.admit-card.pdf', now()->addMinutes(30), ['student' => $student->id], false),
+         ]]);
+     }
+ 
+-    public function admitPdf(Request $request)
++    /** Signed GET link (works with Android Chrome downloads); student already verified by GR + DOB. */
++    public function admitPdf(Student $student)
+     {
+-        $error = null;
+-        $student = $this->admitStudent($request, $error);
+-        if (! $student) {
+-            return view('pages.admit-card', ['error' => $error, 'card' => null]);
+-        }
+-
+         return app(AdminAdmitCardController::class)->pdf($student);
+     }
+ 
+diff --git a/app/Http/Controllers/StudentLeaveController.php b/app/Http/Controllers/StudentLeaveController.php
+index 2e7033d..7bd0a59 100644
+--- a/app/Http/Controllers/StudentLeaveController.php
++++ b/app/Http/Controllers/StudentLeaveController.php
+@@ -51,7 +51,7 @@ class StudentLeaveController extends Controller
+         if ($d['status'] === 'approved') {
+             $rec = DB::table('attendance_records')->where('class_name', $row->class_name)->whereDate('date', $row->leave_date)->value('id');
+             if ($rec) {
+-                \App\Models\AttendanceMark::updateOrCreate(['attendance_record_id' => $rec, 'student_id' => $row->student_id], ['status' => 'L', 'marked_via' => 'leave']);
++                \App\Models\AttendanceMark::updateOrCreate(['attendance_record_id' => $rec, 'student_id' => $row->student_id], ['status' => 'L', 'marked_via' => 'manual']);
+             }
+         }
+ 
+diff --git a/app/Support/CardData.php b/app/Support/CardData.php
+index a57c877..08da94c 100644
+--- a/app/Support/CardData.php
++++ b/app/Support/CardData.php
+@@ -33,11 +33,24 @@ class CardData
+         return 'GBLSS-GARHO-'.$year.'-'.$gr;
+     }
+ 
+-    public static function staffId(Teacher $t): string
++    public static function staffId(Teacher $t, bool $masked = false): string
+     {
+         $year = $t->entry_in_service ? Carbon::parse($t->entry_in_service)->year : now()->year;
++        $key = strtoupper($t->pid ?: substr($t->id, -6));
+ 
+-        return 'GBLSS-GARHO-STAFF-'.$year.'-'.strtoupper($t->pid ?: substr($t->id, -6));
++        return 'GBLSS-GARHO-STAFF-'.$year.'-'.($masked ? self::mask($key) : $key);
++    }
++
++    /** Hides all but the last 3 characters (public pages must not reveal PID / CNIC / phone numbers). */
++    public static function mask(?string $v): string
++    {
++        $v = trim((string) $v);
++        if ($v === '') {
++            return '—';
++        }
++        $n = mb_strlen($v);
++
++        return $n <= 3 ? str_repeat('*', $n) : str_repeat('*', $n - 3).mb_substr($v, -3);
+     }
+ 
+     public static function qr($model): string
+diff --git a/public/css/bookbank.css b/public/css/bookbank.css
+index 7e681ae..c1591e5 100644
+--- a/public/css/bookbank.css
++++ b/public/css/bookbank.css
+@@ -57,7 +57,7 @@ table.bb-m { border-collapse:separate; border-spacing:0; width:100%; font-size:1
+ .bb-m th.grp { font-size:12.5px; border-left:3px solid #0F5132; background:#EAF3EF; }
+ .bb-m td { padding:9px 10px; border-bottom:1px solid #EEE8D6; text-align:center; white-space:nowrap; }
+ .bb-m .bl { border-left:3px solid #0F5132; }
+-.bb-m .bb-sn { position:sticky; left:0; background:#fff; text-align:left; font-weight:700; z-index:1; min-width:130px; }
++.bb-m .bb-sn { position:sticky; left:0; background:#fff; text-align:left; font-weight:700; z-index:1; min-width:56px; }
+ .bb-m th.bb-sn { background:#F4F0E3; }
+ .bb-m .ok { color:#0F5132; font-size:16px; } .bb-m .no { color:#C9C3AB; }
+ .bb-sh2 { display:flex; justify-content:space-between; align-items:center; }
+diff --git a/public/css/card-preview.css b/public/css/card-preview.css
+index a540aa7..822f7f2 100644
+--- a/public/css/card-preview.css
++++ b/public/css/card-preview.css
+@@ -1,5 +1,5 @@
+-.pc-wrap { display:flex; flex-direction:column; gap:14px; align-items:center; margin:12px 0; }
+-.pc-fit { position:relative; width:100%; max-width:458px; }
++.pc-wrap { width:100%; min-width:0; display:flex; flex-direction:column; gap:14px; align-items:center; margin:12px 0; }
++.pc-fit { position:relative; width:100%; min-width:0; max-width:458px; overflow:hidden; }
+ .pc-fit > * { transform-origin:0 0; }
+ .pc-card { width:458px; height:288px; background:#fff; border:1px solid #DDC77A; overflow:hidden; font-family:'Noto Serif',Georgia,serif; color:#4A4237; box-shadow:0 10px 26px rgba(11,44,84,.18); border-radius:6px; font-size:9.5px; position:relative; }
+ .pc-h { background:#123B7A; display:flex; align-items:center; justify-content:space-between; padding:6px 10px 6px 68px; min-height:64px; box-sizing:border-box; }
+@@ -33,9 +33,12 @@
+ .pc-sb { background:#0B3D26; text-align:center; padding:0 0 12px; } .pc-sb span { display:inline-block; border:1px solid #DBB43C; color:#F0D989; font-size:9px; font-weight:700; letter-spacing:1px; padding:3px 12px; }
+ .pc-sc { display:flex; gap:12px; padding:14px 16px 6px; }
+ .pc-sp { width:66px; flex:none; text-align:center; } .pc-sp img, .pc-sp b { width:58px; height:58px; border:2px solid #0F5132; padding:2px; object-fit:cover; display:flex; align-items:center; justify-content:center; font-size:22px; color:#0F5132; margin:0 auto; } .pc-sp small { display:block; font-size:7px; color:#8B8371; margin-top:4px; }
+-.pc-sc table { flex:1; border-collapse:collapse; } .pc-sc th { text-align:left; color:#0F5132; width:104px; padding:5px 0; border-bottom:1px dashed #E3DCC7; } .pc-sc td { padding:5px 0; border-bottom:1px dashed #E3DCC7; }
++.pc-slip table { flex:1; width:auto; margin:0; border-radius:0; box-shadow:none; background:transparent; border-collapse:collapse; }
++.pc-slip th { background:transparent; text-align:left; color:#0F5132; font-size:11px; font-weight:700; width:104px; padding:5px 0; border-bottom:1px dashed #E3DCC7; }
++.pc-slip td { background:transparent !important; font-size:11px; padding:5px 0; border-bottom:1px dashed #E3DCC7; }
+ .pc-sf { padding:6px 16px 14px; font-size:10px; color:#4A4237; } .pc-sbar { height:6px; background:#C9A227; }
+ /* lookup pages */
++.pc-grid > * { min-width:0; }
+ .pc-grid { display:grid; grid-template-columns:1fr; gap:18px; align-items:start; }
+ @media (min-width:820px) { .pc-grid { grid-template-columns:320px 1fr; } }
+ .pc-forms .lk-card { margin-bottom:16px; }
+diff --git a/resources/views/admin/bookbank.blade.php b/resources/views/admin/bookbank.blade.php
+index 5abe36d..46be149 100644
+--- a/resources/views/admin/bookbank.blade.php
++++ b/resources/views/admin/bookbank.blade.php
+@@ -83,7 +83,7 @@
+                         <table class="bb-m">
+                             <thead>
+                                 <tr>
+-                                    <th rowspan="2" class="bb-sn">Student</th><th rowspan="2">GR#</th>
++                                    <th rowspan="2" class="bb-sn">GR#</th><th rowspan="2">Student</th>
+                                     <th colspan="{{ count($subjects) }}" class="grp">Books Distributed</th>
+                                     <th colspan="{{ count($subjects) }}" class="grp">Books Collected</th>
+                                 </tr>
+@@ -94,7 +94,7 @@
+                             <tbody>
+                                 @forelse ($students as $st2)
+                                     <tr>
+-                                        <td class="bb-sn">{{ $st2->name }}</td><td>{{ $st2->gr_number }}</td>
++                                        <td class="bb-sn">{{ $st2->gr_number }}</td><td style="white-space:nowrap;font-weight:700">{{ $st2->name }}</td>
+                                         @foreach (['D', 'C'] as $col)
+                                             @foreach ($subjects as $sub)
+                                                 @php $v = $matrix[$st2->id][$sub] ?? null; $on = $col === 'D' ? $v !== null : $v === 'C'; @endphp
+diff --git a/resources/views/admin/gr-register.blade.php b/resources/views/admin/gr-register.blade.php
+index ca9ab7d..82a212e 100644
+--- a/resources/views/admin/gr-register.blade.php
++++ b/resources/views/admin/gr-register.blade.php
+@@ -7,6 +7,8 @@
+     <div class="page-title" data-n="03"><h1>General Register (GR)</h1></div>
+     <p class="sd sd-note">جنرل رجسٽر: GR نمبر 1 کان وٺي تازو داخلا تائين سمورا شاگرد.</p>
+ 
++    <p><a class="btn" href="{{ route('admin.students.create', ['gr' => $last + 1], false) }}">+ Naya Dakhla (New Entry) &mdash; GR {{ $last + 1 }}</a></p>
++
+     <div class="fb-sum" style="flex-wrap:wrap">
+         <span>Total: <b>{{ $total }}</b></span>
+         <span>&middot; Active: <b>{{ $activeCount }}</b></span>
+diff --git a/resources/views/admin/id-cards/_card.blade.php b/resources/views/admin/id-cards/_card.blade.php
+index d182cc0..30cbbdc 100644
+--- a/resources/views/admin/id-cards/_card.blade.php
++++ b/resources/views/admin/id-cards/_card.blade.php
+@@ -1,6 +1,7 @@
+ {{-- Shared GBLSS ID card (front + back) for students and staff. DomPDF-safe: tables only. --}}
+ @php
+     $isTeacher = $type === 'teacher';
++    $public = $public ?? false;   // public pages: no DOB, masked PID, no guardian phone / home address
+     $logo = collect([public_path('images/logo-glow.png'), public_path('images/logo.png'), public_path('images/lc/emblem.jpg')])->first(fn ($f) => is_file($f)) ?: public_path('images/logo.png');
+     $logoOk = is_file($logo);
+     $smallPhoto = \App\Support\PdfPhoto::small($person->photo_url ?? null);
+@@ -15,7 +16,7 @@
+     }
+     $sname = mb_strtoupper($school['name']);
+     $schoolPhone = $school['phone'] ?? null;
+-    $emergency = $isTeacher ? ($schoolPhone ?: '—') : (($person->guardian_phone ?? null) ?: ($schoolPhone ?: '—'));
++    $emergency = $isTeacher ? ($schoolPhone ?: '—') : ($public ? ($schoolPhone ?: '—') : (($person->guardian_phone ?? null) ?: ($schoolPhone ?: '—')));
+     $serviceFor = function ($d) {
+         if (! $d) { return '—'; }
+         $diff = \Carbon\Carbon::parse($d)->diff(now());
+@@ -27,8 +28,8 @@
+         $rows = [
+             ['Staff ID', $idText],
+             [$person->designation ? 'Designation' : 'Staff', $person->designation ?: 'Staff'],
+-            ['PID / CNIC', $person->pid ?: ($person->cnic ?: '—')],
+-            ['Date of Birth', $fmt($person->dob)],
++            ['PID / CNIC', $public ? \App\Support\CardData::mask($person->pid) : ($person->pid ?: ($person->cnic ?: '—'))],
++            $public ? ['Status', 'Active Staff'] : ['Date of Birth', $fmt($person->dob)],
+             ['Service', $serviceFor($person->entry_in_service)],
+         ];
+     } else {
+@@ -36,7 +37,7 @@
+             ['Student ID', $idText],
+             ['Class', $person->class.($person->section ? '-'.$person->section : '')],
+             ['GR No.', $person->gr_number ?: '—'],
+-            ['Date of Birth', $fmt($person->dob)],
++            $public ? ['Status', 'Enrolled'] : ['Date of Birth', $fmt($person->dob)],
+             ['Session', $session],
+         ];
+     }
+@@ -125,7 +126,7 @@
+         <td style="padding:12px 0 0 16px;">
+             <table>
+                 <tr><td class="lb2">SEMIS ID :</td><td class="vl2">{{ $school['code'] ?: '—' }}</td></tr>
+-                <tr><td class="lb2">{{ $isTeacher ? 'Employed At :' : 'Address :' }}</td><td class="vl2">{{ $isTeacher ? ($person->school_name ?: $school['name']) : ($person->address ?: '—') }}</td></tr>
++                <tr><td class="lb2">{{ $isTeacher ? 'Employed At :' : 'Address :' }}</td><td class="vl2">{{ $isTeacher ? ($person->school_name ?: $school['name']) : ($public ? '—' : ($person->address ?: '—')) }}</td></tr>
+                 <tr><td class="lb2">Valid Up To :</td><td class="vl2">{{ $validUpTo }}</td></tr>
+             </table>
+         </td>
+diff --git a/resources/views/admin/id-cards/class.blade.php b/resources/views/admin/id-cards/class.blade.php
+index 546e04c..5292774 100644
+--- a/resources/views/admin/id-cards/class.blade.php
++++ b/resources/views/admin/id-cards/class.blade.php
+@@ -9,7 +9,7 @@
+         $idText = 'GBLSS-GARHO-'.$admYear.'-'.$gr;
+         $qr = app(\App\Services\QrCodeService::class)->dataUri($student->ensureQrCode(), 300, 1);
+     @endphp
+-    @include('admin.id-cards._card', ['type' => 'student', 'person' => $student, 'idText' => $idText, 'qr' => $qr])
++    @include('admin.id-cards._card', ['type' => 'student', 'person' => $student, 'idText' => $idText, 'qr' => $qr, 'public' => $public ?? false])
+ @endforeach
+ </body>
+ </html>
+diff --git a/resources/views/admin/id-cards/student.blade.php b/resources/views/admin/id-cards/student.blade.php
+index aba946c..d48a960 100644
+--- a/resources/views/admin/id-cards/student.blade.php
++++ b/resources/views/admin/id-cards/student.blade.php
+@@ -8,6 +8,6 @@
+ <html lang="en">
+ <head><meta charset="utf-8"><title>Student ID Card</title></head>
+ <body>
+-@include('admin.id-cards._card', ['type' => 'student', 'person' => $student, 'idText' => $idText, 'qr' => $qr])
++@include('admin.id-cards._card', ['type' => 'student', 'person' => $student, 'idText' => $idText, 'qr' => $qr, 'public' => $public ?? false])
+ </body>
+ </html>
+diff --git a/resources/views/admin/staff-id-cards/teacher.blade.php b/resources/views/admin/staff-id-cards/teacher.blade.php
+index 11646d9..62fea37 100644
+--- a/resources/views/admin/staff-id-cards/teacher.blade.php
++++ b/resources/views/admin/staff-id-cards/teacher.blade.php
+@@ -1,12 +1,12 @@
+ @php
+     $year = $teacher->entry_in_service ? \Carbon\Carbon::parse($teacher->entry_in_service)->year : now()->year;
+-    $idText = 'GBLSS-GARHO-STAFF-'.$year.'-'.strtoupper($teacher->pid ?: substr($teacher->id, -6));
++    $idText = \App\Support\CardData::staffId($teacher, $public ?? false);
+     $qr = app(\App\Services\QrCodeService::class)->dataUri($teacher->ensureQrCode(), 300, 1);
+ @endphp
+ <!DOCTYPE html>
+ <html lang="en">
+ <head><meta charset="utf-8"><title>Staff ID Card</title></head>
+ <body>
+-@include('admin.id-cards._card', ['type' => 'teacher', 'person' => $teacher, 'idText' => $idText, 'qr' => $qr])
++@include('admin.id-cards._card', ['type' => 'teacher', 'person' => $teacher, 'idText' => $idText, 'qr' => $qr, 'public' => $public ?? false])
+ </body>
+ </html>
+diff --git a/resources/views/admin/students/form.blade.php b/resources/views/admin/students/form.blade.php
+index 53434a6..5094251 100644
+--- a/resources/views/admin/students/form.blade.php
++++ b/resources/views/admin/students/form.blade.php
+@@ -20,7 +20,7 @@
+                 return old($k, $v);
+             };
+         @endphp
+-        <p>GR number<br><input name="gr_number" value="{{ $f('gr_number') }}" required></p>
++        <p>GR number<br><input name="gr_number" value="{{ $student ? $f('gr_number') : old('gr_number', $nextGr ?? '') }}" required inputmode="numeric"></p>
+         <p>Naam<br><input name="name" value="{{ $f('name') }}" required></p>
+         <p>Walid ka naam<br><input name="father_name" value="{{ $f('father_name') }}"></p>
+         <p>Date of birth<br><input type="date" name="dob" value="{{ $f('dob') }}"></p>
+diff --git a/resources/views/pages/_id-preview.blade.php b/resources/views/pages/_id-preview.blade.php
+index e7cec9d..0463701 100644
+--- a/resources/views/pages/_id-preview.blade.php
++++ b/resources/views/pages/_id-preview.blade.php
+@@ -1,6 +1,7 @@
+ {{-- On-page ID card preview (front + back), same layout as the PDF. $type = student|teacher --}}
+ @php
+     $isT = $type === 'teacher';
++    $public = $public ?? false;
+     $school = $school ?? \App\Support\CardData::school();
+     $logo = file_exists(public_path('images/logo-glow.png')) ? asset('images/logo-glow.png') : (file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg'));
+     $fmt = fn ($d) => $d ? \Carbon\Carbon::parse($d)->format('M d, Y') : '—';
+@@ -14,13 +15,13 @@
+         return $o ?: '< 1 month';
+     };
+     $rows = $isT ? [
+-        ['Staff ID', $idText], ['Designation', $person->designation ?: 'Staff'], ['PID / CNIC', $person->pid ?: ($person->cnic ?: '—')],
+-        ['Date of Birth', $fmt($person->dob)], ['Service', $serviceFor($person->entry_in_service)],
++        ['Staff ID', $idText], ['Designation', $person->designation ?: 'Staff'], ['PID / CNIC', $public ? \App\Support\CardData::mask($person->pid) : ($person->pid ?: ($person->cnic ?: '—'))],
++        $public ? ['Status', 'Active Staff'] : ['Date of Birth', $fmt($person->dob)], ['Service', $serviceFor($person->entry_in_service)],
+     ] : [
+         ['Student ID', $idText], ['Class', $person->class.($person->section ? '-'.$person->section : '')], ['GR No.', $person->gr_number ?: '—'],
+-        ['Date of Birth', $fmt($person->dob)], ['Session', $session],
++        $public ? ['Status', 'Enrolled'] : ['Date of Birth', $fmt($person->dob)], ['Session', $session],
+     ];
+-    $emergency = $isT ? ($school['phone'] ?: '—') : (($person->guardian_phone ?: null) ?: ($school['phone'] ?: '—'));
++    $emergency = $isT ? ($school['phone'] ?: '—') : ($public ? ($school['phone'] ?: '—') : (($person->guardian_phone ?: null) ?: ($school['phone'] ?: '—')));
+ @endphp
+ <div class="pc-wrap">
+   <div class="pc-fit" data-w="458" data-h="288"><div class="pc-card">
+@@ -49,7 +50,7 @@
+     <div class="pc-b2">
+         <div class="pc-i2">
+             <p><i>SEMIS ID :</i><b>{{ $school['code'] ?: '—' }}</b></p>
+-            <p><i>{{ $isT ? 'Employed At :' : 'Address :' }}</i><b>{{ $isT ? ($person->school_name ?: $school['name']) : ($person->address ?: '—') }}</b></p>
++            <p><i>{{ $isT ? 'Employed At :' : 'Address :' }}</i><b>{{ $isT ? ($person->school_name ?: $school['name']) : ($public ? '—' : ($person->address ?: '—')) }}</b></p>
+             <p><i>Valid Up To :</i><b>{{ $validUpTo }}</b></p>
+         </div>
+         <div class="pc-qr"><img src="{{ $qr }}" alt="QR"><small>{{ $isT ? 'Scan to verify staff ID' : 'Scan to verify / mark attendance' }}</small></div>
+diff --git a/resources/views/pages/admit-card.blade.php b/resources/views/pages/admit-card.blade.php
+index 17cbe97..1546def 100644
+--- a/resources/views/pages/admit-card.blade.php
++++ b/resources/views/pages/admit-card.blade.php
+@@ -18,7 +18,7 @@
+                 @foreach (['VI', 'VII', 'VIII'] as $c)<option value="{{ $c }}" @selected(old('class') === $c)>{{ $c }}</option>@endforeach
+             </select>
+             <label for="gr_number">GR / Roll number</label>
+-            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="e.g. 1024">
++            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="GR number">
+             <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span></label>
+             <input id="dob" name="dob" type="date" value="{{ old('dob') }}" required>
+             <div class="btn-row">
+@@ -30,11 +30,7 @@
+     @if ($card)
+         <div style="max-width:380px;margin:0 auto">
+             @include('pages._admit-preview', ['student' => $card['student'], 'school' => $card['school']])
+-            <form method="POST" action="{{ route('public.admit-card.pdf', [], false) }}" target="_blank" class="pc-actions">
+-                @csrf
+-                @foreach ($card['fields'] as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
+-                <button type="submit">&#128424; Print / Save as PDF</button>
+-            </form>
++            <div class="pc-actions"><a class="btn" href="{{ $card['pdfUrl'] }}" target="_blank" rel="noopener">&#128424; Print / Save as PDF</a></div>
+         </div>
+     @endif
+     <script src="{{ asset('js/card-fit.js') }}"></script>
+diff --git a/resources/views/pages/alumni.blade.php b/resources/views/pages/alumni.blade.php
+index d4f4782..74dffa3 100644
+--- a/resources/views/pages/alumni.blade.php
++++ b/resources/views/pages/alumni.blade.php
+@@ -8,7 +8,7 @@
+         <div class="lk-title">Find a Former Student</div>
+         <form method="GET" action="{{ route('public.alumni', [], false) }}">
+             <label for="q">GR number, name or father name</label>
+-            <input id="q" name="q" value="{{ $q }}" required placeholder="e.g. 195 or student name">
++            <input id="q" name="q" value="{{ $q }}" required placeholder="GR number ya naam">
+             <div class="btn-row">
+                 <button type="submit">Search</button>
+                 <a class="btn ghost" href="{{ route('public.alumni', [], false) }}">Reset</a>
+diff --git a/resources/views/pages/id-cards.blade.php b/resources/views/pages/id-cards.blade.php
+index 4c9abb9..e9f708e 100644
+--- a/resources/views/pages/id-cards.blade.php
++++ b/resources/views/pages/id-cards.blade.php
+@@ -14,7 +14,7 @@
+                 <form method="POST" action="{{ route('public.id-cards.teacher', [], false) }}">
+                     @csrf
+                     <label for="cnic_pid">CNIC / PID</label>
+-                    <input id="cnic_pid" name="cnic_pid" value="{{ old('cnic_pid') }}" required placeholder="e.g. 10829975">
++                    <input id="cnic_pid" name="cnic_pid" value="{{ old('cnic_pid') }}" required placeholder="PID ya CNIC likhein">
+                     <div class="btn-row">
+                         <button type="submit">Search</button>
+                         <a class="btn ghost" href="{{ route('public.id-cards', [], false) }}">Reset</a>
+@@ -27,7 +27,7 @@
+                 <form method="POST" action="{{ route('public.id-cards.download', [], false) }}">
+                     @csrf
+                     <label for="gr_number">GR / Roll number</label>
+-                    <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="1024">
++                    <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="GR number">
+                     <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span></label>
+                     <input id="dob" name="dob" type="date" value="{{ old('dob') }}" required>
+                     <div class="btn-row">
+@@ -39,13 +39,9 @@
+         </div>
+         <div>
+             @if ($card)
+-                @include('pages._id-preview', ['type' => $card['type'], 'person' => $card['person'], 'idText' => $card['idText'], 'qr' => $card['qr']])
++                @include('pages._id-preview', ['type' => $card['type'], 'person' => $card['person'], 'idText' => $card['idText'], 'qr' => $card['qr'], 'public' => true])
+                 <p class="pc-note sd">اڳيان ۽ پويان — ٻنهي پاسن وارو ڪارڊ (double-sided card).</p>
+-                <form method="POST" action="{{ $card['pdfUrl'] }}" target="_blank" class="pc-actions">
+-                    @csrf
+-                    @foreach ($card['fields'] as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
+-                    <button type="submit">&#128424; Print / Save as PDF</button>
+-                </form>
++                <div class="pc-actions"><a class="btn" href="{{ $card['pdfUrl'] }}" target="_blank" rel="noopener">&#128424; Print / Save as PDF</a></div>
+             @else
+                 <p class="pc-note sd">ڪارڊ ڏسڻ لاءِ ڇنڊ ڇاڻ ڪريو (Search).</p>
+             @endif
+diff --git a/resources/views/pages/leaving-certificate.blade.php b/resources/views/pages/leaving-certificate.blade.php
+index 4db2cbc..5968884 100644
+--- a/resources/views/pages/leaving-certificate.blade.php
++++ b/resources/views/pages/leaving-certificate.blade.php
+@@ -10,7 +10,7 @@
+         <form method="POST" action="{{ route('public.leaving-certificate.download', [], false) }}">
+             @csrf
+             <label for="gr_number">GR number</label>
+-            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="e.g. 1024">
++            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="GR number">
+             <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span></label>
+             <input id="dob" name="dob" type="date" value="{{ old('dob') }}" required>
+             <label for="year">Year (optional)</label>
+diff --git a/resources/views/pages/lookup.blade.php b/resources/views/pages/lookup.blade.php
+index a96860a..c4a3493 100644
+--- a/resources/views/pages/lookup.blade.php
++++ b/resources/views/pages/lookup.blade.php
+@@ -19,7 +19,7 @@
+         <form method="POST" action="{{ route('public.lookup.check') }}">
+             @csrf
+             <label for="gr_number">GR / Roll number <span class="sd">(GR نمبر داخل ڪريو)</span></label>
+-            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="105">
++            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="GR number">
+ 
+             <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span></label>
+             <input id="dob" name="dob" type="date" value="{{ old('dob') }}" required>
+diff --git a/routes/web.php b/routes/web.php
+index 983eb25..a11257a 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -137,9 +137,9 @@ Route::get('/results', [\App\Http\Controllers\PublicResultsController::class, 's
+ Route::post('/results', [\App\Http\Controllers\PublicResultsController::class, 'check'])->middleware('throttle:30,1')->name('public.results.check');
+ Route::get('/id-cards', [\App\Http\Controllers\PublicCardsController::class, 'show'])->name('public.id-cards');
+ Route::post('/id-cards', [\App\Http\Controllers\PublicCardsController::class, 'download'])->middleware('throttle:30,1')->name('public.id-cards.download');
+-Route::post('/id-cards/pdf', [\App\Http\Controllers\PublicCardsController::class, 'pdf'])->middleware('throttle:30,1')->name('public.id-cards.pdf');
++Route::get('/id-cards/pdf/{student}', [\App\Http\Controllers\PublicCardsController::class, 'pdf'])->middleware(['signed:relative', 'throttle:30,1'])->name('public.id-cards.pdf');
+ Route::post('/id-cards/teacher', [\App\Http\Controllers\PublicCardsController::class, 'teacher'])->middleware('throttle:30,1')->name('public.id-cards.teacher');
+-Route::post('/id-cards/teacher/pdf', [\App\Http\Controllers\PublicCardsController::class, 'teacherPdf'])->middleware('throttle:30,1')->name('public.id-cards.teacher.pdf');
++Route::get('/id-cards/teacher/pdf/{teacher}', [\App\Http\Controllers\PublicCardsController::class, 'teacherPdf'])->middleware(['signed:relative', 'throttle:30,1'])->name('public.id-cards.teacher.pdf');
+ Route::get('/feedback', [\App\Http\Controllers\PublicPagesController::class, 'feedbackForm'])->name('public.feedback');
+ Route::post('/feedback', [\App\Http\Controllers\PublicPagesController::class, 'feedbackStore'])->middleware('throttle:5,10')->name('public.feedback.store');
+ 
+@@ -181,7 +181,7 @@ Route::get('/toppers', [\App\Http\Controllers\PublicInfoController::class, 'topp
+ 
+ Route::get('/admit-card', [\App\Http\Controllers\PublicRecordsController::class, 'admitShow'])->name('public.admit-card');
+ Route::post('/admit-card', [\App\Http\Controllers\PublicRecordsController::class, 'admitDownload'])->middleware('throttle:30,1')->name('public.admit-card.download');
+-Route::post('/admit-card/pdf', [\App\Http\Controllers\PublicRecordsController::class, 'admitPdf'])->middleware('throttle:30,1')->name('public.admit-card.pdf');
++Route::get('/admit-card/pdf/{student}', [\App\Http\Controllers\PublicRecordsController::class, 'admitPdf'])->middleware(['signed:relative', 'throttle:30,1'])->name('public.admit-card.pdf');
+ Route::get('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcShow'])->name('public.leaving-certificate');
+ Route::post('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcDownload'])->middleware('throttle:30,1')->name('public.leaving-certificate.download');
+ Route::get('/alumni', [\App\Http\Controllers\PublicRecordsController::class, 'alumni'])->middleware('throttle:30,1')->name('public.alumni');
+diff --git a/tests/Feature/CardPreviewTest.php b/tests/Feature/CardPreviewTest.php
+index 55769c9..59f7dea 100644
+--- a/tests/Feature/CardPreviewTest.php
++++ b/tests/Feature/CardPreviewTest.php
+@@ -43,4 +43,55 @@ class CardPreviewTest extends TestCase
+         $this->actingAs($admin);
+         $this->get('/admin/admit-cards?class=VII')->assertOk()->assertSee('Print All (1)', false)->assertSee('Ali Khan');
+     }
++
++    private function pdfHref(string $html, string $needle): string
++    {
++        $this->assertSame(1, preg_match('#href="([^"]*'.preg_quote($needle, '#').'[^"]*)"#', html_entity_decode($html), $m));
++
++        return $m[1];
++    }
++
++    public function test_public_student_card_hides_dob_and_pdf_is_a_signed_get(): void
++    {
++        $this->student();
++        $html = $this->post('/id-cards', ['gr_number' => '77', 'dob' => '2012-01-02'])
++            ->assertOk()->assertDontSee('Date of Birth')->assertDontSee('Jan 02, 2012')->getContent();
++        $href = $this->pdfHref($html, '/id-cards/pdf/');
++        $this->get($href)->assertOk()->assertHeader('content-type', 'application/pdf');
++        $this->get('/id-cards/pdf/s1')->assertForbidden();          // unsigned link refused
++    }
++
++    public function test_public_teacher_card_masks_pid_and_signed_pdf_works(): void
++    {
++        Teacher::forceCreate(['id' => 'tchcard001', 'name' => 'Waris', 'pid' => '10829975', 'cnic' => '41234-1234567-1', 'dob' => '1990-05-05', 'designation' => 'JEST', 'created_at' => now()]);
++        $html = $this->post('/id-cards/teacher', ['cnic_pid' => '10829975'])
++            ->assertOk()->assertDontSee('10829975')->assertSee('*****975')->assertDontSee('May 05, 1990')->assertDontSee('Date of Birth')->getContent();
++        $this->get($this->pdfHref($html, '/id-cards/teacher/pdf/'))->assertOk()->assertHeader('content-type', 'application/pdf');
++        $this->get('/id-cards/teacher/pdf/tchcard001')->assertForbidden();
++    }
++
++    public function test_admit_pdf_uses_signed_get(): void
++    {
++        $this->student();
++        $html = $this->post('/admit-card', ['gr_number' => '77', 'dob' => '2012-01-02'])->assertOk()->getContent();
++        $this->get($this->pdfHref($html, '/admit-card/pdf/'))->assertOk()->assertHeader('content-type', 'application/pdf');
++        $this->get('/admit-card/pdf/s1')->assertForbidden();
++    }
++
++    public function test_admin_new_student_gets_short_id_and_gr_register_row(): void
++    {
++        $admin = User::forceCreate(['name' => 'A', 'email' => 'a@example.test', 'password' => bcrypt('x'), 'role' => 'admin', 'is_active' => 1]);
++        $this->actingAs($admin);
++        \Illuminate\Support\Facades\DB::table('gr_register')->insert(['reg_no' => 10, 'name' => 'Old', 'created_at' => now(), 'updated_at' => now()]);
++
++        $this->get('/admin/gr-register')->assertOk()->assertSee('Naya Dakhla')->assertSee('GR 11');
++        $this->get('/admin/students/create?gr=11')->assertOk()->assertSee('value="11"', false);
++        $this->post('/admin/students', ['gr_number' => '11', 'name' => 'Naya Bacha', 'class' => 'VI'])->assertRedirect();
++
++        $s = Student::where('gr_number', '11')->first();
++        $this->assertNotNull($s);
++        $this->assertLessThanOrEqual(32, strlen($s->id));
++        $this->assertDatabaseHas('gr_register', ['reg_no' => 11, 'name' => 'Naya Bacha', 'admission_class' => 'VI']);
++        $this->post('/admin/students', ['gr_number' => '10', 'name' => 'Dup', 'class' => 'VI'])->assertSessionHasErrors('gr_number');
++    }
+ }
