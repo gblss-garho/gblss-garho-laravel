@@ -1,0 +1,27 @@
+From af6d8ec24d752dc462d6c3c622e96986d07f0907 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 19 Nov 2026 08:05:01 +0500
+Subject: [PATCH] SchoolInfo: allow total_classes, established_year,
+ current_exam_title
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HttsdfoZKD8pHnvrLZEBS2
+---
+ app/Models/SchoolInfo.php | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/app/Models/SchoolInfo.php b/app/Models/SchoolInfo.php
+index 909d3c2..235cf77 100644
+--- a/app/Models/SchoolInfo.php
++++ b/app/Models/SchoolInfo.php
+@@ -9,6 +9,7 @@ class SchoolInfo extends Model
+     protected $table = 'school_info';
+ 
+     protected $fillable = [
++        'total_classes', 'established_year', 'current_exam_title',
+         'name', 'sindhi_name', 'email', 'phone', 'motto', 'shifts', 'address',
+         'semis_code', 'about_text', 'school_lat', 'school_lng', 'map_location',
+         'deo_name', 'deo_message', 'deo_photo_url',
+-- 
+2.43.0
+
