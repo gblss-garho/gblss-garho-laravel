@@ -8,6 +8,6 @@
 <html lang="en">
 <head><meta charset="utf-8"><title>Student ID Card</title></head>
 <body>
-@include('admin.id-cards._card', ['type' => 'student', 'person' => $student, 'idText' => $idText, 'qr' => $qr])
+@include('admin.id-cards._card', ['type' => 'student', 'person' => $student, 'idText' => $idText, 'qr' => $qr, 'public' => $public ?? false])
 </body>
 </html>

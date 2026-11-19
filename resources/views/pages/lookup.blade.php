@@ -19,7 +19,7 @@
         <form method="POST" action="{{ route('public.lookup.check') }}">
             @csrf
             <label for="gr_number">GR / Roll number <span class="sd">(GR نمبر داخل ڪريو)</span></label>
-            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="105">
+            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="GR number">
 
             <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span></label>
             <input id="dob" name="dob" type="date" value="{{ old('dob') }}" required>

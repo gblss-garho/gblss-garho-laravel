@@ -57,7 +57,7 @@ table.bb-m { border-collapse:separate; border-spacing:0; width:100%; font-size:1
 .bb-m th.grp { font-size:12.5px; border-left:3px solid #0F5132; background:#EAF3EF; }
 .bb-m td { padding:9px 10px; border-bottom:1px solid #EEE8D6; text-align:center; white-space:nowrap; }
 .bb-m .bl { border-left:3px solid #0F5132; }
-.bb-m .bb-sn { position:sticky; left:0; background:#fff; text-align:left; font-weight:700; z-index:1; min-width:130px; }
+.bb-m .bb-sn { position:sticky; left:0; background:#fff; text-align:left; font-weight:700; z-index:1; min-width:56px; }
 .bb-m th.bb-sn { background:#F4F0E3; }
 .bb-m .ok { color:#0F5132; font-size:16px; } .bb-m .no { color:#C9C3AB; }
 .bb-sh2 { display:flex; justify-content:space-between; align-items:center; }

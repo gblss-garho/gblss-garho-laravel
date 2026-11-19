@@ -30,7 +30,7 @@ class ParentPortalTest extends TestCase
         Homework::create(['id' => 'h2', 'date' => now()->subDays(10)->toDateString(), 'text' => 'Old work', 'subject' => 'math', 'class_name' => 'VII', 'status' => 'published']);
 
         $this->post('/parent-lookup', ['gr_number' => '55', 'dob' => '2012-01-02'])->assertOk()
-            ->assertSee('50%')->assertSee('1 / 2 din')->assertSee('Today&#039;s Homework', false)->assertSee('Do exercise 1')->assertSee('Old work')
+            ->assertSee('50%')->assertSee('1 / 2 din')->assertSee("Today's Homework", false)->assertSee('Do exercise 1')->assertSee('Old work')
             ->assertSee('Previous Homework')->assertSee('Leave / Absence Application');
     }
 

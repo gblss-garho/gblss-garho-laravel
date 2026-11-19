@@ -20,7 +20,7 @@
                 return old($k, $v);
             };
         @endphp
-        <p>GR number<br><input name="gr_number" value="{{ $f('gr_number') }}" required></p>
+        <p>GR number<br><input name="gr_number" value="{{ $student ? $f('gr_number') : old('gr_number', $nextGr ?? '') }}" required inputmode="numeric"></p>
         <p>Naam<br><input name="name" value="{{ $f('name') }}" required></p>
         <p>Walid ka naam<br><input name="father_name" value="{{ $f('father_name') }}"></p>
         <p>Date of birth<br><input type="date" name="dob" value="{{ $f('dob') }}"></p>

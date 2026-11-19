@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\LeavingCertificate;
 use App\Models\Student;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 
 /** Old-site public tabs: Admit Card, Leaving Certificate, Alumni. */
 class PublicRecordsController extends PublicLookupController
@@ -37,18 +38,13 @@ class PublicRecordsController extends PublicLookupController
 
         return view('pages.admit-card', ['error' => null, 'card' => [
             'student' => $student, 'school' => \App\Support\CardData::school(),
-            'fields' => ['gr_number' => $student->gr_number, 'dob' => $request->input('dob'), 'class' => $request->input('class')],
+            'pdfUrl' => URL::temporarySignedRoute('public.admit-card.pdf', now()->addMinutes(30), ['student' => $student->id], false),
         ]]);
     }
 
-    public function admitPdf(Request $request)
+    /** Signed GET link (works with Android Chrome downloads); student already verified by GR + DOB. */
+    public function admitPdf(Student $student)
     {
-        $error = null;
-        $student = $this->admitStudent($request, $error);
-        if (! $student) {
-            return view('pages.admit-card', ['error' => $error, 'card' => null]);
-        }
-
         return app(AdminAdmitCardController::class)->pdf($student);
     }
 

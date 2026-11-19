@@ -1,5 +1,5 @@
-.pc-wrap { display:flex; flex-direction:column; gap:14px; align-items:center; margin:12px 0; }
-.pc-fit { position:relative; width:100%; max-width:458px; }
+.pc-wrap { width:100%; min-width:0; display:flex; flex-direction:column; gap:14px; align-items:center; margin:12px 0; }
+.pc-fit { position:relative; width:100%; min-width:0; max-width:458px; overflow:hidden; }
 .pc-fit > * { transform-origin:0 0; }
 .pc-card { width:458px; height:288px; background:#fff; border:1px solid #DDC77A; overflow:hidden; font-family:'Noto Serif',Georgia,serif; color:#4A4237; box-shadow:0 10px 26px rgba(11,44,84,.18); border-radius:6px; font-size:9.5px; position:relative; }
 .pc-h { background:#123B7A; display:flex; align-items:center; justify-content:space-between; padding:6px 10px 6px 68px; min-height:64px; box-sizing:border-box; }
@@ -33,9 +33,12 @@
 .pc-sb { background:#0B3D26; text-align:center; padding:0 0 12px; } .pc-sb span { display:inline-block; border:1px solid #DBB43C; color:#F0D989; font-size:9px; font-weight:700; letter-spacing:1px; padding:3px 12px; }
 .pc-sc { display:flex; gap:12px; padding:14px 16px 6px; }
 .pc-sp { width:66px; flex:none; text-align:center; } .pc-sp img, .pc-sp b { width:58px; height:58px; border:2px solid #0F5132; padding:2px; object-fit:cover; display:flex; align-items:center; justify-content:center; font-size:22px; color:#0F5132; margin:0 auto; } .pc-sp small { display:block; font-size:7px; color:#8B8371; margin-top:4px; }
-.pc-sc table { flex:1; border-collapse:collapse; } .pc-sc th { text-align:left; color:#0F5132; width:104px; padding:5px 0; border-bottom:1px dashed #E3DCC7; } .pc-sc td { padding:5px 0; border-bottom:1px dashed #E3DCC7; }
+.pc-slip table { flex:1; width:auto; margin:0; border-radius:0; box-shadow:none; background:transparent; border-collapse:collapse; }
+.pc-slip th { background:transparent; text-align:left; color:#0F5132; font-size:11px; font-weight:700; width:104px; padding:5px 0; border-bottom:1px dashed #E3DCC7; }
+.pc-slip td { background:transparent !important; font-size:11px; padding:5px 0; border-bottom:1px dashed #E3DCC7; }
 .pc-sf { padding:6px 16px 14px; font-size:10px; color:#4A4237; } .pc-sbar { height:6px; background:#C9A227; }
 /* lookup pages */
+.pc-grid > * { min-width:0; }
 .pc-grid { display:grid; grid-template-columns:1fr; gap:18px; align-items:start; }
 @media (min-width:820px) { .pc-grid { grid-template-columns:320px 1fr; } }
 .pc-forms .lk-card { margin-bottom:16px; }

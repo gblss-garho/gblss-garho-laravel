@@ -1,6 +1,7 @@
 {{-- On-page ID card preview (front + back), same layout as the PDF. $type = student|teacher --}}
 @php
     $isT = $type === 'teacher';
+    $public = $public ?? false;
     $school = $school ?? \App\Support\CardData::school();
     $logo = file_exists(public_path('images/logo-glow.png')) ? asset('images/logo-glow.png') : (file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg'));
     $fmt = fn ($d) => $d ? \Carbon\Carbon::parse($d)->format('M d, Y') : '—';
@@ -14,13 +15,13 @@
         return $o ?: '< 1 month';
     };
     $rows = $isT ? [
-        ['Staff ID', $idText], ['Designation', $person->designation ?: 'Staff'], ['PID / CNIC', $person->pid ?: ($person->cnic ?: '—')],
-        ['Date of Birth', $fmt($person->dob)], ['Service', $serviceFor($person->entry_in_service)],
+        ['Staff ID', $idText], ['Designation', $person->designation ?: 'Staff'], ['PID / CNIC', $public ? \App\Support\CardData::mask($person->pid) : ($person->pid ?: ($person->cnic ?: '—'))],
+        $public ? ['Status', 'Active Staff'] : ['Date of Birth', $fmt($person->dob)], ['Service', $serviceFor($person->entry_in_service)],
     ] : [
         ['Student ID', $idText], ['Class', $person->class.($person->section ? '-'.$person->section : '')], ['GR No.', $person->gr_number ?: '—'],
-        ['Date of Birth', $fmt($person->dob)], ['Session', $session],
+        $public ? ['Status', 'Enrolled'] : ['Date of Birth', $fmt($person->dob)], ['Session', $session],
     ];
-    $emergency = $isT ? ($school['phone'] ?: '—') : (($person->guardian_phone ?: null) ?: ($school['phone'] ?: '—'));
+    $emergency = $isT ? ($school['phone'] ?: '—') : ($public ? ($school['phone'] ?: '—') : (($person->guardian_phone ?: null) ?: ($school['phone'] ?: '—')));
 @endphp
 <div class="pc-wrap">
   <div class="pc-fit" data-w="458" data-h="288"><div class="pc-card">
@@ -49,7 +50,7 @@
     <div class="pc-b2">
         <div class="pc-i2">
             <p><i>SEMIS ID :</i><b>{{ $school['code'] ?: '—' }}</b></p>
-            <p><i>{{ $isT ? 'Employed At :' : 'Address :' }}</i><b>{{ $isT ? ($person->school_name ?: $school['name']) : ($person->address ?: '—') }}</b></p>
+            <p><i>{{ $isT ? 'Employed At :' : 'Address :' }}</i><b>{{ $isT ? ($person->school_name ?: $school['name']) : ($public ? '—' : ($person->address ?: '—')) }}</b></p>
             <p><i>Valid Up To :</i><b>{{ $validUpTo }}</b></p>
         </div>
         <div class="pc-qr"><img src="{{ $qr }}" alt="QR"><small>{{ $isT ? 'Scan to verify staff ID' : 'Scan to verify / mark attendance' }}</small></div>

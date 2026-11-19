@@ -27,13 +27,13 @@ class AdminIdCardController extends Controller
         return view('admin.id-cards.index', compact('students', 'q', 'classes'));
     }
 
-    public function pdf(Student $student)
+    public function pdf(Student $student, bool $public = false)
     {
         @ini_set('memory_limit', '512M');
         @set_time_limit(120);
         $school = $this->schoolHeader();
 
-        return Pdf::loadView('admin.id-cards.student', compact('student', 'school'))
+        return Pdf::loadView('admin.id-cards.student', compact('student', 'school', 'public'))
             ->setPaper('a4')
             ->stream('id-card-'.($student->gr_number ?: $student->id).'.pdf')
             ->header('Cache-Control', 'no-store, max-age=0');

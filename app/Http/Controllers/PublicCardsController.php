@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Teacher;
 use App\Support\CardData;
 use Illuminate\Http\Request;
+use App\Models\Student;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 
 /** Public ID Cards page: student (GR + DOB) and staff (CNIC / PID) lookup with an on-page preview. */
 class PublicCardsController extends PublicLookupController
@@ -27,19 +29,14 @@ class PublicCardsController extends PublicLookupController
         return view('pages.id-cards', [
             'error' => null, 'terror' => null,
             'card' => ['type' => 'student', 'person' => $student, 'idText' => CardData::studentId($student), 'qr' => CardData::qr($student),
-                'pdfUrl' => route('public.id-cards.pdf', [], false), 'fields' => ['gr_number' => $student->gr_number, 'dob' => $request->input('dob')]],
+                'pdfUrl' => URL::temporarySignedRoute('public.id-cards.pdf', now()->addMinutes(30), ['student' => $student->id], false)],
         ]);
     }
 
-    public function pdf(Request $request)
+    /** Signed GET link (works with Android Chrome downloads); the student was already verified by GR + DOB. */
+    public function pdf(Student $student)
     {
-        $error = null;
-        $student = $this->lookupStudent($request, $error);
-        if (! $student) {
-            return view('pages.id-cards', ['error' => $error, 'terror' => null, 'card' => null]);
-        }
-
-        return app(AdminIdCardController::class)->pdf($student);
+        return app(AdminIdCardController::class)->pdf($student, true);
     }
 
     /** Staff: find by PID or CNIC (dashes/spaces ignored). */
@@ -78,19 +75,13 @@ class PublicCardsController extends PublicLookupController
 
         return view('pages.id-cards', [
             'error' => null, 'terror' => null,
-            'card' => ['type' => 'teacher', 'person' => $card, 'idText' => CardData::staffId($teacher), 'qr' => CardData::qr($teacher),
-                'pdfUrl' => route('public.id-cards.teacher.pdf', [], false), 'fields' => ['cnic_pid' => $request->input('cnic_pid')]],
+            'card' => ['type' => 'teacher', 'person' => $card, 'idText' => CardData::staffId($teacher, true), 'qr' => CardData::qr($teacher),
+                'pdfUrl' => URL::temporarySignedRoute('public.id-cards.teacher.pdf', now()->addMinutes(30), ['teacher' => $teacher->id], false)],
         ]);
     }
 
-    public function teacherPdf(Request $request)
+    public function teacherPdf(Teacher $teacher)
     {
-        $error = null;
-        $teacher = $this->lookupTeacher($request, $error);
-        if (! $teacher) {
-            return view('pages.id-cards', ['error' => null, 'terror' => $error, 'card' => null]);
-        }
-
-        return app(AdminStaffIdCardController::class)->pdf($teacher);
+        return app(AdminStaffIdCardController::class)->pdf($teacher, true);
     }
 }

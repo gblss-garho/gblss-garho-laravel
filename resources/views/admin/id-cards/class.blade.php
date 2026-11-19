@@ -9,7 +9,7 @@
         $idText = 'GBLSS-GARHO-'.$admYear.'-'.$gr;
         $qr = app(\App\Services\QrCodeService::class)->dataUri($student->ensureQrCode(), 300, 1);
     @endphp
-    @include('admin.id-cards._card', ['type' => 'student', 'person' => $student, 'idText' => $idText, 'qr' => $qr])
+    @include('admin.id-cards._card', ['type' => 'student', 'person' => $student, 'idText' => $idText, 'qr' => $qr, 'public' => $public ?? false])
 @endforeach
 </body>
 </html>

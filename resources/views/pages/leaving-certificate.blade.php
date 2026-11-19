@@ -10,7 +10,7 @@
         <form method="POST" action="{{ route('public.leaving-certificate.download', [], false) }}">
             @csrf
             <label for="gr_number">GR number</label>
-            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="e.g. 1024">
+            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="GR number">
             <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span></label>
             <input id="dob" name="dob" type="date" value="{{ old('dob') }}" required>
             <label for="year">Year (optional)</label>

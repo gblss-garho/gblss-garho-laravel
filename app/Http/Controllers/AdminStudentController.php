@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Student;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -40,19 +42,47 @@ class AdminStudentController extends Controller
         return view('admin.students.index', compact('students', 'q', 'class', 'classes'));
     }
 
-    public function create()
+    /** Next free GR number: one above the highest in the students table or the GR register. */
+    private function nextGr(): int
     {
-        return view('admin.students.form', ['student' => null]);
+        $max = (int) DB::table('students')->max(DB::raw('CAST(gr_number AS UNSIGNED)'));
+        if (Schema::hasTable('gr_register')) {
+            $max = max($max, (int) DB::table('gr_register')->max('reg_no'));
+        }
+
+        return $max + 1;
+    }
+
+    public function create(Request $request)
+    {
+        $gr = (int) $request->query('gr', 0);
+
+        return view('admin.students.form', ['student' => null, 'nextGr' => $gr > 0 ? $gr : $this->nextGr()]);
     }
 
     public function store(Request $request)
     {
         $data = $request->validate($this->rules());
-        $data['id'] = (string) Str::uuid();
+        $reg = ctype_digit(trim($data['gr_number'])) ? (int) $data['gr_number'] : null;
+        $hasReg = Schema::hasTable('gr_register');
+        if ($reg && $hasReg && DB::table('gr_register')->where('reg_no', $reg)->exists()) {
+            return back()->withInput()->withErrors(['gr_number' => "GR {$reg} General Register me pehle se maujood hai (purana/left student). Naya GR number likhein."]);
+        }
+        $data['id'] = str_replace('-', '', (string) Str::uuid());   // students.id is varchar(32)
         $data['passed_out'] = 0;
-        Student::create($data);
+        DB::transaction(function () use ($data, $reg, $hasReg) {
+            Student::create($data);
+            if ($reg && $hasReg) {
+                DB::table('gr_register')->insert([
+                    'reg_no' => $reg, 'name' => $data['name'], 'father_name' => $data['father_name'] ?? null,
+                    'dob' => $data['dob'] ?? null, 'address' => $data['address'] ?? null,
+                    'admission_date' => $data['admission_date'] ?? now()->toDateString(), 'admission_class' => $data['class'],
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+        });
 
-        return redirect()->route('admin.students.index')->with('ok', 'Student add ho gaya.');
+        return redirect()->route('admin.gr-register', ['q' => $data['gr_number']])->with('ok', 'Naya student add ho gaya aur GR register me darj ho gaya (GR '.$data['gr_number'].').');
     }
 
     public function edit(Student $student)

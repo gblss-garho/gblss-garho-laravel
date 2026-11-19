@@ -1,6 +1,7 @@
 {{-- Shared GBLSS ID card (front + back) for students and staff. DomPDF-safe: tables only. --}}
 @php
     $isTeacher = $type === 'teacher';
+    $public = $public ?? false;   // public pages: no DOB, masked PID, no guardian phone / home address
     $logo = collect([public_path('images/logo-glow.png'), public_path('images/logo.png'), public_path('images/lc/emblem.jpg')])->first(fn ($f) => is_file($f)) ?: public_path('images/logo.png');
     $logoOk = is_file($logo);
     $smallPhoto = \App\Support\PdfPhoto::small($person->photo_url ?? null);
@@ -15,7 +16,7 @@
     }
     $sname = mb_strtoupper($school['name']);
     $schoolPhone = $school['phone'] ?? null;
-    $emergency = $isTeacher ? ($schoolPhone ?: '—') : (($person->guardian_phone ?? null) ?: ($schoolPhone ?: '—'));
+    $emergency = $isTeacher ? ($schoolPhone ?: '—') : ($public ? ($schoolPhone ?: '—') : (($person->guardian_phone ?? null) ?: ($schoolPhone ?: '—')));
     $serviceFor = function ($d) {
         if (! $d) { return '—'; }
         $diff = \Carbon\Carbon::parse($d)->diff(now());
@@ -27,8 +28,8 @@
         $rows = [
             ['Staff ID', $idText],
             [$person->designation ? 'Designation' : 'Staff', $person->designation ?: 'Staff'],
-            ['PID / CNIC', $person->pid ?: ($person->cnic ?: '—')],
-            ['Date of Birth', $fmt($person->dob)],
+            ['PID / CNIC', $public ? \App\Support\CardData::mask($person->pid) : ($person->pid ?: ($person->cnic ?: '—'))],
+            $public ? ['Status', 'Active Staff'] : ['Date of Birth', $fmt($person->dob)],
             ['Service', $serviceFor($person->entry_in_service)],
         ];
     } else {
@@ -36,7 +37,7 @@
             ['Student ID', $idText],
             ['Class', $person->class.($person->section ? '-'.$person->section : '')],
             ['GR No.', $person->gr_number ?: '—'],
-            ['Date of Birth', $fmt($person->dob)],
+            $public ? ['Status', 'Enrolled'] : ['Date of Birth', $fmt($person->dob)],
             ['Session', $session],
         ];
     }
@@ -125,7 +126,7 @@
         <td style="padding:12px 0 0 16px;">
             <table>
                 <tr><td class="lb2">SEMIS ID :</td><td class="vl2">{{ $school['code'] ?: '—' }}</td></tr>
-                <tr><td class="lb2">{{ $isTeacher ? 'Employed At :' : 'Address :' }}</td><td class="vl2">{{ $isTeacher ? ($person->school_name ?: $school['name']) : ($person->address ?: '—') }}</td></tr>
+                <tr><td class="lb2">{{ $isTeacher ? 'Employed At :' : 'Address :' }}</td><td class="vl2">{{ $isTeacher ? ($person->school_name ?: $school['name']) : ($public ? '—' : ($person->address ?: '—')) }}</td></tr>
                 <tr><td class="lb2">Valid Up To :</td><td class="vl2">{{ $validUpTo }}</td></tr>
             </table>
         </td>

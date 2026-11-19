@@ -83,7 +83,7 @@
                         <table class="bb-m">
                             <thead>
                                 <tr>
-                                    <th rowspan="2" class="bb-sn">Student</th><th rowspan="2">GR#</th>
+                                    <th rowspan="2" class="bb-sn">GR#</th><th rowspan="2">Student</th>
                                     <th colspan="{{ count($subjects) }}" class="grp">Books Distributed</th>
                                     <th colspan="{{ count($subjects) }}" class="grp">Books Collected</th>
                                 </tr>
@@ -94,7 +94,7 @@
                             <tbody>
                                 @forelse ($students as $st2)
                                     <tr>
-                                        <td class="bb-sn">{{ $st2->name }}</td><td>{{ $st2->gr_number }}</td>
+                                        <td class="bb-sn">{{ $st2->gr_number }}</td><td style="white-space:nowrap;font-weight:700">{{ $st2->name }}</td>
                                         @foreach (['D', 'C'] as $col)
                                             @foreach ($subjects as $sub)
                                                 @php $v = $matrix[$st2->id][$sub] ?? null; $on = $col === 'D' ? $v !== null : $v === 'C'; @endphp

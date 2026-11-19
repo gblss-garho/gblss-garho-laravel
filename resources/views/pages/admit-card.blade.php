@@ -18,7 +18,7 @@
                 @foreach (['VI', 'VII', 'VIII'] as $c)<option value="{{ $c }}" @selected(old('class') === $c)>{{ $c }}</option>@endforeach
             </select>
             <label for="gr_number">GR / Roll number</label>
-            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="e.g. 1024">
+            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="GR number">
             <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span></label>
             <input id="dob" name="dob" type="date" value="{{ old('dob') }}" required>
             <div class="btn-row">
@@ -30,11 +30,7 @@
     @if ($card)
         <div style="max-width:380px;margin:0 auto">
             @include('pages._admit-preview', ['student' => $card['student'], 'school' => $card['school']])
-            <form method="POST" action="{{ route('public.admit-card.pdf', [], false) }}" target="_blank" class="pc-actions">
-                @csrf
-                @foreach ($card['fields'] as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
-                <button type="submit">&#128424; Print / Save as PDF</button>
-            </form>
+            <div class="pc-actions"><a class="btn" href="{{ $card['pdfUrl'] }}" target="_blank" rel="noopener">&#128424; Print / Save as PDF</a></div>
         </div>
     @endif
     <script src="{{ asset('js/card-fit.js') }}"></script>

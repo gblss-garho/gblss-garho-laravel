@@ -51,7 +51,7 @@ class StudentLeaveController extends Controller
         if ($d['status'] === 'approved') {
             $rec = DB::table('attendance_records')->where('class_name', $row->class_name)->whereDate('date', $row->leave_date)->value('id');
             if ($rec) {
-                \App\Models\AttendanceMark::updateOrCreate(['attendance_record_id' => $rec, 'student_id' => $row->student_id], ['status' => 'L', 'marked_via' => 'leave']);
+                \App\Models\AttendanceMark::updateOrCreate(['attendance_record_id' => $rec, 'student_id' => $row->student_id], ['status' => 'L', 'marked_via' => 'manual']);
             }
         }
 

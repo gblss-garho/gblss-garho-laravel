@@ -33,11 +33,24 @@ class CardData
         return 'GBLSS-GARHO-'.$year.'-'.$gr;
     }
 
-    public static function staffId(Teacher $t): string
+    public static function staffId(Teacher $t, bool $masked = false): string
     {
         $year = $t->entry_in_service ? Carbon::parse($t->entry_in_service)->year : now()->year;
+        $key = strtoupper($t->pid ?: substr($t->id, -6));
 
-        return 'GBLSS-GARHO-STAFF-'.$year.'-'.strtoupper($t->pid ?: substr($t->id, -6));
+        return 'GBLSS-GARHO-STAFF-'.$year.'-'.($masked ? self::mask($key) : $key);
+    }
+
+    /** Hides all but the last 3 characters (public pages must not reveal PID / CNIC / phone numbers). */
+    public static function mask(?string $v): string
+    {
+        $v = trim((string) $v);
+        if ($v === '') {
+            return '—';
+        }
+        $n = mb_strlen($v);
+
+        return $n <= 3 ? str_repeat('*', $n) : str_repeat('*', $n - 3).mb_substr($v, -3);
     }
 
     public static function qr($model): string

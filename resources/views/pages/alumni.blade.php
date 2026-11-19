@@ -8,7 +8,7 @@
         <div class="lk-title">Find a Former Student</div>
         <form method="GET" action="{{ route('public.alumni', [], false) }}">
             <label for="q">GR number, name or father name</label>
-            <input id="q" name="q" value="{{ $q }}" required placeholder="e.g. 195 or student name">
+            <input id="q" name="q" value="{{ $q }}" required placeholder="GR number ya naam">
             <div class="btn-row">
                 <button type="submit">Search</button>
                 <a class="btn ghost" href="{{ route('public.alumni', [], false) }}">Reset</a>

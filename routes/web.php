@@ -137,9 +137,9 @@ Route::get('/results', [\App\Http\Controllers\PublicResultsController::class, 's
 Route::post('/results', [\App\Http\Controllers\PublicResultsController::class, 'check'])->middleware('throttle:30,1')->name('public.results.check');
 Route::get('/id-cards', [\App\Http\Controllers\PublicCardsController::class, 'show'])->name('public.id-cards');
 Route::post('/id-cards', [\App\Http\Controllers\PublicCardsController::class, 'download'])->middleware('throttle:30,1')->name('public.id-cards.download');
-Route::post('/id-cards/pdf', [\App\Http\Controllers\PublicCardsController::class, 'pdf'])->middleware('throttle:30,1')->name('public.id-cards.pdf');
+Route::get('/id-cards/pdf/{student}', [\App\Http\Controllers\PublicCardsController::class, 'pdf'])->middleware(['signed:relative', 'throttle:30,1'])->name('public.id-cards.pdf');
 Route::post('/id-cards/teacher', [\App\Http\Controllers\PublicCardsController::class, 'teacher'])->middleware('throttle:30,1')->name('public.id-cards.teacher');
-Route::post('/id-cards/teacher/pdf', [\App\Http\Controllers\PublicCardsController::class, 'teacherPdf'])->middleware('throttle:30,1')->name('public.id-cards.teacher.pdf');
+Route::get('/id-cards/teacher/pdf/{teacher}', [\App\Http\Controllers\PublicCardsController::class, 'teacherPdf'])->middleware(['signed:relative', 'throttle:30,1'])->name('public.id-cards.teacher.pdf');
 Route::get('/feedback', [\App\Http\Controllers\PublicPagesController::class, 'feedbackForm'])->name('public.feedback');
 Route::post('/feedback', [\App\Http\Controllers\PublicPagesController::class, 'feedbackStore'])->middleware('throttle:5,10')->name('public.feedback.store');
 
@@ -181,7 +181,7 @@ Route::get('/toppers', [\App\Http\Controllers\PublicInfoController::class, 'topp
 
 Route::get('/admit-card', [\App\Http\Controllers\PublicRecordsController::class, 'admitShow'])->name('public.admit-card');
 Route::post('/admit-card', [\App\Http\Controllers\PublicRecordsController::class, 'admitDownload'])->middleware('throttle:30,1')->name('public.admit-card.download');
-Route::post('/admit-card/pdf', [\App\Http\Controllers\PublicRecordsController::class, 'admitPdf'])->middleware('throttle:30,1')->name('public.admit-card.pdf');
+Route::get('/admit-card/pdf/{student}', [\App\Http\Controllers\PublicRecordsController::class, 'admitPdf'])->middleware(['signed:relative', 'throttle:30,1'])->name('public.admit-card.pdf');
 Route::get('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcShow'])->name('public.leaving-certificate');
 Route::post('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcDownload'])->middleware('throttle:30,1')->name('public.leaving-certificate.download');
 Route::get('/alumni', [\App\Http\Controllers\PublicRecordsController::class, 'alumni'])->middleware('throttle:30,1')->name('public.alumni');

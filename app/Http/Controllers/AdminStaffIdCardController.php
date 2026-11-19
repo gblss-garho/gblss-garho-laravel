@@ -24,11 +24,11 @@ class AdminStaffIdCardController extends Controller
         return view('admin.staff-id-cards.index', compact('teachers', 'q'));
     }
 
-    public function pdf(Teacher $teacher)
+    public function pdf(Teacher $teacher, bool $public = false)
     {
         $school = $this->schoolHeader();
 
-        $pdf = Pdf::loadView('admin.staff-id-cards.teacher', compact('teacher', 'school'))
+        $pdf = Pdf::loadView('admin.staff-id-cards.teacher', compact('teacher', 'school', 'public'))
             ->setPaper('a4');
 
         $name = $teacher->pid ?: $teacher->id;
