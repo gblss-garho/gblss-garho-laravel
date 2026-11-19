@@ -11,20 +11,42 @@ class PublicRecordsController extends PublicLookupController
 {
     public function admitShow()
     {
-        return view('pages.admit-card', ['error' => null]);
+        return view('pages.admit-card', ['error' => null, 'card' => null]);
     }
 
-    public function admitDownload(Request $request)
+    private function admitStudent(Request $request, ?string &$error): ?Student
     {
-        $error = null;
         $student = $this->lookupStudent($request, $error);
         $class = trim((string) $request->input('class', ''));
         if ($student && $class !== '' && $student->class !== $class) {
             $student = null;
             $error = 'GR نمبر ۽ تاريخ پيدائش نه ملي، يا هي ڪلاس ۾ ناهي.';
         }
+
+        return $student;
+    }
+
+    /** Search, then show the slip on the page. */
+    public function admitDownload(Request $request)
+    {
+        $error = null;
+        $student = $this->admitStudent($request, $error);
         if (! $student) {
-            return view('pages.admit-card', ['error' => $error]);
+            return view('pages.admit-card', ['error' => $error, 'card' => null]);
+        }
+
+        return view('pages.admit-card', ['error' => null, 'card' => [
+            'student' => $student, 'school' => \App\Support\CardData::school(),
+            'fields' => ['gr_number' => $student->gr_number, 'dob' => $request->input('dob'), 'class' => $request->input('class')],
+        ]]);
+    }
+
+    public function admitPdf(Request $request)
+    {
+        $error = null;
+        $student = $this->admitStudent($request, $error);
+        if (! $student) {
+            return view('pages.admit-card', ['error' => $error, 'card' => null]);
         }
 
         return app(AdminAdmitCardController::class)->pdf($student);

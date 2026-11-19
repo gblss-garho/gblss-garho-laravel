@@ -11,14 +11,29 @@
         <button type="submit">Talaash</button>
     </form>
 
+    <link rel="stylesheet" href="{{ asset('css/card-preview.css') }}">
     @if ($classes->isNotEmpty())
-        <p style="margin-top:12px"><b>Poori class ke admit cards (Print All):</b><br>
+        <p class="pc-noprint" style="margin-top:12px"><b>Class chunein (preview aur Print All):</b><br>
             @foreach ($classes as $c)
-                <a class="btn ghost" href="{{ route('admin.admit-cards.class-pdf', ['class' => $c], false) }}">Class {{ $c }}</a>
+                <a class="btn {{ $selected === $c ? '' : 'ghost' }}" href="{{ route('admin.admit-cards.index', ['class' => $c], false) }}">Class {{ $c }}</a>
             @endforeach
         </p>
     @endif
 
+    @if ($grid->isNotEmpty())
+        <p class="pc-noprint">
+            <a class="btn" href="{{ route('admin.admit-cards.class-pdf', ['class' => $selected], false) }}">&#128424; Print All ({{ $grid->count() }}) &mdash; PDF</a>
+            <a class="btn ghost" href="#" onclick="window.print();return false">Page se print</a>
+        </p>
+        <div class="pc-cards">
+            @foreach ($grid as $st)
+                @include('pages._admit-preview', ['student' => $st, 'school' => $school])
+            @endforeach
+        </div>
+        <script src="{{ asset('js/card-fit.js') }}"></script>
+    @endif
+
+    @if ($grid->isEmpty())
     @if ($students->isEmpty())
         <p class="sd">هن ڪلاس لاءِ ڪو اسٽوڊنٽ نه مليو.</p>
     @else
@@ -36,5 +51,6 @@
         @if ($students->count() === 50)
             <p>Sirf pehle 50 dikhaye gaye — talaash se chhota karen.</p>
         @endif
+    @endif
     @endif
 @endsection

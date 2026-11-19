@@ -22,7 +22,14 @@ class AdminAdmitCardController extends Controller
             ->limit(50)->get();
         $classes = Student::query()->where('passed_out', false)->whereNotNull('class')->distinct()->orderBy('class')->pluck('class');
 
-        return view('admin.admit-cards.index', compact('students', 'q', 'classes'));
+        $selected = (string) $request->query('class', '');
+        $grid = collect();
+        if ($selected !== '' && $classes->contains($selected)) {
+            $grid = Student::query()->where('passed_out', false)->where('class', $selected)->orderByRaw('CAST(gr_number AS UNSIGNED)')->get();
+        }
+        $school = \App\Support\CardData::school();
+
+        return view('admin.admit-cards.index', compact('students', 'q', 'classes', 'selected', 'grid', 'school'));
     }
 
     public function pdf(Student $student)
