@@ -1,0 +1,658 @@
+From a271de78aef5ee0bef283d53be6c59db10b3c097 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 19 Nov 2026 07:37:59 +0500
+Subject: [PATCH] ID/Admit card on-page preview, teacher ID lookup, admin admit
+ card grid
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HttsdfoZKD8pHnvrLZEBS2
+---
+ .../Controllers/AdminAdmitCardController.php  |  9 ++-
+ .../Controllers/PublicCardsController.php     | 76 ++++++++++++++++++-
+ .../Controllers/PublicRecordsController.php   | 30 +++++++-
+ app/Support/CardData.php                      | 52 +++++++++++++
+ public/css/card-preview.css                   | 46 +++++++++++
+ public/js/card-fit.js                         | 12 +++
+ .../views/admin/admit-cards/index.blade.php   | 20 ++++-
+ .../views/pages/_admit-preview.blade.php      | 17 +++++
+ resources/views/pages/_id-preview.blade.php   | 66 ++++++++++++++++
+ resources/views/pages/admit-card.blade.php    | 14 ++++
+ resources/views/pages/id-cards.blade.php      | 65 +++++++++++-----
+ routes/web.php                                |  4 +
+ tests/Feature/CardPreviewTest.php             | 46 +++++++++++
+ 13 files changed, 431 insertions(+), 26 deletions(-)
+ create mode 100644 app/Support/CardData.php
+ create mode 100644 public/css/card-preview.css
+ create mode 100644 public/js/card-fit.js
+ create mode 100644 resources/views/pages/_admit-preview.blade.php
+ create mode 100644 resources/views/pages/_id-preview.blade.php
+ create mode 100644 tests/Feature/CardPreviewTest.php
+
+diff --git a/app/Http/Controllers/AdminAdmitCardController.php b/app/Http/Controllers/AdminAdmitCardController.php
+index b63a7a0..844a016 100644
+--- a/app/Http/Controllers/AdminAdmitCardController.php
++++ b/app/Http/Controllers/AdminAdmitCardController.php
+@@ -22,7 +22,14 @@ class AdminAdmitCardController extends Controller
+             ->limit(50)->get();
+         $classes = Student::query()->where('passed_out', false)->whereNotNull('class')->distinct()->orderBy('class')->pluck('class');
+ 
+-        return view('admin.admit-cards.index', compact('students', 'q', 'classes'));
++        $selected = (string) $request->query('class', '');
++        $grid = collect();
++        if ($selected !== '' && $classes->contains($selected)) {
++            $grid = Student::query()->where('passed_out', false)->where('class', $selected)->orderByRaw('CAST(gr_number AS UNSIGNED)')->get();
++        }
++        $school = \App\Support\CardData::school();
++
++        return view('admin.admit-cards.index', compact('students', 'q', 'classes', 'selected', 'grid', 'school'));
+     }
+ 
+     public function pdf(Student $student)
+diff --git a/app/Http/Controllers/PublicCardsController.php b/app/Http/Controllers/PublicCardsController.php
+index caf1af4..70171e1 100644
+--- a/app/Http/Controllers/PublicCardsController.php
++++ b/app/Http/Controllers/PublicCardsController.php
+@@ -2,23 +2,95 @@
+ 
+ namespace App\Http\Controllers;
+ 
++use App\Models\Teacher;
++use App\Support\CardData;
+ use Illuminate\Http\Request;
++use Illuminate\Support\Facades\DB;
+ 
++/** Public ID Cards page: student (GR + DOB) and staff (CNIC / PID) lookup with an on-page preview. */
+ class PublicCardsController extends PublicLookupController
+ {
+     public function show()
+     {
+-        return view('pages.id-cards', ['error' => null]);
++        return view('pages.id-cards', ['error' => null, 'terror' => null, 'card' => null]);
+     }
+ 
++    /** Student: search, then show the card on the page. */
+     public function download(Request $request)
+     {
+         $error = null;
+         $student = $this->lookupStudent($request, $error);
+         if (! $student) {
+-            return view('pages.id-cards', ['error' => $error]);
++            return view('pages.id-cards', ['error' => $error, 'terror' => null, 'card' => null]);
++        }
++
++        return view('pages.id-cards', [
++            'error' => null, 'terror' => null,
++            'card' => ['type' => 'student', 'person' => $student, 'idText' => CardData::studentId($student), 'qr' => CardData::qr($student),
++                'pdfUrl' => route('public.id-cards.pdf', [], false), 'fields' => ['gr_number' => $student->gr_number, 'dob' => $request->input('dob')]],
++        ]);
++    }
++
++    public function pdf(Request $request)
++    {
++        $error = null;
++        $student = $this->lookupStudent($request, $error);
++        if (! $student) {
++            return view('pages.id-cards', ['error' => $error, 'terror' => null, 'card' => null]);
+         }
+ 
+         return app(AdminIdCardController::class)->pdf($student);
+     }
++
++    /** Staff: find by PID or CNIC (dashes/spaces ignored). */
++    private function lookupTeacher(Request $request, ?string &$error): ?Teacher
++    {
++        $key = preg_replace('/[\s-]+/', '', trim((string) $request->validate(['cnic_pid' => ['required', 'string', 'max:30']])['cnic_pid']));
++
++        $tries = DB::table('lookup_attempts')->where('scope', 'teacher')->where('identifier', $key)
++            ->where('created_at', '>', now()->subMinutes(15)->toDateTimeString())->count();
++        if ($tries >= 8) {
++            $error = 'Bohat zyada koshishein ho gayi hain. 15 minute baad dobara try karein.';
++
++            return null;
++        }
++        DB::table('lookup_attempts')->insert(['scope' => 'teacher', 'identifier' => $key, 'created_at' => now()->toDateTimeString()]);
++
++        $teacher = Teacher::all()->first(fn ($t) => $key !== '' && (
++            preg_replace('/[\s-]+/', '', (string) $t->pid) === $key || preg_replace('/[\s-]+/', '', (string) $t->getRawOriginal('cnic')) === $key
++        ));
++        if (! $teacher) {
++            $error = 'Is CNIC / PID ka koi staff record nahi mila.';
++        }
++
++        return $teacher;
++    }
++
++    public function teacher(Request $request)
++    {
++        $error = null;
++        $teacher = $this->lookupTeacher($request, $error);
++        if (! $teacher) {
++            return view('pages.id-cards', ['error' => null, 'terror' => $error, 'card' => null]);
++        }
++        $card = $teacher->replicate();          // preview copy: never print the CNIC on a public page
++        $card->id = $teacher->id; $card->cnic = null; $card->photo_url = $teacher->photo_url;
++
++        return view('pages.id-cards', [
++            'error' => null, 'terror' => null,
++            'card' => ['type' => 'teacher', 'person' => $card, 'idText' => CardData::staffId($teacher), 'qr' => CardData::qr($teacher),
++                'pdfUrl' => route('public.id-cards.teacher.pdf', [], false), 'fields' => ['cnic_pid' => $request->input('cnic_pid')]],
++        ]);
++    }
++
++    public function teacherPdf(Request $request)
++    {
++        $error = null;
++        $teacher = $this->lookupTeacher($request, $error);
++        if (! $teacher) {
++            return view('pages.id-cards', ['error' => null, 'terror' => $error, 'card' => null]);
++        }
++
++        return app(AdminStaffIdCardController::class)->pdf($teacher);
++    }
+ }
+diff --git a/app/Http/Controllers/PublicRecordsController.php b/app/Http/Controllers/PublicRecordsController.php
+index d4e2702..50d107f 100644
+--- a/app/Http/Controllers/PublicRecordsController.php
++++ b/app/Http/Controllers/PublicRecordsController.php
+@@ -11,20 +11,42 @@ class PublicRecordsController extends PublicLookupController
+ {
+     public function admitShow()
+     {
+-        return view('pages.admit-card', ['error' => null]);
++        return view('pages.admit-card', ['error' => null, 'card' => null]);
+     }
+ 
+-    public function admitDownload(Request $request)
++    private function admitStudent(Request $request, ?string &$error): ?Student
+     {
+-        $error = null;
+         $student = $this->lookupStudent($request, $error);
+         $class = trim((string) $request->input('class', ''));
+         if ($student && $class !== '' && $student->class !== $class) {
+             $student = null;
+             $error = 'GR نمبر ۽ تاريخ پيدائش نه ملي، يا هي ڪلاس ۾ ناهي.';
+         }
++
++        return $student;
++    }
++
++    /** Search, then show the slip on the page. */
++    public function admitDownload(Request $request)
++    {
++        $error = null;
++        $student = $this->admitStudent($request, $error);
++        if (! $student) {
++            return view('pages.admit-card', ['error' => $error, 'card' => null]);
++        }
++
++        return view('pages.admit-card', ['error' => null, 'card' => [
++            'student' => $student, 'school' => \App\Support\CardData::school(),
++            'fields' => ['gr_number' => $student->gr_number, 'dob' => $request->input('dob'), 'class' => $request->input('class')],
++        ]]);
++    }
++
++    public function admitPdf(Request $request)
++    {
++        $error = null;
++        $student = $this->admitStudent($request, $error);
+         if (! $student) {
+-            return view('pages.admit-card', ['error' => $error]);
++            return view('pages.admit-card', ['error' => $error, 'card' => null]);
+         }
+ 
+         return app(AdminAdmitCardController::class)->pdf($student);
+diff --git a/app/Support/CardData.php b/app/Support/CardData.php
+new file mode 100644
+index 0000000..a57c877
+--- /dev/null
++++ b/app/Support/CardData.php
+@@ -0,0 +1,52 @@
++<?php
++
++namespace App\Support;
++
++use App\Models\SchoolInfo;
++use App\Models\Student;
++use App\Models\Teacher;
++use App\Services\QrCodeService;
++use App\Services\SchoolScheduleService;
++use Carbon\Carbon;
++
++/** Shared data for the on-page ID / admit card previews. */
++class CardData
++{
++    public static function school(): array
++    {
++        $info = SchoolInfo::first();
++
++        return [
++            'name' => $info?->name ?: 'Government Boys Lower Secondary School Garho',
++            'code' => $info?->semis_code ?: '404030082',
++            'address' => $info?->address ?: 'Taluka Ketibunder, District Thatta, Sindh, Pakistan',
++            'phone' => $info?->phone, 'email' => $info?->email, 'motto' => $info?->motto,
++            'exam_title' => $info?->current_exam_title, 'exam_year' => $info?->current_exam_year,
++        ];
++    }
++
++    public static function studentId(Student $s): string
++    {
++        $gr = str_pad(trim((string) $s->gr_number), 3, '0', STR_PAD_LEFT);
++        $year = $s->admission_date ? Carbon::parse($s->admission_date)->year : now()->year;
++
++        return 'GBLSS-GARHO-'.$year.'-'.$gr;
++    }
++
++    public static function staffId(Teacher $t): string
++    {
++        $year = $t->entry_in_service ? Carbon::parse($t->entry_in_service)->year : now()->year;
++
++        return 'GBLSS-GARHO-STAFF-'.$year.'-'.strtoupper($t->pid ?: substr($t->id, -6));
++    }
++
++    public static function qr($model): string
++    {
++        return app(QrCodeService::class)->dataUri($model->ensureQrCode(), 300, 1);
++    }
++
++    public static function session(): string
++    {
++        return app(SchoolScheduleService::class)->academicYearFor(now());
++    }
++}
+diff --git a/public/css/card-preview.css b/public/css/card-preview.css
+new file mode 100644
+index 0000000..a540aa7
+--- /dev/null
++++ b/public/css/card-preview.css
+@@ -0,0 +1,46 @@
++.pc-wrap { display:flex; flex-direction:column; gap:14px; align-items:center; margin:12px 0; }
++.pc-fit { position:relative; width:100%; max-width:458px; }
++.pc-fit > * { transform-origin:0 0; }
++.pc-card { width:458px; height:288px; background:#fff; border:1px solid #DDC77A; overflow:hidden; font-family:'Noto Serif',Georgia,serif; color:#4A4237; box-shadow:0 10px 26px rgba(11,44,84,.18); border-radius:6px; font-size:9.5px; position:relative; }
++.pc-h { background:#123B7A; display:flex; align-items:center; justify-content:space-between; padding:6px 10px 6px 68px; min-height:64px; box-sizing:border-box; }
++.pc-hn { flex:1; text-align:center; color:#FAF6EC; font-size:11px; font-weight:700; line-height:1.3; }
++.pc-hn small { display:block; font-size:8px; color:#F0D989; font-weight:400; margin-top:3px; }
++.pc-h img { height:54px; width:auto; }
++.pc-h2 { padding:5px 56px 5px 14px; min-height:46px; } .pc-h2 img { height:36px; margin-right:6px; } .pc-h2 .pc-hn { font-size:10px; }
++.pc-b { display:flex; gap:12px; padding:12px 14px 0 16px; }
++.pc-ph { width:96px; height:96px; flex:none; background:#DBB43C; padding:3px; box-sizing:content-box; display:flex; align-items:center; justify-content:center; }
++.pc-ph img { width:96px; height:96px; object-fit:cover; display:block; } .pc-ph b { font-size:38px; color:#123B7A; background:#EDE7D3; width:96px; height:96px; display:flex; align-items:center; justify-content:center; }
++.pc-i h4 { margin:0 0 6px; font-size:12.5px; color:#123B7A; }
++.pc-i p, .pc-i2 p { margin:0 0 3px; display:flex; gap:6px; }
++.pc-i p i { font-style:normal; width:78px; flex:none; color:#8B7B1E; font-weight:700; } .pc-i p b { color:#123B7A; font-size:9.5px; }
++.pc-f { display:flex; justify-content:space-between; align-items:flex-end; padding:8px 16px 0; }
++.pc-rib { background:#DBB43C; color:#1F2A24; font-weight:700; font-size:10px; padding:5px 22px 5px 14px; }
++.pc-sig span { display:block; width:96px; height:20px; border-bottom:1.3px solid #123B7A; } .pc-sig small { font-size:6.5px; color:#8B7B1E; font-weight:700; }
++.pc-emp { font-size:7px; color:#8B8371; text-align:center; flex:1; padding:0 6px; }
++.pc-hm { text-align:center; width:104px; } .pc-hm em { color:#123B7A; font-size:11px; display:block; } .pc-hm small { display:block; font-size:6.5px; color:#8B8371; border-top:1px solid #C9A227; margin-top:2px; padding-top:2px; }
++.pc-bar { height:4px; background:#C9A227; position:absolute; left:0; right:0; bottom:34px; }
++.pc-ft { position:absolute; left:0; right:0; bottom:0; height:34px; background:#0B2C54; color:#F0D989; font-size:6.5px; text-align:center; display:flex; align-items:center; justify-content:center; padding:0 8px; box-sizing:border-box; }
++.pc-back .pc-bar { bottom:0; }
++.pc-b2 { display:flex; justify-content:space-between; padding:12px 16px 0; }
++.pc-i2 p i { font-style:normal; width:74px; flex:none; color:#8B7B1E; font-weight:700; font-size:9px; } .pc-i2 p b { color:#123B7A; font-size:10px; } .pc-i2 p { margin-bottom:6px; }
++.pc-qr { width:96px; text-align:center; } .pc-qr img { width:74px; height:74px; border:1px solid #E3DCC7; padding:3px; background:#fff; } .pc-qr small { display:block; font-size:6.5px; color:#8B8371; }
++.pc-tc { margin:8px 16px 0; border:1px solid #E3DCC7; background:#FBF9F2; } .pc-tc div { background:#123B7A; color:#FAF6EC; font-size:7.5px; font-weight:700; text-align:center; padding:3px 0; }
++.pc-tc ul { font-size:6.5px; margin:4px 8px 4px 0; padding-left:22px; line-height:1.4; }
++.pc-em { position:absolute; left:0; right:0; bottom:4px; height:32px; background:#0B2C54; color:#F0D989; font-size:9px; font-weight:700; display:flex; justify-content:space-between; align-items:center; padding:0 16px; }
++/* admit slip */
++.pc-slip { width:380px; background:#fff; border:1px solid #C9A227; font-family:'Noto Serif',Georgia,serif; font-size:11px; color:#1F2A24; box-shadow:0 8px 22px rgba(0,0,0,.14); }
++.pc-sh { background:linear-gradient(180deg,#0F5132,#0B3D26); color:#FAF6EC; display:flex; align-items:center; gap:10px; padding:12px 16px 4px; } .pc-sh img { height:56px; } .pc-sh div { flex:1; text-align:center; } .pc-sh b { display:block; font-size:13px; line-height:1.35; } .pc-sh small { font-size:8.5px; opacity:.85; }
++.pc-sb { background:#0B3D26; text-align:center; padding:0 0 12px; } .pc-sb span { display:inline-block; border:1px solid #DBB43C; color:#F0D989; font-size:9px; font-weight:700; letter-spacing:1px; padding:3px 12px; }
++.pc-sc { display:flex; gap:12px; padding:14px 16px 6px; }
++.pc-sp { width:66px; flex:none; text-align:center; } .pc-sp img, .pc-sp b { width:58px; height:58px; border:2px solid #0F5132; padding:2px; object-fit:cover; display:flex; align-items:center; justify-content:center; font-size:22px; color:#0F5132; margin:0 auto; } .pc-sp small { display:block; font-size:7px; color:#8B8371; margin-top:4px; }
++.pc-sc table { flex:1; border-collapse:collapse; } .pc-sc th { text-align:left; color:#0F5132; width:104px; padding:5px 0; border-bottom:1px dashed #E3DCC7; } .pc-sc td { padding:5px 0; border-bottom:1px dashed #E3DCC7; }
++.pc-sf { padding:6px 16px 14px; font-size:10px; color:#4A4237; } .pc-sbar { height:6px; background:#C9A227; }
++/* lookup pages */
++.pc-grid { display:grid; grid-template-columns:1fr; gap:18px; align-items:start; }
++@media (min-width:820px) { .pc-grid { grid-template-columns:320px 1fr; } }
++.pc-forms .lk-card { margin-bottom:16px; }
++.pc-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin:6px 0 4px; }
++.pc-note { text-align:center; color:#8a8470; font-size:12.5px; }
++/* admin grid */
++.pc-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; margin-top:14px; }
++@media print { .site-head, .site-foot, .m-nav, .more-sheet, .more-backdrop, nav, .pc-noprint, .page-title { display:none !important; } .pc-cards { grid-template-columns:repeat(2,1fr); } .pc-slip { box-shadow:none; } body { background:#fff !important; } }
+diff --git a/public/js/card-fit.js b/public/js/card-fit.js
+new file mode 100644
+index 0000000..d2b8a55
+--- /dev/null
++++ b/public/js/card-fit.js
+@@ -0,0 +1,12 @@
++/* Scales fixed-size card previews (.pc-fit) to the available width. */
++(function () {
++    function fit() {
++        [].forEach.call(document.querySelectorAll('.pc-fit'), function (w) {
++            var c = w.firstElementChild, cw = +w.dataset.w, avail = w.clientWidth || cw, s = Math.min(1, avail / cw);
++            c.style.transform = 'scale(' + s + ')';
++            w.style.height = (c.offsetHeight * s) + 'px';
++        });
++    }
++    window.addEventListener('load', fit); window.addEventListener('resize', fit);
++    if (document.readyState !== 'loading') fit(); else document.addEventListener('DOMContentLoaded', fit);
++})();
+diff --git a/resources/views/admin/admit-cards/index.blade.php b/resources/views/admin/admit-cards/index.blade.php
+index 6d770a3..71e9141 100644
+--- a/resources/views/admin/admit-cards/index.blade.php
++++ b/resources/views/admin/admit-cards/index.blade.php
+@@ -11,14 +11,29 @@
+         <button type="submit">Talaash</button>
+     </form>
+ 
++    <link rel="stylesheet" href="{{ asset('css/card-preview.css') }}">
+     @if ($classes->isNotEmpty())
+-        <p style="margin-top:12px"><b>Poori class ke admit cards (Print All):</b><br>
++        <p class="pc-noprint" style="margin-top:12px"><b>Class chunein (preview aur Print All):</b><br>
+             @foreach ($classes as $c)
+-                <a class="btn ghost" href="{{ route('admin.admit-cards.class-pdf', ['class' => $c], false) }}">Class {{ $c }}</a>
++                <a class="btn {{ $selected === $c ? '' : 'ghost' }}" href="{{ route('admin.admit-cards.index', ['class' => $c], false) }}">Class {{ $c }}</a>
+             @endforeach
+         </p>
+     @endif
+ 
++    @if ($grid->isNotEmpty())
++        <p class="pc-noprint">
++            <a class="btn" href="{{ route('admin.admit-cards.class-pdf', ['class' => $selected], false) }}">&#128424; Print All ({{ $grid->count() }}) &mdash; PDF</a>
++            <a class="btn ghost" href="#" onclick="window.print();return false">Page se print</a>
++        </p>
++        <div class="pc-cards">
++            @foreach ($grid as $st)
++                @include('pages._admit-preview', ['student' => $st, 'school' => $school])
++            @endforeach
++        </div>
++        <script src="{{ asset('js/card-fit.js') }}"></script>
++    @endif
++
++    @if ($grid->isEmpty())
+     @if ($students->isEmpty())
+         <p class="sd">هن ڪلاس لاءِ ڪو اسٽوڊنٽ نه مليو.</p>
+     @else
+@@ -37,4 +52,5 @@
+             <p>Sirf pehle 50 dikhaye gaye — talaash se chhota karen.</p>
+         @endif
+     @endif
++    @endif
+ @endsection
+diff --git a/resources/views/pages/_admit-preview.blade.php b/resources/views/pages/_admit-preview.blade.php
+new file mode 100644
+index 0000000..6f3ea06
+--- /dev/null
++++ b/resources/views/pages/_admit-preview.blade.php
+@@ -0,0 +1,17 @@
++{{-- On-page admit card slip. $student, $school --}}
++@php
++    $logo = file_exists(public_path('images/logo-glow.png')) ? asset('images/logo-glow.png') : (file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg'));
++    $exam = ($school['exam_title'] ?: '—').($school['exam_year'] ? ' ('.$school['exam_year'].')' : '');
++    $rows = [['Exam', $exam], ['Student Name', $student->name], ["Father's Name", $student->father_name], ['Class', $student->class.($student->section ? '-'.$student->section : '')], ['Roll No / GR No', $student->gr_number], ['Exam Centre', $school['name']]];
++    $ini = mb_strtoupper(mb_substr($student->name ?? '?', 0, 1));
++@endphp
++<div class="pc-fit" data-w="380" data-h="330"><div class="pc-slip">
++    <div class="pc-sh"><img src="{{ $logo }}" alt=""><div><b>{{ $school['name'] }}</b><small>{{ $school['address'] }}</small></div></div>
++    <div class="pc-sb"><span>ADMIT CARD</span></div>
++    <div class="pc-sc">
++        <div class="pc-sp">@if ($student->photo_url)<img src="{{ $student->photo_url }}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'{{ $ini }}'}))">@else<b>{{ $ini }}</b>@endif<small>STUDENT PHOTO</small></div>
++        <table>@foreach ($rows as [$l, $v])<tr><th>{{ $l }}</th><td>{{ $v ?: '—' }}</td></tr>@endforeach</table>
++    </div>
++    <div class="pc-sf">Head Master Signature: __________</div>
++    <div class="pc-sbar"></div>
++</div></div>
+diff --git a/resources/views/pages/_id-preview.blade.php b/resources/views/pages/_id-preview.blade.php
+new file mode 100644
+index 0000000..e7cec9d
+--- /dev/null
++++ b/resources/views/pages/_id-preview.blade.php
+@@ -0,0 +1,66 @@
++{{-- On-page ID card preview (front + back), same layout as the PDF. $type = student|teacher --}}
++@php
++    $isT = $type === 'teacher';
++    $school = $school ?? \App\Support\CardData::school();
++    $logo = file_exists(public_path('images/logo-glow.png')) ? asset('images/logo-glow.png') : (file_exists(public_path('images/logo.png')) ? asset('images/logo.png') : asset('images/lc/emblem.jpg'));
++    $fmt = fn ($d) => $d ? \Carbon\Carbon::parse($d)->format('M d, Y') : '—';
++    $session = \App\Support\CardData::session();
++    $validUpTo = '30 Jun '.explode('-', $session)[1];
++    $motto = trim((string) ($school['motto'] ?? ''));
++    $serviceFor = function ($d) {
++        if (! $d) { return '—'; }
++        $diff = \Carbon\Carbon::parse($d)->diff(now()); $y = $diff->y; $m = $diff->m;
++        $o = trim(($y ? $y.' year'.($y > 1 ? 's' : '') : '').($y && $m ? ', ' : '').($m ? $m.' month'.($m > 1 ? 's' : '') : ''));
++        return $o ?: '< 1 month';
++    };
++    $rows = $isT ? [
++        ['Staff ID', $idText], ['Designation', $person->designation ?: 'Staff'], ['PID / CNIC', $person->pid ?: ($person->cnic ?: '—')],
++        ['Date of Birth', $fmt($person->dob)], ['Service', $serviceFor($person->entry_in_service)],
++    ] : [
++        ['Student ID', $idText], ['Class', $person->class.($person->section ? '-'.$person->section : '')], ['GR No.', $person->gr_number ?: '—'],
++        ['Date of Birth', $fmt($person->dob)], ['Session', $session],
++    ];
++    $emergency = $isT ? ($school['phone'] ?: '—') : (($person->guardian_phone ?: null) ?: ($school['phone'] ?: '—'));
++@endphp
++<div class="pc-wrap">
++  <div class="pc-fit" data-w="458" data-h="288"><div class="pc-card">
++    <div class="pc-h">
++        <div class="pc-hn">{{ mb_strtoupper($school['name']) }}<small>@if ($motto !== ''){{ $motto }}@else Knowledge · Character · Excellence @endif</small></div>
++        <img src="{{ $logo }}" alt="">
++    </div>
++    <div class="pc-b">
++        <div class="pc-ph">@if ($person->photo_url)<img src="{{ $person->photo_url }}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}'}))">@else<b>{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}</b>@endif</div>
++        <div class="pc-i">
++            <h4>{{ mb_strtoupper($person->name) }}</h4>
++            @foreach ($rows as [$l, $v])<p><i>{{ $l }} :</i><b>{{ $v }}</b></p>@endforeach
++        </div>
++    </div>
++    <div class="pc-f">
++        @if ($isT)<div class="pc-sig"><span></span><small>STAFF SIGNATURE</small></div><small class="pc-emp">Employee of {{ $person->school_name ?: $school['name'] }}</small>
++        @else<span class="pc-rib">STUDENT</span>@endif
++        <div class="pc-hm"><em>Head Master</em><small>GBLSS GARHO</small></div>
++    </div>
++    <div class="pc-bar"></div>
++    <div class="pc-ft">{{ $school['address'] }}@if ($school['phone']) &nbsp;|&nbsp; Tel: {{ $school['phone'] }}@endif @if ($school['email']) &nbsp;|&nbsp; {{ $school['email'] }}@endif</div>
++  </div></div>
++
++  <div class="pc-fit" data-w="458" data-h="288"><div class="pc-card pc-back">
++    <div class="pc-h pc-h2"><img src="{{ $logo }}" alt=""><div class="pc-hn">{{ mb_strtoupper($school['name']) }}</div></div>
++    <div class="pc-b2">
++        <div class="pc-i2">
++            <p><i>SEMIS ID :</i><b>{{ $school['code'] ?: '—' }}</b></p>
++            <p><i>{{ $isT ? 'Employed At :' : 'Address :' }}</i><b>{{ $isT ? ($person->school_name ?: $school['name']) : ($person->address ?: '—') }}</b></p>
++            <p><i>Valid Up To :</i><b>{{ $validUpTo }}</b></p>
++        </div>
++        <div class="pc-qr"><img src="{{ $qr }}" alt="QR"><small>{{ $isT ? 'Scan to verify staff ID' : 'Scan to verify / mark attendance' }}</small></div>
++    </div>
++    <div class="pc-tc"><div>TERMS &amp; CONDITIONS</div><ul>
++        <li>This card is the property of {{ $school['name'] }} and is non-transferable.</li>
++        <li>Loss of this card must be reported to the school office immediately.</li>
++        <li>This card must be presented whenever required by school authorities.</li>
++        <li>{{ $isT ? 'Must be surrendered upon leaving service.' : 'Valid only while the student is enrolled at this school.' }}</li>
++    </ul></div>
++    <div class="pc-em"><span>Emergency Contact</span><span>{{ $emergency }}</span></div>
++    <div class="pc-bar"></div>
++  </div></div>
++</div>
+diff --git a/resources/views/pages/admit-card.blade.php b/resources/views/pages/admit-card.blade.php
+index 4206b8f..17cbe97 100644
+--- a/resources/views/pages/admit-card.blade.php
++++ b/resources/views/pages/admit-card.blade.php
+@@ -3,12 +3,15 @@
+ @section('title', 'Admit Card')
+ 
+ @section('content')
++    <link rel="stylesheet" href="{{ asset('css/card-preview.css') }}">
+     @include('pages._hero', ['pill' => 'Admit Card Slip — Roll Number Verification'])
+     <div class="lk-card">
+         <div class="lk-title">Check Your Admit Card</div>
+         @if ($error)<div class="err"><p>{{ $error }}</p></div>@endif
+         <form method="POST" action="{{ route('public.admit-card.download', [], false) }}">
+             @csrf
++            <label for="year">Year</label>
++            <select id="year" disabled><option>{{ \App\Support\CardData::school()['exam_year'] ?: \App\Support\CardData::session() }}</option></select>
+             <label for="class">Class</label>
+             <select id="class" name="class">
+                 <option value="">All</option>
+@@ -24,4 +27,15 @@
+             </div>
+         </form>
+     </div>
++    @if ($card)
++        <div style="max-width:380px;margin:0 auto">
++            @include('pages._admit-preview', ['student' => $card['student'], 'school' => $card['school']])
++            <form method="POST" action="{{ route('public.admit-card.pdf', [], false) }}" target="_blank" class="pc-actions">
++                @csrf
++                @foreach ($card['fields'] as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
++                <button type="submit">&#128424; Print / Save as PDF</button>
++            </form>
++        </div>
++    @endif
++    <script src="{{ asset('js/card-fit.js') }}"></script>
+ @endsection
+diff --git a/resources/views/pages/id-cards.blade.php b/resources/views/pages/id-cards.blade.php
+index a06a486..4c9abb9 100644
+--- a/resources/views/pages/id-cards.blade.php
++++ b/resources/views/pages/id-cards.blade.php
+@@ -1,24 +1,55 @@
+ @extends('layouts.portal')
+ 
+-@section('title', 'ID Card')
++@section('title', 'ID Cards')
+ 
+ @section('content')
+-    <div class="page-title"><h1>Student ID Card</h1></div>
+-    <p class="sd sd-note">GR نمبر ۽ تاريخ پيدائش سان پنهنجو ID ڪارڊ ڊائونلوڊ ڪريو.</p>
+-    <div class="lk-card">
+-        <div class="lk-title">Student ID Card</div>
+-        @if ($error)<div class="err"><p>{{ $error }}</p></div>@endif
+-        <form method="POST" action="{{ route('public.id-cards.download', [], false) }}">
+-            @csrf
+-            <label for="gr_number">GR / Roll number</label>
+-            <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="1024">
+-            <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span></label>
+-            <input id="dob" name="dob" type="date" value="{{ old('dob') }}" required>
+-            <div class="btn-row">
+-                <button type="submit">Search &amp; Download</button>
+-                <a class="btn ghost" href="{{ route('public.id-cards', [], false) }}">Reset</a>
++    <link rel="stylesheet" href="{{ asset('css/card-preview.css') }}">
++    @include('pages._hero', ['pill' => 'ID Card Generator — Identity Verification'])
++    <p class="sd sd-note">GR نمبر ۽ تاريخ پيدائش سان پنهنجو ID ڪارڊ ڏسو ۽ ڊائونلوڊ ڪريو.</p>
++    <div class="pc-grid">
++        <div class="pc-forms">
++            <div class="lk-card">
++                <div class="lk-title">Teacher ID Card</div>
++                @if ($terror)<div class="err"><p>{{ $terror }}</p></div>@endif
++                <form method="POST" action="{{ route('public.id-cards.teacher', [], false) }}">
++                    @csrf
++                    <label for="cnic_pid">CNIC / PID</label>
++                    <input id="cnic_pid" name="cnic_pid" value="{{ old('cnic_pid') }}" required placeholder="e.g. 10829975">
++                    <div class="btn-row">
++                        <button type="submit">Search</button>
++                        <a class="btn ghost" href="{{ route('public.id-cards', [], false) }}">Reset</a>
++                    </div>
++                </form>
+             </div>
+-        </form>
++            <div class="lk-card">
++                <div class="lk-title">Student ID Card</div>
++                @if ($error)<div class="err"><p>{{ $error }}</p></div>@endif
++                <form method="POST" action="{{ route('public.id-cards.download', [], false) }}">
++                    @csrf
++                    <label for="gr_number">GR / Roll number</label>
++                    <input id="gr_number" name="gr_number" value="{{ old('gr_number') }}" required inputmode="numeric" placeholder="1024">
++                    <label for="dob">Date of birth <span class="sd">(رڪارڊ موجب)</span></label>
++                    <input id="dob" name="dob" type="date" value="{{ old('dob') }}" required>
++                    <div class="btn-row">
++                        <button type="submit">Search</button>
++                        <a class="btn ghost" href="{{ route('public.id-cards', [], false) }}">Reset</a>
++                    </div>
++                </form>
++            </div>
++        </div>
++        <div>
++            @if ($card)
++                @include('pages._id-preview', ['type' => $card['type'], 'person' => $card['person'], 'idText' => $card['idText'], 'qr' => $card['qr']])
++                <p class="pc-note sd">اڳيان ۽ پويان — ٻنهي پاسن وارو ڪارڊ (double-sided card).</p>
++                <form method="POST" action="{{ $card['pdfUrl'] }}" target="_blank" class="pc-actions">
++                    @csrf
++                    @foreach ($card['fields'] as $k => $v)<input type="hidden" name="{{ $k }}" value="{{ $v }}">@endforeach
++                    <button type="submit">&#128424; Print / Save as PDF</button>
++                </form>
++            @else
++                <p class="pc-note sd">ڪارڊ ڏسڻ لاءِ ڇنڊ ڇاڻ ڪريو (Search).</p>
++            @endif
++        </div>
+     </div>
+-    <p class="sd sd-note">GR نمبر ۽ تاريخ پيدائش داخل ڪريو.</p>
++    <script src="{{ asset('js/card-fit.js') }}"></script>
+ @endsection
+diff --git a/routes/web.php b/routes/web.php
+index 4306aa6..7acd100 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -125,6 +125,9 @@ Route::get('/results', [\App\Http\Controllers\PublicResultsController::class, 's
+ Route::post('/results', [\App\Http\Controllers\PublicResultsController::class, 'check'])->middleware('throttle:30,1')->name('public.results.check');
+ Route::get('/id-cards', [\App\Http\Controllers\PublicCardsController::class, 'show'])->name('public.id-cards');
+ Route::post('/id-cards', [\App\Http\Controllers\PublicCardsController::class, 'download'])->middleware('throttle:30,1')->name('public.id-cards.download');
++Route::post('/id-cards/pdf', [\App\Http\Controllers\PublicCardsController::class, 'pdf'])->middleware('throttle:30,1')->name('public.id-cards.pdf');
++Route::post('/id-cards/teacher', [\App\Http\Controllers\PublicCardsController::class, 'teacher'])->middleware('throttle:30,1')->name('public.id-cards.teacher');
++Route::post('/id-cards/teacher/pdf', [\App\Http\Controllers\PublicCardsController::class, 'teacherPdf'])->middleware('throttle:30,1')->name('public.id-cards.teacher.pdf');
+ Route::get('/feedback', [\App\Http\Controllers\PublicPagesController::class, 'feedbackForm'])->name('public.feedback');
+ Route::post('/feedback', [\App\Http\Controllers\PublicPagesController::class, 'feedbackStore'])->middleware('throttle:5,10')->name('public.feedback.store');
+ 
+@@ -166,6 +169,7 @@ Route::get('/toppers', [\App\Http\Controllers\PublicInfoController::class, 'topp
+ 
+ Route::get('/admit-card', [\App\Http\Controllers\PublicRecordsController::class, 'admitShow'])->name('public.admit-card');
+ Route::post('/admit-card', [\App\Http\Controllers\PublicRecordsController::class, 'admitDownload'])->middleware('throttle:30,1')->name('public.admit-card.download');
++Route::post('/admit-card/pdf', [\App\Http\Controllers\PublicRecordsController::class, 'admitPdf'])->middleware('throttle:30,1')->name('public.admit-card.pdf');
+ Route::get('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcShow'])->name('public.leaving-certificate');
+ Route::post('/leaving-certificate', [\App\Http\Controllers\PublicRecordsController::class, 'lcDownload'])->middleware('throttle:30,1')->name('public.leaving-certificate.download');
+ Route::get('/alumni', [\App\Http\Controllers\PublicRecordsController::class, 'alumni'])->middleware('throttle:30,1')->name('public.alumni');
+diff --git a/tests/Feature/CardPreviewTest.php b/tests/Feature/CardPreviewTest.php
+new file mode 100644
+index 0000000..55769c9
+--- /dev/null
++++ b/tests/Feature/CardPreviewTest.php
+@@ -0,0 +1,46 @@
++<?php
++
++namespace Tests\Feature;
++
++use App\Models\Student;
++use App\Models\Teacher;
++use App\Models\User;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Tests\TestCase;
++
++class CardPreviewTest extends TestCase
++{
++    use RefreshDatabase;
++
++    private function student(): Student
++    {
++        return Student::forceCreate(['id' => 's1', 'gr_number' => '77', 'name' => 'Ali Khan', 'father_name' => 'Aslam', 'dob' => '2012-01-02', 'class' => 'VII', 'section' => 'Green']);
++    }
++
++    public function test_student_id_card_preview_then_pdf_form(): void
++    {
++        $this->student();
++        $this->get('/id-cards')->assertOk()->assertSee('Teacher ID Card')->assertSee('Student ID Card');
++        $this->post('/id-cards', ['gr_number' => '77', 'dob' => '2012-01-02'])
++            ->assertOk()->assertSee('ALI KHAN')->assertSee('TERMS &amp; CONDITIONS', false)->assertSee('Print / Save as PDF', false)->assertSee('/id-cards/pdf', false);
++        $this->post('/id-cards', ['gr_number' => '77', 'dob' => '2010-01-01'])->assertOk()->assertSee('نه ملي')->assertDontSee('ALI KHAN');
++    }
++
++    public function test_teacher_card_lookup_by_pid_or_cnic_and_hides_cnic(): void
++    {
++        Teacher::forceCreate(['id' => 'tchcard001', 'name' => 'Waris', 'pid' => '10829975', 'cnic' => '41234-1234567-1', 'designation' => 'JEST', 'created_at' => now()]);
++        $this->post('/id-cards/teacher', ['cnic_pid' => '10829975'])->assertOk()->assertSee('WARIS')->assertSee('JEST')->assertDontSee('41234');
++        $this->post('/id-cards/teacher', ['cnic_pid' => '4123412345671'])->assertOk()->assertSee('WARIS');
++        $this->post('/id-cards/teacher', ['cnic_pid' => '999'])->assertOk()->assertSee('nahi mila')->assertDontSee('WARIS');
++    }
++
++    public function test_admit_card_preview_and_admin_class_grid(): void
++    {
++        $this->student();
++        $this->post('/admit-card', ['gr_number' => '77', 'dob' => '2012-01-02'])->assertOk()->assertSee('ADMIT CARD')->assertSee('Ali Khan')->assertSee('/admit-card/pdf', false);
++
++        $admin = User::forceCreate(['name' => 'A', 'email' => 'a@example.test', 'password' => bcrypt('x'), 'role' => 'admin', 'is_active' => 1]);
++        $this->actingAs($admin);
++        $this->get('/admin/admit-cards?class=VII')->assertOk()->assertSee('Print All (1)', false)->assertSee('Ali Khan');
++    }
++}
+-- 
+2.43.0
+
