@@ -72,4 +72,36 @@ class AdminExtrasTest extends TestCase
         $this->get('/alumni?year=2024-2025')->assertOk()->assertSee('Old Boy')->assertDontSee('Older Boy');
         $this->get('/alumni')->assertOk()->assertSee('Sab sessions');
     }
+
+    public function test_session_fix_moves_results_to_last_session_and_previous_class(): void
+    {
+        $this->actingAs($this->admin());
+        // Current session classes: VIII (were VII last session), VII (were VI), and a passed-out VIII student.
+        foreach ([['p1', '1', 'Now VIII', 'VIII', 0], ['p2', '2', 'Now VII', 'VII', 0], ['p3', '3', 'Left VIII', 'VIII', 1]] as [$id, $gr, $n, $cls, $out]) {
+            Student::forceCreate(['id' => $id, 'gr_number' => $gr, 'name' => $n, 'class' => $cls, 'passed_out' => $out]);
+            StudentResult::create(['student_id' => $id, 'academic_year' => '2026-2027', 'class' => $cls, 'exam_type' => 'annual', 'subject' => 'Math', 'score' => 50]);
+        }
+        $this->get('/admin/results?year=2026-2027&exam=annual')->assertOk()->assertSee('Session / Class fix')->assertSee('VIII → VII');
+
+        $this->post('/admin/results/relabel', ['from' => '2026-2027', 'to' => '2025-2026', 'confirm' => 'nope'])->assertSessionHasErrors('confirm');
+        $this->post('/admin/results/relabel', ['from' => '2026-2027', 'to' => '2025-2026', 'confirm' => 'FIX'])->assertRedirect();
+
+        $this->assertSame(0, StudentResult::where('academic_year', '2026-2027')->count());
+        $this->assertSame('VII', StudentResult::where('student_id', 'p1')->value('class'));
+        $this->assertSame('VI', StudentResult::where('student_id', 'p2')->value('class'));
+        $this->assertSame('VIII', StudentResult::where('student_id', 'p3')->value('class'));   // passed out keeps VIII
+        // Running it again onto a session that already has results is refused.
+        $this->post('/admin/results/relabel', ['from' => '2025-2026', 'to' => '2025-2026', 'confirm' => 'FIX'])->assertSessionHasErrors('to');
+    }
+
+    public function test_parent_sees_results_published_for_the_class_the_exam_was_sat_in(): void
+    {
+        Student::forceCreate(['id' => 'q1', 'gr_number' => '9', 'name' => 'Now VIII', 'dob' => '2012-01-02', 'class' => 'VIII', 'passed_out' => 0]);
+        StudentResult::create(['student_id' => 'q1', 'academic_year' => '2025-2026', 'class' => 'VII', 'exam_type' => 'annual', 'subject' => 'Math', 'score' => 251]);
+        // Only "VIII" published -> the VII-sat result stays hidden.
+        DB::table('result_publish_status')->insert(['id' => 'x1', 'class_name' => 'VIII', 'exam_type' => 'annual', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
+        $this->post('/results', ['gr_number' => '9', 'dob' => '2012-01-02'])->assertOk()->assertDontSee('251');
+        DB::table('result_publish_status')->insert(['id' => 'x2', 'class_name' => 'VII', 'exam_type' => 'annual', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
+        $this->post('/results', ['gr_number' => '9', 'dob' => '2012-01-02'])->assertOk()->assertSee('251');
+    }
 }

@@ -89,7 +89,7 @@ class PdfPhoto
         return @file_get_contents($file) ?: null;
     }
 
-    /** $square = centre-crop (biased towards the top, where faces are) to a square so it fills a photo frame exactly. */
+    /** $square = close-up crop (centred, biased towards the top where faces are) to a square so it fills a photo frame. */
     private static function shrink(?string $bin, int $max, bool $square = false): ?string
     {
         if (! $bin) {
@@ -110,9 +110,10 @@ class PdfPhoto
         $sw = $info[0];
         $sh = $info[1];
         if ($square) {
-            $side = min($sw, $sh);
+            $full = min($sw, $sh);
+            $side = (int) round($full * 0.72);          // close-up: face and shoulders fill the frame
             $sx = (int) (($sw - $side) / 2);
-            $sy = (int) round(($sh - $side) * 0.2);   // keep the head, trim the bottom
+            $sy = (int) round(($sh - $side) * 0.12);    // faces sit in the upper part of a portrait
             $sw = $sh = $side;
         }
         $ratio = min(1, $max / max($sw, $sh));

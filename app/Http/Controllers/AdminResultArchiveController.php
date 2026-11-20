@@ -26,6 +26,23 @@ class AdminResultArchiveController extends Controller
         }, 'marks-'.preg_replace('/[^A-Za-z0-9_-]+/', '_', $data['exam'].'-'.$data['year']).'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
+    public function relabel(Request $request)
+    {
+        $data = $request->validate([
+            'from' => ['required', 'string', 'max:20'], 'to' => ['required', 'regex:/^\d{4}-\d{4}$/'],
+            'confirm' => ['required', 'in:FIX'],
+        ], ['confirm.in' => 'Tasdeeq ke liye box mein FIX likhein (capital letters).', 'to.regex' => 'Session aise likhein: 2025-2026']);
+
+        try {
+            $n = \App\Services\ResultSessionFix::apply($data['from'], $data['to']);
+        } catch (\InvalidArgumentException $e) {
+            return back()->withErrors(['to' => $e->getMessage()]);
+        }
+
+        return redirect()->route('admin.results.index', ['year' => $data['to']])
+            ->with('ok', "{$n} results {$data['from']} se {$data['to']} mein muntaqil ho gaye aur classes sahi ho gayin.");
+    }
+
     public function reset(Request $request)
     {
         $data = $request->validate([

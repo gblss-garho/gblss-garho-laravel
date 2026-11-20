@@ -65,8 +65,9 @@ class AdminResultController extends Controller
             }
             $rank[$r['student']->id ?? $i] = $pos;
         }
+        $fix = $year !== '' ? \App\Services\ResultSessionFix::preview($year) : null;
         $tab = in_array($request->query('tab'), ['marks', 'subjects', 'classes'], true) ? $request->query('tab') : 'marks';
 
-        return view('admin.results.index', compact('years', 'exams', 'classes', 'year', 'exam', 'class', 'rows', 'subjects', 'subjectAvg', 'summary', 'rank', 'tab'));
+        return view('admin.results.index', compact('years', 'exams', 'classes', 'year', 'exam', 'class', 'rows', 'subjects', 'subjectAvg', 'summary', 'rank', 'tab', 'fix'));
     }
 }

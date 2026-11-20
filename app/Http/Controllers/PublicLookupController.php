@@ -66,14 +66,20 @@ class PublicLookupController extends Controller
         return $student;
     }
 
-    /** Published results of a student, grouped by exam type. */
+    /** Published results of a student, grouped by exam type (latest session per exam; published per the class the exam was sat in). */
     protected function publishedExams(Student $student)
     {
-        $published = DB::table('result_publish_status')
-            ->where('class_name', $student->results_class)->where('status', 'published')->pluck('exam_type');
+        $published = DB::table('result_publish_status')->where('status', 'published')->get(['class_name', 'exam_type'])
+            ->map(fn ($p) => $p->class_name.'|'.$p->exam_type)->flip();
 
-        return StudentResult::where('student_id', $student->id)->whereIn('exam_type', $published)
-            ->orderBy('subject')->get()->groupBy('exam_type');
+        $rows = StudentResult::where('student_id', $student->id)->orderBy('subject')->get()
+            ->filter(fn ($r) => $published->has(($r->class ?: $student->results_class).'|'.$r->exam_type));
+
+        return $rows->groupBy('exam_type')->map(function ($g) {
+            $year = $g->max('academic_year');
+
+            return $g->where('academic_year', $year)->values();
+        });
     }
 
     public function check(Request $request)

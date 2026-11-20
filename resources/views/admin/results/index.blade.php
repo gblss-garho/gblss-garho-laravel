@@ -37,6 +37,27 @@
 
     @if (session('ok'))<p style="color:green">{{ session('ok') }}</p>@endif
     @if ($errors->any())<p style="color:red">{{ $errors->first() }}</p>@endif
+    @php $prevYear = preg_match('/^(\d{4})-(\d{4})$/', $year, $m) ? ($m[1] - 1).'-'.($m[2] - 1) : ''; @endphp
+    @if ($fix && $fix['rows'] > 0)
+    <details style="margin:10px 0;border:1px solid #DBB43C;border-radius:8px;padding:8px 12px">
+        <summary><b>Session / Class fix</b> — {{ $year }} ke {{ $fix['rows'] }} results ({{ $fix['students'] }} students)</summary>
+        <p class="sd-note">Agar yeh results pichle session ke hain magar naye session ({{ $year }}) mein nazar aa rahe hain, to yahan se unhein sahi session aur sahi class (ek class neeche) mein bhej dein. Passed-out students ki class wohi rehti hai.</p>
+        <table border="1" cellpadding="5" style="border-collapse:collapse;margin:6px 0">
+            <tr><th>Abhi class</th><th>Baad mein class</th><th>Students</th></tr>
+            @foreach ($fix['moves'] as $mv => $n)
+                @php [$a, $b] = explode(' → ', $mv); @endphp
+                <tr><td>{{ $a }}</td><td>{{ $b }}</td><td>{{ $n }}</td></tr>
+            @endforeach
+        </table>
+        <form method="POST" action="{{ route('admin.results.relabel') }}" onsubmit="return confirm('{{ $year }} ke results naye session aur class mein muntaqil honge. Pehle CSV download kar li hai?')">
+            @csrf
+            <input type="hidden" name="from" value="{{ $year }}">
+            Naya session: <input name="to" value="{{ $prevYear }}" style="width:120px">
+            <input name="confirm" placeholder="FIX likhein" autocomplete="off" style="width:110px">
+            <button type="submit">Fix karein</button>
+        </form>
+    </details>
+    @endif
     <details style="margin:10px 0;border:1px solid #d9d9d9;border-radius:8px;padding:8px 12px">
         <summary><b>Archive &amp; Reset Marks</b> ({{ $exam }} {{ $year }})</summary>
         <p class="sd-note">Pehle CSV download karein, phir hi reset karein. Reset in marks ko hamesha ke liye hata deta hai.</p>

@@ -79,6 +79,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 });
 
 Route::middleware(['auth', 'role:admin'])->get('/admin/results/archive', [\App\Http\Controllers\AdminResultArchiveController::class, 'download'])->name('admin.results.archive');
+Route::middleware(['auth', 'role:admin'])->post('/admin/results/relabel', [\App\Http\Controllers\AdminResultArchiveController::class, 'relabel'])->name('admin.results.relabel');
 Route::middleware(['auth', 'role:admin'])->post('/admin/results/reset', [\App\Http\Controllers\AdminResultArchiveController::class, 'reset'])->name('admin.results.reset');
 Route::middleware(['auth', 'role:admin'])->post('/admin/backup', [\App\Http\Controllers\AdminBackupController::class, 'download'])->name('admin.backup');
 Route::middleware(['auth', 'role:admin'])->post('/admin/results/toggle', [\App\Http\Controllers\AdminResultPublishController::class, 'toggle'])->name('admin.results.toggle');
