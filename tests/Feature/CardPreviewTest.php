@@ -127,4 +127,48 @@ class CardPreviewTest extends TestCase
         $this->post('/id-cards', ['gr_number' => '77', 'dob' => '2012-01-02'])->assertOk()->assertSee('class="pc-sd"', false);
         $this->assertFileExists(public_path('images/motto-sd.png'));
     }
+
+    public function test_admit_and_id_card_lists_show_all_active_students_not_just_50(): void
+    {
+        $admin = User::forceCreate(['name' => 'A', 'email' => 'a@example.test', 'password' => bcrypt('x'), 'role' => 'admin', 'is_active' => 1]);
+        for ($i = 1; $i <= 60; $i++) {
+            Student::forceCreate(['id' => 'm'.$i, 'gr_number' => (string) $i, 'name' => 'Pupil'.$i.'x', 'class' => 'VI', 'passed_out' => 0]);
+        }
+        $this->actingAs($admin);
+        $this->get('/admin/admit-cards')->assertOk()->assertSee('Pupil60x');
+        $this->get('/admin/id-cards')->assertOk()->assertSee('Pupil60x');
+    }
+
+    public function test_home_tiles_redirect_by_role_and_guests_go_to_login_then_back(): void
+    {
+        $this->get('/go/bookbank')->assertRedirect('/login');
+        $this->assertSame('/go/bookbank', session('url.intended'));
+        $this->get('/go/nothing')->assertNotFound();
+        $teacher = User::forceCreate(['name' => 'T', 'email' => 't@example.test', 'password' => bcrypt('x'), 'role' => 'teacher', 'is_active' => 1]);
+        $this->actingAs($teacher)->get('/go/bookbank')->assertRedirect(route('teacher.bookbank.index'));
+        $this->get('/go/attendance')->assertRedirect(route('teacher.attendance.index'));
+        $admin = User::forceCreate(['name' => 'A', 'email' => 'a@example.test', 'password' => bcrypt('x'), 'role' => 'admin', 'is_active' => 1]);
+        $this->actingAs($admin)->get('/go/register')->assertRedirect(route('admin.students.index'));
+        $this->get('/')->assertOk()->assertSee('/go/attendance', false)->assertSee('/go/bookbank', false);
+    }
+
+    public function test_admin_can_set_student_photo_by_link_and_by_upload(): void
+    {
+        $admin = User::forceCreate(['name' => 'A', 'email' => 'a@example.test', 'password' => bcrypt('x'), 'role' => 'admin', 'is_active' => 1]);
+        $this->actingAs($admin);
+        $this->post('/admin/students', ['gr_number' => '21', 'name' => 'Link Bacha', 'class' => 'VI', 'photo_link' => 'https://example.com/p.jpg'])->assertSessionHasNoErrors();
+        $s = Student::where('gr_number', '21')->first();
+        $this->assertSame('https://example.com/p.jpg', $s->photo_url);
+
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('p.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));
+        $base = ['gr_number' => '21', 'name' => 'Link Bacha', 'class' => 'VI', 'status_choice' => 'active'];
+        $this->put('/admin/students/'.$s->id, $base + ['photo_file' => $file])->assertSessionHasNoErrors();
+        $s->refresh();
+        $this->assertStringStartsWith('/uploads/students/'.$s->id.'.', $s->photo_url);
+        @unlink(public_path(strtok(ltrim($s->photo_url, '/'), '?')));
+
+        $this->put('/admin/students/'.$s->id, $base + ['remove_photo' => 1])->assertSessionHasNoErrors();
+        $this->assertNull($s->fresh()->photo_url);
+        $this->get('/admin/students/'.$s->id.'/edit')->assertOk()->assertSee('photo_file', false);
+    }
 }

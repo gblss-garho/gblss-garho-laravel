@@ -20,7 +20,6 @@ class AdminIdCardController extends Controller
                 $w->where('name', 'like', "%{$q}%")->orWhere('gr_number', 'like', "%{$q}%");
             }))
             ->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')
-            ->limit(50)
             ->get();
 
         $classes = Student::query()->where('passed_out', false)->whereNotNull('class')->distinct()->orderBy('class')->pluck('class');

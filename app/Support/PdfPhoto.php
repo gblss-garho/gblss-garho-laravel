@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Http;
 class PdfPhoto
 {
     /** Accepts a data: URI, an http(s) URL, or a path under /public; returns a small JPEG data URI (or null). */
-    public static function small(?string $src, int $max = 220): ?string
+    public static function small(?string $src, int $max = 220, bool $square = false): ?string
     {
         $src = trim((string) $src);
         if ($src === '' || ! function_exists('imagecreatefromstring')) {
@@ -22,14 +22,35 @@ class PdfPhoto
 
         // Remote / local-path photos (what the website shows) are fetched once, shrunk and cached for a day.
         if (! str_starts_with($src, 'data:')) {
-            return Cache::remember('pdfphoto:'.md5($src.'|'.$max), 86400, fn () => self::shrink(self::load($src), $max));
+            return Cache::remember('pdfphoto:'.md5($src.'|'.$max.'|'.(int) $square), 86400, fn () => self::shrink(self::load($src), $max, $square));
         }
 
         if (! preg_match('#^data:image/(?:jpe?g|png|webp|gif);base64,(.+)$#is', $src, $m)) {
             return null;
         }
 
-        return self::shrink(base64_decode($m[1], true) ?: null, $max);
+        return self::shrink(base64_decode($m[1], true) ?: null, $max, $square);
+    }
+
+    /** Saves an uploaded photo under public/uploads/students and returns the relative URL stored in photo_url. */
+    public static function saveUpload(\Illuminate\Http\UploadedFile $file, string $id): string
+    {
+        $dir = public_path('uploads/students');
+        if (! is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+        $name = preg_replace('/[^A-Za-z0-9_-]/', '', $id);
+        $bin = (string) @file_get_contents($file->getRealPath());
+        $jpg = function_exists('imagecreatefromstring') ? self::shrink($bin, 600, false) : null;
+        if ($jpg !== null) {
+            file_put_contents("{$dir}/{$name}.jpg", base64_decode(substr($jpg, strlen('data:image/jpeg;base64,'))));
+            $ext = 'jpg';
+        } else {   // no GD: keep the original file as it is
+            $ext = in_array(strtolower($file->extension()), ['jpg', 'jpeg', 'png', 'webp'], true) ? strtolower($file->extension()) : 'jpg';
+            file_put_contents("{$dir}/{$name}.{$ext}", $bin);
+        }
+
+        return "/uploads/students/{$name}.{$ext}?v=".time();
     }
 
     /** Raw bytes for a URL or public-path photo, or null. Only http(s) to public hosts is allowed. */
@@ -68,7 +89,8 @@ class PdfPhoto
         return @file_get_contents($file) ?: null;
     }
 
-    private static function shrink(?string $bin, int $max): ?string
+    /** $square = centre-crop (biased towards the top, where faces are) to a square so it fills a photo frame exactly. */
+    private static function shrink(?string $bin, int $max, bool $square = false): ?string
     {
         if (! $bin) {
             return null;
@@ -77,18 +99,28 @@ class PdfPhoto
         if (! $info || $info[0] < 1 || $info[1] < 1 || $info[0] * $info[1] > 60000000) {
             return null;
         }
-        $ratio = min(1, $max / max($info[0], $info[1]));
         @ini_set('memory_limit', '512M');
         $im = @imagecreatefromstring($bin);
         unset($bin);
         if (! $im) {
             return null;
         }
-        $w = max(1, (int) round($info[0] * $ratio));
-        $h = max(1, (int) round($info[1] * $ratio));
+        $sx = 0;
+        $sy = 0;
+        $sw = $info[0];
+        $sh = $info[1];
+        if ($square) {
+            $side = min($sw, $sh);
+            $sx = (int) (($sw - $side) / 2);
+            $sy = (int) round(($sh - $side) * 0.2);   // keep the head, trim the bottom
+            $sw = $sh = $side;
+        }
+        $ratio = min(1, $max / max($sw, $sh));
+        $w = max(1, (int) round($sw * $ratio));
+        $h = max(1, (int) round($sh * $ratio));
         $out = imagecreatetruecolor($w, $h);
         imagefill($out, 0, 0, imagecolorallocate($out, 255, 255, 255));
-        imagecopyresampled($out, $im, 0, 0, 0, 0, $w, $h, $info[0], $info[1]);
+        imagecopyresampled($out, $im, 0, 0, $sx, $sy, $w, $h, $sw, $sh);
         imagedestroy($im);
         ob_start();
         imagejpeg($out, null, 80);

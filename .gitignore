@@ -33,3 +33,5 @@ missing_dob.csv
 /storage/app/backups/
 *.sql
 *.sql.gz
+
+/public/uploads/

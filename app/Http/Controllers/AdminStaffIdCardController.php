@@ -18,7 +18,6 @@ class AdminStaffIdCardController extends Controller
                       ->orWhere('pid', 'like', "%{$q}%");
             })
             ->orderBy('name')
-            ->limit(50)
             ->get();
 
         return view('admin.staff-id-cards.index', compact('teachers', 'q'));

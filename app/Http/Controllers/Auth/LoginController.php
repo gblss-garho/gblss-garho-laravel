@@ -44,7 +44,7 @@ class LoginController extends Controller
         RateLimiter::clear($key);
         $request->session()->regenerate();
 
-        return redirect($this->dashboardPathFor(Auth::user()));
+        return redirect()->intended($this->dashboardPathFor(Auth::user()));
     }
 
     public function logout(Request $request)

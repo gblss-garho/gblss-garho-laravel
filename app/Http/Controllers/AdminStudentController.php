@@ -23,7 +23,29 @@ class AdminStudentController extends Controller
             'address' => ['nullable', 'string', 'max:255'],
             'guardian_phone' => ['nullable', 'string', 'max:30'],
             'admission_date' => ['nullable', 'date'],
+            'photo_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            'photo_link' => ['nullable', 'url', 'max:240'],
+            'remove_photo' => ['nullable', 'boolean'],
         ];
+    }
+
+    /** Turns the photo_file / photo_link / remove_photo inputs into a photo_url value (or leaves it untouched). */
+    private function applyPhoto(Request $request, array $data, string $id, ?string $current = null): array
+    {
+        $file = $data['photo_file'] ?? null;
+        $link = trim((string) ($data['photo_link'] ?? ''));
+        $remove = ! empty($data['remove_photo']);
+        unset($data['photo_file'], $data['photo_link'], $data['remove_photo']);
+
+        if ($file) {
+            $data['photo_url'] = \App\Support\PdfPhoto::saveUpload($file, $id);
+        } elseif ($link !== '') {
+            $data['photo_url'] = $link;
+        } elseif ($remove) {
+            $data['photo_url'] = null;
+        }
+
+        return $data;
     }
 
     public function index(Request $request)
@@ -69,6 +91,7 @@ class AdminStudentController extends Controller
             return back()->withInput()->withErrors(['gr_number' => "GR {$reg} General Register me pehle se maujood hai (purana/left student). Naya GR number likhein."]);
         }
         $data['id'] = str_replace('-', '', (string) Str::uuid());   // students.id is varchar(32)
+        $data = $this->applyPhoto($request, $data, $data['id']);
         $data['passed_out'] = 0;
         DB::transaction(function () use ($data, $reg, $hasReg) {
             Student::create($data);
@@ -93,6 +116,7 @@ class AdminStudentController extends Controller
     public function update(Request $request, Student $student)
     {
         $data = $request->validate($this->rules($student) + \App\Services\StudentStatusService::rules());
+        $data = $this->applyPhoto($request, $data, $student->id, $student->photo_url);
         $status = \Illuminate\Support\Arr::only($data, array_keys(\App\Services\StudentStatusService::rules()));
         $student->update(\Illuminate\Support\Arr::except($data, array_keys($status)));
         app(\App\Services\StudentStatusService::class)->apply((int) $student->gr_number, $student->fresh(), $status);

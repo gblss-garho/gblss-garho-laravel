@@ -4,7 +4,7 @@
     $public = $public ?? false;   // public pages: no DOB, masked PID, no guardian phone / home address
     $logo = collect([public_path('images/logo-glow.png'), public_path('images/logo.png'), public_path('images/lc/emblem.jpg')])->first(fn ($f) => is_file($f)) ?: public_path('images/logo.png');
     $logoOk = is_file($logo);
-    $smallPhoto = \App\Support\PdfPhoto::small($person->photo_url ?? null);
+    $smallPhoto = \App\Support\PdfPhoto::small($person->photo_url ?? null, 260, true);
     $photoOk = $smallPhoto !== null;
     $fmt = fn ($d) => $d ? \Carbon\Carbon::parse($d)->format('M d, Y') : '—';
     $session = app(\App\Services\SchoolScheduleService::class)->academicYearFor(now());

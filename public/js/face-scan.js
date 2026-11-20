@@ -43,7 +43,7 @@
 
         var challenges = (root.getAttribute('data-challenges') || '').split(',').filter(Boolean);
         var liveField = form.querySelector('input[name=liveness]');
-        var FAST = function () { return new faceapi.TinyFaceDetectorOptions({ inputSize: 192, scoreThreshold: 0.45 }); };
+        var FAST = function () { return new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.4 }); };
         var act = root.querySelector('.fs-act');
 
         function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
@@ -72,14 +72,17 @@
 
         // Resolves true when the action is seen within `ms`. Blink = eyes visibly closing against the open-eye baseline.
         async function doChallenge(name, ms) {
-            var t0 = Date.now(), base = 0, n = 0;
+            var t0 = Date.now(), hist = [], n = 0;
             while (Date.now() - t0 < ms) {
                 var m = await frame();
                 if (!m) { continue; }
                 if (name === 'blink') {
+                    // A blink lasts only ~150 ms, so compare each frame with the best open-eye value of the last few frames.
                     n++;
-                    if (n <= 3 || m.ear > base) { base = Math.max(base, m.ear); }
-                    if (n > 3 && base > 0.18 && m.ear < base * 0.8) { return true; }
+                    var top = hist.length ? Math.max.apply(null, hist) : 0;
+                    if (n > 2 && top > 0.17 && (m.ear < top * 0.85 || top - m.ear > 0.04)) { return true; }
+                    hist.push(m.ear);
+                    if (hist.length > 8) { hist.shift(); }
                 } else if (name === 'turn_left') {
                     if (m.yaw > 0.6) { return true; }
                 } else if (name === 'turn_right') {
@@ -174,7 +177,7 @@
                 act.textContent = SD[challenges[i]] || '';
                 root.setAttribute('data-act', challenges[i]);
                 state('scan', 'Liveness check: upar likha kaam karen.');
-                var ok = await doChallenge(challenges[i], 9000);
+                var ok = await doChallenge(challenges[i], 12000);
                 act.textContent = '';
                 root.removeAttribute('data-act');
                 if (!ok) { return fail('Liveness check pass nahi hua. Dobara try karen aur hidayat par amal karen.'); }
