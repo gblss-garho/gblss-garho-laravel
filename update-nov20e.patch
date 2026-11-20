@@ -1,0 +1,281 @@
+diff --git a/app/Http/Controllers/AdminResultArchiveController.php b/app/Http/Controllers/AdminResultArchiveController.php
+index 22294c6..50f25b2 100644
+--- a/app/Http/Controllers/AdminResultArchiveController.php
++++ b/app/Http/Controllers/AdminResultArchiveController.php
+@@ -26,6 +26,23 @@ class AdminResultArchiveController extends Controller
+         }, 'marks-'.preg_replace('/[^A-Za-z0-9_-]+/', '_', $data['exam'].'-'.$data['year']).'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+     }
+ 
++    public function relabel(Request $request)
++    {
++        $data = $request->validate([
++            'from' => ['required', 'string', 'max:20'], 'to' => ['required', 'regex:/^\d{4}-\d{4}$/'],
++            'confirm' => ['required', 'in:FIX'],
++        ], ['confirm.in' => 'Tasdeeq ke liye box mein FIX likhein (capital letters).', 'to.regex' => 'Session aise likhein: 2025-2026']);
++
++        try {
++            $n = \App\Services\ResultSessionFix::apply($data['from'], $data['to']);
++        } catch (\InvalidArgumentException $e) {
++            return back()->withErrors(['to' => $e->getMessage()]);
++        }
++
++        return redirect()->route('admin.results.index', ['year' => $data['to']])
++            ->with('ok', "{$n} results {$data['from']} se {$data['to']} mein muntaqil ho gaye aur classes sahi ho gayin.");
++    }
++
+     public function reset(Request $request)
+     {
+         $data = $request->validate([
+diff --git a/app/Http/Controllers/AdminResultController.php b/app/Http/Controllers/AdminResultController.php
+index 213fa07..2a512bf 100644
+--- a/app/Http/Controllers/AdminResultController.php
++++ b/app/Http/Controllers/AdminResultController.php
+@@ -65,8 +65,9 @@ class AdminResultController extends Controller
+             }
+             $rank[$r['student']->id ?? $i] = $pos;
+         }
++        $fix = $year !== '' ? \App\Services\ResultSessionFix::preview($year) : null;
+         $tab = in_array($request->query('tab'), ['marks', 'subjects', 'classes'], true) ? $request->query('tab') : 'marks';
+ 
+-        return view('admin.results.index', compact('years', 'exams', 'classes', 'year', 'exam', 'class', 'rows', 'subjects', 'subjectAvg', 'summary', 'rank', 'tab'));
++        return view('admin.results.index', compact('years', 'exams', 'classes', 'year', 'exam', 'class', 'rows', 'subjects', 'subjectAvg', 'summary', 'rank', 'tab', 'fix'));
+     }
+ }
+diff --git a/app/Http/Controllers/PublicLookupController.php b/app/Http/Controllers/PublicLookupController.php
+index 178cc28..a2ee71f 100644
+--- a/app/Http/Controllers/PublicLookupController.php
++++ b/app/Http/Controllers/PublicLookupController.php
+@@ -66,14 +66,20 @@ class PublicLookupController extends Controller
+         return $student;
+     }
+ 
+-    /** Published results of a student, grouped by exam type. */
++    /** Published results of a student, grouped by exam type (latest session per exam; published per the class the exam was sat in). */
+     protected function publishedExams(Student $student)
+     {
+-        $published = DB::table('result_publish_status')
+-            ->where('class_name', $student->results_class)->where('status', 'published')->pluck('exam_type');
++        $published = DB::table('result_publish_status')->where('status', 'published')->get(['class_name', 'exam_type'])
++            ->map(fn ($p) => $p->class_name.'|'.$p->exam_type)->flip();
+ 
+-        return StudentResult::where('student_id', $student->id)->whereIn('exam_type', $published)
+-            ->orderBy('subject')->get()->groupBy('exam_type');
++        $rows = StudentResult::where('student_id', $student->id)->orderBy('subject')->get()
++            ->filter(fn ($r) => $published->has(($r->class ?: $student->results_class).'|'.$r->exam_type));
++
++        return $rows->groupBy('exam_type')->map(function ($g) {
++            $year = $g->max('academic_year');
++
++            return $g->where('academic_year', $year)->values();
++        });
+     }
+ 
+     public function check(Request $request)
+diff --git a/app/Services/ResultSessionFix.php b/app/Services/ResultSessionFix.php
+new file mode 100644
+index 0000000..d6e6d8b
+--- /dev/null
++++ b/app/Services/ResultSessionFix.php
+@@ -0,0 +1,69 @@
++<?php
++
++namespace App\Services;
++
++use App\Models\Student;
++use App\Models\StudentResult;
++use Illuminate\Support\Facades\DB;
++
++/**
++ * Results imported after the new session started carry the *current* class of each student.
++ * This moves them back to the session they were really sat in: academic_year -> $to and
++ * class -> the class the student was in then (one class lower; passed-out students keep theirs).
++ */
++class ResultSessionFix
++{
++    public const ORDER = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
++
++    /** @return array{rows:int, students:int, moves:array<string,int>} moves: "VIII → VII" => students */
++    public static function preview(string $from): array
++    {
++        $rows = StudentResult::where('academic_year', $from)->get(['student_id', 'class']);
++        $students = Student::whereIn('id', $rows->pluck('student_id')->unique())->get()->keyBy('id');
++        $moves = [];
++        foreach ($rows->groupBy('student_id') as $sid => $g) {
++            $s = $students->get($sid);
++            $old = (string) ($g->first()->class ?? '');
++            $new = self::newClass($s, $old);
++            $key = $old.' → '.$new;
++            $moves[$key] = ($moves[$key] ?? 0) + 1;
++        }
++        ksort($moves);
++
++        return ['rows' => $rows->count(), 'students' => $rows->pluck('student_id')->unique()->count(), 'moves' => $moves];
++    }
++
++    /** Class the student sat the exam in; unchanged for passed-out students or when the stored class isn't their current one. */
++    public static function newClass(?Student $s, string $stored): string
++    {
++        if (! $s || $s->passed_out || $stored !== (string) $s->class) {
++            return $stored;
++        }
++        $i = array_search($stored, self::ORDER, true);
++
++        return ($i !== false && $i > 0) ? self::ORDER[$i - 1] : $stored;
++    }
++
++    /** @return int number of result rows moved; throws if $to already holds results. */
++    public static function apply(string $from, string $to): int
++    {
++        if ($from === $to) {
++            throw new \InvalidArgumentException('Naya session purane se mukhtalif hona chahiye.');
++        }
++        if (StudentResult::where('academic_year', $to)->exists()) {
++            throw new \InvalidArgumentException("{$to} mein pehle se results maujood hain; mix hone se bachane ke liye ruk gaya.");
++        }
++
++        return DB::transaction(function () use ($from, $to) {
++            $students = Student::whereIn('id', StudentResult::where('academic_year', $from)->distinct()->pluck('student_id'))->get();
++            foreach ($students as $s) {
++                $new = self::newClass($s, (string) $s->class);
++                if ($new !== (string) $s->class) {
++                    StudentResult::where('student_id', $s->id)->where('academic_year', $from)->where('class', $s->class)->update(['class' => $new]);
++                }
++            }
++
++            return StudentResult::where('academic_year', $from)->update(['academic_year' => $to]);
++        });
++    }
++}
+diff --git a/app/Support/PdfPhoto.php b/app/Support/PdfPhoto.php
+index 0742221..182cbbe 100644
+--- a/app/Support/PdfPhoto.php
++++ b/app/Support/PdfPhoto.php
+@@ -89,7 +89,7 @@ class PdfPhoto
+         return @file_get_contents($file) ?: null;
+     }
+ 
+-    /** $square = centre-crop (biased towards the top, where faces are) to a square so it fills a photo frame exactly. */
++    /** $square = close-up crop (centred, biased towards the top where faces are) to a square so it fills a photo frame. */
+     private static function shrink(?string $bin, int $max, bool $square = false): ?string
+     {
+         if (! $bin) {
+@@ -110,9 +110,10 @@ class PdfPhoto
+         $sw = $info[0];
+         $sh = $info[1];
+         if ($square) {
+-            $side = min($sw, $sh);
++            $full = min($sw, $sh);
++            $side = (int) round($full * 0.72);          // close-up: face and shoulders fill the frame
+             $sx = (int) (($sw - $side) / 2);
+-            $sy = (int) round(($sh - $side) * 0.2);   // keep the head, trim the bottom
++            $sy = (int) round(($sh - $side) * 0.12);    // faces sit in the upper part of a portrait
+             $sw = $sh = $side;
+         }
+         $ratio = min(1, $max / max($sw, $sh));
+diff --git a/public/css/card-preview.css b/public/css/card-preview.css
+index f7f8777..e055e9a 100644
+--- a/public/css/card-preview.css
++++ b/public/css/card-preview.css
+@@ -11,7 +11,7 @@
+ .pc-h2 { padding:5px 56px 5px 14px; min-height:46px; } .pc-h2 img { height:36px; margin-right:6px; } .pc-h2 .pc-hn { font-size:10px; }
+ .pc-b { display:flex; gap:12px; padding:7px 14px 0 16px; }
+ .pc-ph { width:96px; height:96px; flex:none; background:#DBB43C; padding:3px; box-sizing:content-box; display:flex; align-items:center; justify-content:center; }
+-.pc-ph img { width:96px; height:96px; object-fit:cover; object-position:center 20%; display:block; } .pc-ph b { font-size:38px; color:#123B7A; background:#EDE7D3; width:96px; height:96px; display:flex; align-items:center; justify-content:center; }
++.pc-ph { overflow:hidden; } .pc-ph img { width:96px; height:96px; object-fit:cover; object-position:50% 12%; transform:scale(1.4); transform-origin:50% 22%; display:block; } .pc-ph b { font-size:38px; color:#123B7A; background:#EDE7D3; width:96px; height:96px; display:flex; align-items:center; justify-content:center; }
+ .pc-i h4 { margin:0 0 6px; font-size:12.5px; color:#123B7A; }
+ .pc-i p, .pc-i2 p { margin:0 0 3px; display:flex; gap:6px; }
+ .pc-i p i { font-style:normal; width:78px; flex:none; color:#8B7B1E; font-weight:700; } .pc-i p b { color:#123B7A; font-size:9.5px; }
+@@ -34,7 +34,7 @@
+ .pc-sh { background:linear-gradient(180deg,#0F5132,#0B3D26); color:#FAF6EC; display:flex; align-items:center; gap:10px; padding:12px 16px 4px; } .pc-sh img { height:72px; } .pc-sh div { flex:1; text-align:center; } .pc-sh b { display:block; font-size:13px; line-height:1.35; } .pc-sh small { font-size:8.5px; opacity:.85; }
+ .pc-sb { background:#0B3D26; text-align:center; padding:0 0 12px; } .pc-sb span { display:inline-block; border:1px solid #DBB43C; color:#F0D989; font-size:9px; font-weight:700; letter-spacing:1px; padding:3px 12px; }
+ .pc-sc { display:flex; gap:12px; padding:14px 16px 6px; }
+-.pc-sp { width:80px; flex:none; text-align:center; } .pc-sp img, .pc-sp b { width:72px; height:72px; border:2px solid #0F5132; padding:2px; object-fit:cover; object-position:center 20%; box-sizing:content-box; display:flex; align-items:center; justify-content:center; font-size:22px; color:#0F5132; margin:0 auto; } .pc-sp small { display:block; font-size:7px; color:#8B8371; margin-top:4px; }
++.pc-sp { width:80px; overflow:hidden; flex:none; text-align:center; } .pc-sp img, .pc-sp b { width:72px; height:72px; border:2px solid #0F5132; padding:2px; object-fit:cover; object-position:50% 12%; box-sizing:content-box; display:flex; align-items:center; justify-content:center; font-size:22px; color:#0F5132; margin:0 auto; } .pc-sp small { display:block; font-size:7px; color:#8B8371; margin-top:4px; }
+ .pc-slip table { flex:1; width:auto; margin:0; border-radius:0; box-shadow:none; background:transparent; border-collapse:collapse; }
+ .pc-slip th { background:transparent; text-align:left; color:#0F5132; font-size:11px; font-weight:700; width:104px; padding:5px 0; border-bottom:1px dashed #E3DCC7; }
+ .pc-slip td { background:transparent !important; font-size:11px; padding:5px 0; border-bottom:1px dashed #E3DCC7; }
+diff --git a/resources/views/admin/results/index.blade.php b/resources/views/admin/results/index.blade.php
+index 82d0bac..fc83888 100644
+--- a/resources/views/admin/results/index.blade.php
++++ b/resources/views/admin/results/index.blade.php
+@@ -37,6 +37,27 @@
+ 
+     @if (session('ok'))<p style="color:green">{{ session('ok') }}</p>@endif
+     @if ($errors->any())<p style="color:red">{{ $errors->first() }}</p>@endif
++    @php $prevYear = preg_match('/^(\d{4})-(\d{4})$/', $year, $m) ? ($m[1] - 1).'-'.($m[2] - 1) : ''; @endphp
++    @if ($fix && $fix['rows'] > 0)
++    <details style="margin:10px 0;border:1px solid #DBB43C;border-radius:8px;padding:8px 12px">
++        <summary><b>Session / Class fix</b> — {{ $year }} ke {{ $fix['rows'] }} results ({{ $fix['students'] }} students)</summary>
++        <p class="sd-note">Agar yeh results pichle session ke hain magar naye session ({{ $year }}) mein nazar aa rahe hain, to yahan se unhein sahi session aur sahi class (ek class neeche) mein bhej dein. Passed-out students ki class wohi rehti hai.</p>
++        <table border="1" cellpadding="5" style="border-collapse:collapse;margin:6px 0">
++            <tr><th>Abhi class</th><th>Baad mein class</th><th>Students</th></tr>
++            @foreach ($fix['moves'] as $mv => $n)
++                @php [$a, $b] = explode(' → ', $mv); @endphp
++                <tr><td>{{ $a }}</td><td>{{ $b }}</td><td>{{ $n }}</td></tr>
++            @endforeach
++        </table>
++        <form method="POST" action="{{ route('admin.results.relabel') }}" onsubmit="return confirm('{{ $year }} ke results naye session aur class mein muntaqil honge. Pehle CSV download kar li hai?')">
++            @csrf
++            <input type="hidden" name="from" value="{{ $year }}">
++            Naya session: <input name="to" value="{{ $prevYear }}" style="width:120px">
++            <input name="confirm" placeholder="FIX likhein" autocomplete="off" style="width:110px">
++            <button type="submit">Fix karein</button>
++        </form>
++    </details>
++    @endif
+     <details style="margin:10px 0;border:1px solid #d9d9d9;border-radius:8px;padding:8px 12px">
+         <summary><b>Archive &amp; Reset Marks</b> ({{ $exam }} {{ $year }})</summary>
+         <p class="sd-note">Pehle CSV download karein, phir hi reset karein. Reset in marks ko hamesha ke liye hata deta hai.</p>
+diff --git a/routes/web.php b/routes/web.php
+index 24ca262..9260432 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -79,6 +79,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
+ });
+ 
+ Route::middleware(['auth', 'role:admin'])->get('/admin/results/archive', [\App\Http\Controllers\AdminResultArchiveController::class, 'download'])->name('admin.results.archive');
++Route::middleware(['auth', 'role:admin'])->post('/admin/results/relabel', [\App\Http\Controllers\AdminResultArchiveController::class, 'relabel'])->name('admin.results.relabel');
+ Route::middleware(['auth', 'role:admin'])->post('/admin/results/reset', [\App\Http\Controllers\AdminResultArchiveController::class, 'reset'])->name('admin.results.reset');
+ Route::middleware(['auth', 'role:admin'])->post('/admin/backup', [\App\Http\Controllers\AdminBackupController::class, 'download'])->name('admin.backup');
+ Route::middleware(['auth', 'role:admin'])->post('/admin/results/toggle', [\App\Http\Controllers\AdminResultPublishController::class, 'toggle'])->name('admin.results.toggle');
+diff --git a/tests/Feature/AdminExtrasTest.php b/tests/Feature/AdminExtrasTest.php
+index d5734a2..80fa40b 100644
+--- a/tests/Feature/AdminExtrasTest.php
++++ b/tests/Feature/AdminExtrasTest.php
+@@ -72,4 +72,36 @@ class AdminExtrasTest extends TestCase
+         $this->get('/alumni?year=2024-2025')->assertOk()->assertSee('Old Boy')->assertDontSee('Older Boy');
+         $this->get('/alumni')->assertOk()->assertSee('Sab sessions');
+     }
++
++    public function test_session_fix_moves_results_to_last_session_and_previous_class(): void
++    {
++        $this->actingAs($this->admin());
++        // Current session classes: VIII (were VII last session), VII (were VI), and a passed-out VIII student.
++        foreach ([['p1', '1', 'Now VIII', 'VIII', 0], ['p2', '2', 'Now VII', 'VII', 0], ['p3', '3', 'Left VIII', 'VIII', 1]] as [$id, $gr, $n, $cls, $out]) {
++            Student::forceCreate(['id' => $id, 'gr_number' => $gr, 'name' => $n, 'class' => $cls, 'passed_out' => $out]);
++            StudentResult::create(['student_id' => $id, 'academic_year' => '2026-2027', 'class' => $cls, 'exam_type' => 'annual', 'subject' => 'Math', 'score' => 50]);
++        }
++        $this->get('/admin/results?year=2026-2027&exam=annual')->assertOk()->assertSee('Session / Class fix')->assertSee('VIII → VII');
++
++        $this->post('/admin/results/relabel', ['from' => '2026-2027', 'to' => '2025-2026', 'confirm' => 'nope'])->assertSessionHasErrors('confirm');
++        $this->post('/admin/results/relabel', ['from' => '2026-2027', 'to' => '2025-2026', 'confirm' => 'FIX'])->assertRedirect();
++
++        $this->assertSame(0, StudentResult::where('academic_year', '2026-2027')->count());
++        $this->assertSame('VII', StudentResult::where('student_id', 'p1')->value('class'));
++        $this->assertSame('VI', StudentResult::where('student_id', 'p2')->value('class'));
++        $this->assertSame('VIII', StudentResult::where('student_id', 'p3')->value('class'));   // passed out keeps VIII
++        // Running it again onto a session that already has results is refused.
++        $this->post('/admin/results/relabel', ['from' => '2025-2026', 'to' => '2025-2026', 'confirm' => 'FIX'])->assertSessionHasErrors('to');
++    }
++
++    public function test_parent_sees_results_published_for_the_class_the_exam_was_sat_in(): void
++    {
++        Student::forceCreate(['id' => 'q1', 'gr_number' => '9', 'name' => 'Now VIII', 'dob' => '2012-01-02', 'class' => 'VIII', 'passed_out' => 0]);
++        StudentResult::create(['student_id' => 'q1', 'academic_year' => '2025-2026', 'class' => 'VII', 'exam_type' => 'annual', 'subject' => 'Math', 'score' => 251]);
++        // Only "VIII" published -> the VII-sat result stays hidden.
++        DB::table('result_publish_status')->insert(['id' => 'x1', 'class_name' => 'VIII', 'exam_type' => 'annual', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
++        $this->post('/results', ['gr_number' => '9', 'dob' => '2012-01-02'])->assertOk()->assertDontSee('251');
++        DB::table('result_publish_status')->insert(['id' => 'x2', 'class_name' => 'VII', 'exam_type' => 'annual', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
++        $this->post('/results', ['gr_number' => '9', 'dob' => '2012-01-02'])->assertOk()->assertSee('251');
++    }
+ }
