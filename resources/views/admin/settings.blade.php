@@ -3,6 +3,9 @@
 @section('title', 'School Settings')
 
 @section('content')
+    @if (session('err'))<p style="color:red">{{ session('err') }}</p>@endif
+    <form method="POST" action="{{ route('admin.backup') }}" style="margin:8px 0">@csrf <button type="submit">⬇ Database Backup download</button> <small class="sd-note">(restore ke liye hosting panel / phpMyAdmin istemal karein)</small></form>
+
     @php
         $v = fn ($k) => old($k, $s->$k ?? '');
         $field = function ($name, $label, $sd = '', $type = 'text', $ph = '') use ($v) {

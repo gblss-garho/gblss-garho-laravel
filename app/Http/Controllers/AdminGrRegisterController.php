@@ -22,6 +22,31 @@ class AdminGrRegisterController extends Controller
         return redirect(route('admin.gr-register', [], false))->with('ok', ($code === 0 ? 'Import mukammal. ' : 'Import fail: ').$out);
     }
 
+    /** Adds a General Register row for every student whose GR number is missing from it (never changes existing rows). */
+    public function sync()
+    {
+        abort_unless(Schema::hasTable('gr_register'), 404);
+        $have = DB::table('gr_register')->pluck('reg_no')->flip();
+        $added = 0;
+        foreach (Student::orderByRaw('CAST(gr_number AS UNSIGNED)')->get() as $s) {
+            if (! ctype_digit(trim((string) $s->gr_number))) {
+                continue;
+            }
+            $n = (int) $s->gr_number;
+            if ($n < 1 || $have->has($n)) {
+                continue;
+            }
+            DB::table('gr_register')->insert([
+                'reg_no' => $n, 'name' => $s->name, 'father_name' => $s->father_name, 'dob' => $s->dob, 'address' => $s->address,
+                'admission_date' => $s->admission_date, 'admission_class' => $s->class, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $have->put($n, true);
+            $added++;
+        }
+
+        return redirect()->route('admin.gr-register')->with('ok', "Sync mukammal: {$added} nayi GR entries register mein shamil hui.");
+    }
+
     public function edit(int $reg)
     {
         $gr = Schema::hasTable('gr_register') ? DB::table('gr_register')->where('reg_no', $reg)->first() : null;

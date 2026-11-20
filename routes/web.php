@@ -27,6 +27,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/gr-register', [\App\Http\Controllers\AdminGrRegisterController::class, 'index'])->name('admin.gr-register');
     Route::get('/admin/gr-register/{reg}/edit', [\App\Http\Controllers\AdminGrRegisterController::class, 'edit'])->whereNumber('reg')->name('admin.gr-register.edit');
     Route::put('/admin/gr-register/{reg}', [\App\Http\Controllers\AdminGrRegisterController::class, 'update'])->whereNumber('reg')->name('admin.gr-register.update');
+    Route::post('/admin/gr-register/sync', [\App\Http\Controllers\AdminGrRegisterController::class, 'sync'])->name('admin.gr-register.sync');
     Route::post('/admin/gr-register/import', [\App\Http\Controllers\AdminGrRegisterController::class, 'import'])->name('admin.gr-register.import');
     Route::get('/admin/promotions', [AdminPromotionController::class, 'history'])->name('admin.promotions.history');
     Route::get('/admin/promotions/{batch}/review', [AdminPromotionController::class, 'review'])->name('admin.promotions.review');
@@ -77,6 +78,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('results', [\App\Http\Controllers\AdminResultController::class, 'index'])->name('results.index');
 });
 
+Route::middleware(['auth', 'role:admin'])->get('/admin/results/archive', [\App\Http\Controllers\AdminResultArchiveController::class, 'download'])->name('admin.results.archive');
+Route::middleware(['auth', 'role:admin'])->post('/admin/results/reset', [\App\Http\Controllers\AdminResultArchiveController::class, 'reset'])->name('admin.results.reset');
+Route::middleware(['auth', 'role:admin'])->post('/admin/backup', [\App\Http\Controllers\AdminBackupController::class, 'download'])->name('admin.backup');
 Route::middleware(['auth', 'role:admin'])->post('/admin/results/toggle', [\App\Http\Controllers\AdminResultPublishController::class, 'toggle'])->name('admin.results.toggle');
 
 Route::get('/parent-lookup', [\App\Http\Controllers\PublicLookupController::class, 'show'])->name('public.lookup');

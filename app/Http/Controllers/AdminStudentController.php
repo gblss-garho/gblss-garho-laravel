@@ -61,7 +61,10 @@ class AdminStudentController extends Controller
             ->orderBy('class')->orderByRaw('CAST(gr_number AS UNSIGNED)')->orderBy('gr_number')
             ->simplePaginate(30)->withQueryString();
 
-        return view('admin.students.index', compact('students', 'q', 'class', 'classes'));
+        $byClass = Student::where('passed_out', 0)->selectRaw('class, count(*) as n')->groupBy('class')->orderBy('class')->pluck('n', 'class');
+        $passedOut = Student::where('passed_out', 1)->count();
+
+        return view('admin.students.index', compact('students', 'q', 'class', 'classes', 'byClass', 'passedOut'));
     }
 
     /** Next free GR number: one above the highest in the students table or the GR register. */

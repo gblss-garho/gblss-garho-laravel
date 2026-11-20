@@ -82,19 +82,23 @@ class PublicRecordsController extends PublicLookupController
     public function alumni(Request $request)
     {
         $q = trim((string) $request->query('q', ''));
+        $year = trim((string) $request->query('year', ''));
+        $years = Student::where('passed_out', true)->whereNotNull('pass_out_year')->where('pass_out_year', '!=', '')
+            ->distinct()->orderByDesc('pass_out_year')->pluck('pass_out_year');
         $results = null;
-        if ($q !== '') {
-            $results = mb_strlen($q) < 2 ? collect() : Student::query()
+        if ($q !== '' || $year !== '') {
+            $results = ($q !== '' && mb_strlen($q) < 2) ? collect() : Student::query()
                 ->where('passed_out', true)
-                ->where(function ($w) use ($q) {
-                    $w->where('gr_number', $q)->orWhere('name', 'like', "%{$q}%")->orWhere('father_name', 'like', "%{$q}%");
-                })
-                ->orderByDesc('pass_out_year')->orderBy('name')->limit(30)
+                ->when($year !== '', fn ($w) => $w->where('pass_out_year', $year))
+                ->when($q !== '', fn ($w) => $w->where(function ($x) use ($q) {
+                    $x->where('gr_number', $q)->orWhere('name', 'like', "%{$q}%")->orWhere('father_name', 'like', "%{$q}%");
+                }))
+                ->orderByDesc('pass_out_year')->orderByRaw('CAST(gr_number AS UNSIGNED)')->limit(60)
                 ->get(['id', 'gr_number', 'name', 'father_name', 'pass_out_year', 'photo_url']);
             $lc = LeavingCertificate::whereIn('gr_number', $results->pluck('gr_number'))->pluck('last_school', 'gr_number');
             $results->each(fn ($s) => $s->previous_school = $lc[$s->gr_number] ?? null);
         }
 
-        return view('pages.alumni', ['q' => $q, 'results' => $results]);
+        return view('pages.alumni', ['q' => $q, 'year' => $year, 'years' => $years, 'results' => $results]);
     }
 }

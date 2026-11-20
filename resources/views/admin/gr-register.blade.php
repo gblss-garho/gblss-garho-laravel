@@ -7,7 +7,8 @@
     <div class="page-title" data-n="03"><h1>General Register (GR)</h1></div>
     <p class="sd sd-note">جنرل رجسٽر: GR نمبر 1 کان وٺي تازو داخلا تائين سمورا شاگرد.</p>
 
-    <p><a class="btn" href="{{ route('admin.students.create', ['gr' => $last + 1], false) }}">+ Naya Dakhla (New Entry) &mdash; GR {{ $last + 1 }}</a></p>
+    <p><a class="btn" href="{{ route('admin.students.create', ['gr' => $last + 1], false) }}">+ Naya Dakhla (New Entry) &mdash; GR {{ $last + 1 }}</a>
+        <form method="POST" action="{{ route('admin.gr-register.sync') }}" style="display:inline" onsubmit="return confirm('Jo students register mein nahi hain unki entries add ho jayengi. Theek hai?')">@csrf <button type="submit">↻ Sync GR Register</button></form></p>
 
     <div class="fb-sum" style="flex-wrap:wrap">
         <span>Total: <b>{{ $total }}</b></span>
