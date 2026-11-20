@@ -20,7 +20,7 @@ class PublicHomeController extends Controller
             'classCounts' => collect($classes)->mapWithKeys(fn ($c) => [$c => (int) ($counts[$c] ?? 0)]),
             'notices' => DB::table('notices')->orderByDesc('date')->limit(4)->get(),
             'events' => DB::table('calendar_events')->whereDate('date', '>=', now()->toDateString())->orderBy('date')->limit(4)->get(),
-            'photos' => DB::table('gallery')->orderByDesc('created_at')->limit(6)->get(),
+            'photos' => DB::table('gallery')->orderByDesc('created_at')->limit(8)->get(),
         ]);
     }
 }

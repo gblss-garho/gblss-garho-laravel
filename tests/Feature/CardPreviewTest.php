@@ -171,4 +171,13 @@ class CardPreviewTest extends TestCase
         $this->assertNull($s->fresh()->photo_url);
         $this->get('/admin/students/'.$s->id.'/edit')->assertOk()->assertSee('photo_file', false);
     }
+
+    public function test_home_gallery_is_an_auto_slideshow(): void
+    {
+        \Illuminate\Support\Facades\DB::table('gallery')->insert([
+            ['id' => 'g1', 'url' => 'https://example.com/a.jpg', 'caption' => 'Sports Day', 'created_at' => now()],
+            ['id' => 'g2', 'url' => 'https://example.com/b.jpg', 'caption' => 'Annual Day', 'created_at' => now()],
+        ]);
+        $this->get('/')->assertOk()->assertSee('id="gs"', false)->assertSee('Sports Day')->assertSee('class="dots"', false);
+    }
 }

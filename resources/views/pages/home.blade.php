@@ -248,11 +248,46 @@ document.querySelectorAll('[data-lt]').forEach(function (b) {
 
 @if (count($photos))
     <h2>Gallery</h2>
-    <div class="photos">
-        @foreach ($photos as $p)
-            <img src="{{ $p->url ?? ($p->image_url ?? ($p->photo_url ?? '')) }}" alt="{{ $p->caption ?? '' }}" loading="lazy">
+    <style>
+        .gs{position:relative;max-width:760px;margin:0 auto 12px;border-radius:14px;overflow:hidden;background:#0B3D26;aspect-ratio:16/9;box-shadow:0 6px 20px rgba(0,0,0,.18)}
+        .gs .sl{position:absolute;inset:0;opacity:0;transition:opacity .7s;display:flex;align-items:center;justify-content:center}
+        .gs .sl.on{opacity:1}
+        .gs .sl img{width:100%;height:100%;object-fit:cover}
+        .gs .cap{position:absolute;left:0;right:0;bottom:0;padding:22px 14px 10px;color:#fff;font-size:14px;background:linear-gradient(transparent,rgba(0,0,0,.65))}
+        .gs .nv{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;border-radius:50%;background:rgba(255,255,255,.85);color:#0B3D26;font-size:22px;cursor:pointer;z-index:2}
+        .gs .pv{left:8px}.gs .nx{right:8px}
+        .gs .dots{position:absolute;bottom:8px;right:12px;display:flex;gap:6px;z-index:2}
+        .gs .dots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.5);cursor:pointer}
+        .gs .dots i.on{background:#DBB43C}
+    </style>
+    <div class="gs" id="gs">
+        @foreach ($photos as $i => $p)
+            <div class="sl{{ $i === 0 ? ' on' : '' }}">
+                <img src="{{ $p->url ?? ($p->image_url ?? ($p->photo_url ?? '')) }}" alt="{{ $p->caption ?? '' }}" @if ($i > 0) loading="lazy" @endif>
+                @if (!empty($p->caption))<div class="cap">{{ $p->caption }}</div>@endif
+            </div>
         @endforeach
+        @if (count($photos) > 1)
+            <button type="button" class="nv pv" aria-label="Previous">&#8249;</button>
+            <button type="button" class="nv nx" aria-label="Next">&#8250;</button>
+            <div class="dots">@foreach ($photos as $i => $p)<i class="{{ $i === 0 ? 'on' : '' }}"></i>@endforeach</div>
+        @endif
     </div>
+    @if (count($photos) > 1)
+    <script>
+    (function () {
+        var box = document.getElementById('gs'), sl = box.querySelectorAll('.sl'), dots = box.querySelectorAll('.dots i'), i = 0, t, x0 = null;
+        function go(n) { sl[i].classList.remove('on'); dots[i].classList.remove('on'); i = (n + sl.length) % sl.length; sl[i].classList.add('on'); dots[i].classList.add('on'); }
+        function run() { clearInterval(t); t = setInterval(function () { go(i + 1); }, 4000); }
+        box.querySelector('.pv').onclick = function () { go(i - 1); run(); };
+        box.querySelector('.nx').onclick = function () { go(i + 1); run(); };
+        dots.forEach(function (d, n) { d.onclick = function () { go(n); run(); }; });
+        box.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+        box.addEventListener('touchend', function (e) { if (x0 === null) { return; } var dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) { go(i + (dx < 0 ? 1 : -1)); run(); } x0 = null; }, { passive: true });
+        run();
+    })();
+    </script>
+    @endif
     <p><a href="{{ route('public.gallery', [], false) }}">Poori gallery &rarr;</a> | <a href="{{ route('public.textbooks', [], false) }}">Textbooks</a> | <a href="{{ route('public.feedback', [], false) }}">Feedback</a></p>
 @endif
 @endsection
