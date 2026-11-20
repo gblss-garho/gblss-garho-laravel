@@ -19,7 +19,7 @@ class SectionRedirectController extends Controller
         abort_unless(isset(self::MAP[$section]), 404);
         $user = $request->user();
         if (! $user) {
-            $request->session()->put('url.intended', url('/go/'.$section, [], false));
+            $request->session()->put('url.intended', '/go/'.$section);
 
             return redirect()->route('login');
         }
