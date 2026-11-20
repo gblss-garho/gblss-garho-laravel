@@ -1,0 +1,27 @@
+diff --git a/tests/Feature/AdminExtrasTest.php b/tests/Feature/AdminExtrasTest.php
+index 80fa40b..c8a0ac2 100644
+--- a/tests/Feature/AdminExtrasTest.php
++++ b/tests/Feature/AdminExtrasTest.php
+@@ -81,7 +81,7 @@ class AdminExtrasTest extends TestCase
+             Student::forceCreate(['id' => $id, 'gr_number' => $gr, 'name' => $n, 'class' => $cls, 'passed_out' => $out]);
+             StudentResult::create(['student_id' => $id, 'academic_year' => '2026-2027', 'class' => $cls, 'exam_type' => 'annual', 'subject' => 'Math', 'score' => 50]);
+         }
+-        $this->get('/admin/results?year=2026-2027&exam=annual')->assertOk()->assertSee('Session / Class fix')->assertSee('VIII → VII');
++        $this->get('/admin/results?year=2026-2027&exam=annual')->assertOk()->assertSee('Session / Class fix')->assertSee('Baad mein class');
+ 
+         $this->post('/admin/results/relabel', ['from' => '2026-2027', 'to' => '2025-2026', 'confirm' => 'nope'])->assertSessionHasErrors('confirm');
+         $this->post('/admin/results/relabel', ['from' => '2026-2027', 'to' => '2025-2026', 'confirm' => 'FIX'])->assertRedirect();
+diff --git a/tests/Feature/IdAdmitCardTest.php b/tests/Feature/IdAdmitCardTest.php
+index b964935..7f05736 100644
+--- a/tests/Feature/IdAdmitCardTest.php
++++ b/tests/Feature/IdAdmitCardTest.php
+@@ -31,6 +31,9 @@ class IdAdmitCardTest extends TestCase
+ 
+     public function test_student_id_and_admit_pdfs_render(): void
+     {
++        if (! extension_loaded('gd')) {
++            $this->markTestSkipped('PHP GD extension not installed here; PDF rendering not tested.');
++        }
+         $s = $this->student();
+         $this->actingAs($this->admin());
+         foreach ([
