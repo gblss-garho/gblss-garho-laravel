@@ -31,6 +31,9 @@ class IdAdmitCardTest extends TestCase
 
     public function test_student_id_and_admit_pdfs_render(): void
     {
+        if (! extension_loaded('gd')) {
+            $this->markTestSkipped('PHP GD extension not installed here; PDF rendering not tested.');
+        }
         $s = $this->student();
         $this->actingAs($this->admin());
         foreach ([

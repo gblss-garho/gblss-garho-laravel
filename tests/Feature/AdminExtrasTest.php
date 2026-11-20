@@ -81,7 +81,7 @@ class AdminExtrasTest extends TestCase
             Student::forceCreate(['id' => $id, 'gr_number' => $gr, 'name' => $n, 'class' => $cls, 'passed_out' => $out]);
             StudentResult::create(['student_id' => $id, 'academic_year' => '2026-2027', 'class' => $cls, 'exam_type' => 'annual', 'subject' => 'Math', 'score' => 50]);
         }
-        $this->get('/admin/results?year=2026-2027&exam=annual')->assertOk()->assertSee('Session / Class fix')->assertSee('VIII → VII');
+        $this->get('/admin/results?year=2026-2027&exam=annual')->assertOk()->assertSee('Session / Class fix')->assertSee('Baad mein class');
 
         $this->post('/admin/results/relabel', ['from' => '2026-2027', 'to' => '2025-2026', 'confirm' => 'nope'])->assertSessionHasErrors('confirm');
         $this->post('/admin/results/relabel', ['from' => '2026-2027', 'to' => '2025-2026', 'confirm' => 'FIX'])->assertRedirect();
@@ -97,11 +97,11 @@ class AdminExtrasTest extends TestCase
     public function test_parent_sees_results_published_for_the_class_the_exam_was_sat_in(): void
     {
         Student::forceCreate(['id' => 'q1', 'gr_number' => '9', 'name' => 'Now VIII', 'dob' => '2012-01-02', 'class' => 'VIII', 'passed_out' => 0]);
-        StudentResult::create(['student_id' => 'q1', 'academic_year' => '2025-2026', 'class' => 'VII', 'exam_type' => 'annual', 'subject' => 'Math', 'score' => 251]);
+        StudentResult::create(['student_id' => 'q1', 'academic_year' => '2025-2026', 'class' => 'VII', 'exam_type' => 'annual', 'subject' => 'Zoology', 'score' => 91]);
         // Only "VIII" published -> the VII-sat result stays hidden.
         DB::table('result_publish_status')->insert(['id' => 'x1', 'class_name' => 'VIII', 'exam_type' => 'annual', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
-        $this->post('/results', ['gr_number' => '9', 'dob' => '2012-01-02'])->assertOk()->assertDontSee('251');
+        $this->post('/results', ['gr_number' => '9', 'dob' => '2012-01-02'])->assertOk()->assertDontSee('<td>91</td>', false);
         DB::table('result_publish_status')->insert(['id' => 'x2', 'class_name' => 'VII', 'exam_type' => 'annual', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
-        $this->post('/results', ['gr_number' => '9', 'dob' => '2012-01-02'])->assertOk()->assertSee('251');
+        $this->post('/results', ['gr_number' => '9', 'dob' => '2012-01-02'])->assertOk()->assertSee('<td>91</td>', false);
     }
 }
