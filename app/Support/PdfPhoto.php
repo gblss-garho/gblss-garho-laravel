@@ -28,7 +28,7 @@ class PdfPhoto
 
         // Remote / local-path photos (what the website shows) are fetched once, shrunk and cached for a day.
         if (! str_starts_with($src, 'data:')) {
-            return Cache::remember('pdfphoto:v4:'.md5($src.'|'.$max.'|'.$shape), 86400, fn () => self::shrink(self::load($src), $max, $shape));
+            return Cache::remember('pdfphoto:v5:'.md5($src.'|'.$max.'|'.$shape), 86400, fn () => self::shrink(self::load($src), $max, $shape));
         }
 
         if (! preg_match('#^data:image/(?:jpe?g|png|webp|gif);base64,(.+)$#is', $src, $m)) {
@@ -244,20 +244,42 @@ class PdfPhoto
     }
 
     /**
-     * Passport-style frame: the complete photo is scaled (never stretched or cropped) to fit inside a
-     * FRAME_W : FRAME_H canvas, centred, and the spare space is filled with the photo's own background colour.
+     * Passport-style frame: the photo is scaled (never stretched) so its width fills the frame edge to edge,
+     * the chest sits on the bottom line and the head keeps a clear gap from the top line. Only spare
+     * background above or below is trimmed; if the head is too close to the top, the gap is filled with
+     * the photo's own background colour.
      */
     private static function framed($im, int $w, int $h, int $max): string
     {
         $cH = $max;
         $cW = max(1, (int) round($max * self::FRAME_W / self::FRAME_H));
+        $ratio = self::FRAME_H / self::FRAME_W;
+        [$cx, , $side, $top] = self::headCrop($im, $w, $h, true);
+
+        if ($w * $ratio <= $h) {   // normal portrait: full width, window slides vertically
+            $sx = 0;
+            $sw = $w;
+            $sh = $w * $ratio;
+            $sy = $h - $sh;                       // chest on the bottom line
+            if ($top !== null) {
+                $sy = min($sy, $top - 0.08 * $sh);   // gap above the head (may go negative = padded)
+            } else {
+                $sy = min($sy, ($h - $sh) * 0.3);
+            }
+        } else {   // wide picture: full height, centred on the person
+            $sh = $h;
+            $sw = $h / $ratio;
+            $sy = 0;
+            $sx = max(0, min($w - $sw, $cx + $side / 2 - $sw / 2));
+        }
+
         $out = imagecreatetruecolor($cW, $cH);
         imagefill($out, 0, 0, self::edgeColour($im, $w, $h, $out));
-
-        $scale = min($cW / $w, $cH / $h);
-        $dw = max(1, (int) round($w * $scale));
-        $dh = max(1, (int) round($h * $scale));
-        imagecopyresampled($out, $im, (int) round(($cW - $dw) / 2), (int) round(($cH - $dh) / 2), 0, 0, $dw, $dh, $w, $h);
+        $k = $cW / $sw;
+        $srcY = max(0, $sy);
+        $dstY = (int) round(($srcY - $sy) * $k);
+        $copyH = min($h - $srcY, $sh - ($srcY - $sy));
+        imagecopyresampled($out, $im, 0, $dstY, (int) round($sx), (int) round($srcY), $cW, max(1, (int) round($copyH * $k)), (int) round($sw), max(1, (int) round($copyH)));
         imagedestroy($im);
         ob_start();
         imagejpeg($out, null, 82);

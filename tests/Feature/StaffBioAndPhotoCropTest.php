@@ -79,25 +79,26 @@ class StaffBioAndPhotoCropTest extends TestCase
         }
     }
 
-    public function test_id_card_photo_keeps_the_whole_picture_without_cropping(): void
+    public function test_id_card_photo_fills_frame_width_with_chest_on_bottom_and_gap_above_head(): void
     {
         if (! extension_loaded('gd')) {
             $this->markTestSkipped('PHP GD extension not installed here.');
         }
         $im = imagecreatetruecolor(600, 800);
         imagefill($im, 0, 0, imagecolorallocate($im, 240, 240, 240));
-        imagefilledrectangle($im, 0, 0, 599, 40, imagecolorallocate($im, 255, 0, 0));      // top edge
-        imagefilledrectangle($im, 0, 760, 599, 799, imagecolorallocate($im, 0, 0, 255));   // bottom edge
+        imagefilledellipse($im, 300, 260, 200, 260, imagecolorallocate($im, 200, 150, 120));   // head
+        imagefilledrectangle($im, 60, 420, 540, 799, imagecolorallocate($im, 20, 20, 20));      // shoulders to the bottom
         ob_start();
         imagepng($im);
         $uri = 'data:image/png;base64,'.base64_encode(ob_get_clean());
-        $out = imagecreatefromstring(base64_decode(substr(PdfPhoto::small($uri, 340, false, true), strpos(PdfPhoto::small($uri, 340, false, true), ',') + 1)));
-        $c = imagecolorat($out, (int) (imagesx($out) / 2), 3);
-        $this->assertGreaterThan(200, ($c >> 16) & 255);
-        $this->assertLessThan(80, ($c >> 8) & 255);
-        $c = imagecolorat($out, (int) (imagesx($out) / 2), imagesy($out) - 4);
-        $this->assertGreaterThan(200, $c & 255);
-        $this->assertLessThan(80, ($c >> 16) & 255);
+        $res = PdfPhoto::small($uri, 340, false, true);
+        $out = imagecreatefromstring(base64_decode(substr($res, strpos($res, ',') + 1)));
+        $w = imagesx($out);
+        $h = imagesy($out);
+        $lum = fn ($x, $y) => (imagecolorat($out, $x, $y) >> 8) & 255;
+        $this->assertGreaterThan(200, $lum((int) ($w / 2), 2));        // clear background gap at the top, head does not touch the line
+        $this->assertLessThan(60, $lum((int) ($w / 2), $h - 3));       // chest reaches the bottom line
+        $this->assertLessThan(60, $lum((int) ($w * 0.15), $h - 3));    // shoulders spread towards the side lines
     }
 
     public function test_student_and_staff_card_photo_frames_share_the_same_size(): void
