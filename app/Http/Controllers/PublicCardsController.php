@@ -79,7 +79,7 @@ class PublicCardsController extends PublicLookupController
 
         return view('pages.id-cards', [
             'error' => null, 'terror' => null,
-            'card' => ['type' => 'teacher', 'person' => $card, 'idText' => CardData::staffId($teacher, true), 'qr' => CardData::qr($teacher),
+            'card' => ['type' => 'teacher', 'person' => $card, 'idText' => CardData::staffId($teacher, true), 'qr' => CardData::staffQr($teacher),
                 'pdfUrl' => URL::temporarySignedRoute('public.id-cards.teacher.pdf', now()->addMinutes(30), ['teacher' => $teacher->id], false)],
         ]);
     }

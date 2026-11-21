@@ -21,6 +21,17 @@ class PublicInfoController extends Controller
         return view('pages.staff', ['teachers' => $teachers, 'info' => DB::table('school_info')->where('id', 1)->first()]);
     }
 
+    /** What a staff ID-card QR opens: the school and this teacher's biodata (public-safe fields only). */
+    public function staffBio(string $code)
+    {
+        $t = DB::table('teachers')->where('qr_code', strtoupper($code))
+            ->select('name', 'designation', 'subject', 'qualification', 'experience', 'entry_in_service', 'photo_url', 'intro_line', 'pid')
+            ->first();
+        abort_unless($t, 404);
+
+        return view('pages.staff-bio', ['t' => $t, 'school' => \App\Support\CardData::school()]);
+    }
+
     public function toppers()
     {
         $keys = ['english', 'math', 'gscience', 'sst', 'islamiat', 'sindhi', 'urdu', 'computer', 'drawing', 'arabic', 'agriculture'];

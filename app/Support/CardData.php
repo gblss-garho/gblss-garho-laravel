@@ -61,6 +61,12 @@ class CardData
         return app(QrCodeService::class)->dataUri($model->ensureQrCode(), 300, 1);
     }
 
+    /** Staff cards: the QR opens the school + staff biodata page (not attendance). */
+    public static function staffQr(Teacher $t): string
+    {
+        return app(QrCodeService::class)->dataUri(url('/staff/id/'.$t->ensureQrCode()), 300, 1);
+    }
+
     public static function session(): string
     {
         return app(SchoolScheduleService::class)->academicYearFor(now());

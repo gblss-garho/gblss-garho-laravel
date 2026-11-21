@@ -30,7 +30,7 @@
         <img src="{{ $logo }}" alt="">
     </div>
     <div class="pc-b">
-        <div class="pc-ph">@if ($person->photo_url)<img src="{{ $person->photo_url }}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}'}))">@else<b>{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}</b>@endif</div>
+        <div class="pc-ph">@if ($person->photo_url)<img src="{{ \App\Support\PdfPhoto::small($person->photo_url, 260, true) ?: $person->photo_url }}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}'}))">@else<b>{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}</b>@endif</div>
         <div class="pc-i">
             <h4>{{ mb_strtoupper($person->name) }}</h4>
             @foreach ($rows as [$l, $v])<p><i>{{ $l }} :</i><b>{{ $v }}</b></p>@endforeach
@@ -53,7 +53,7 @@
             <p><i>{{ $isT ? 'Employed At :' : 'Address :' }}</i><b>{{ $isT ? ($person->school_name ?: $school['name']) : ($public ? '—' : ($person->address ?: '—')) }}</b></p>
             <p><i>Valid Up To :</i><b>{{ $validUpTo }}</b></p>
         </div>
-        <div class="pc-qr"><img src="{{ $qr }}" alt="QR"><small>{{ $isT ? 'Scan to verify staff ID' : 'Scan to verify / mark attendance' }}</small></div>
+        <div class="pc-qr"><img src="{{ $qr }}" alt="QR"><small>{{ $isT ? 'Scan for school &amp; staff biodata' : 'Scan to verify / mark attendance' }}</small></div>
     </div>
     <div class="pc-tc"><div>TERMS &amp; CONDITIONS</div><ul>
         <li>This card is the property of {{ $school['name'] }} and is non-transferable.</li>

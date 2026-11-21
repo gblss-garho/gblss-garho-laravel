@@ -138,7 +138,7 @@
         </td>
         <td style="width:96px;padding:10px 16px 0 0;text-align:center;">
             <img src="{{ $qr }}" width="74" height="74" style="border:1px solid #E3DCC7;padding:3px;background:#fff;">
-            <div style="font-size:6.5px;color:#8B8371;margin-top:2px;">{{ $isTeacher ? 'Scan to verify staff ID' : 'Scan to verify / mark attendance' }}</div>
+            <div style="font-size:6.5px;color:#8B8371;margin-top:2px;">{{ $isTeacher ? 'Scan for school & staff biodata' : 'Scan to verify / mark attendance' }}</div>
         </td>
     </tr></table>
     <div style="margin:8px 16px 0;border:1px solid #E3DCC7;background:#FBF9F2;">

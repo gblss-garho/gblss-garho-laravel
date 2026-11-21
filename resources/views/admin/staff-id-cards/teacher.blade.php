@@ -1,7 +1,7 @@
 @php
     $year = $teacher->entry_in_service ? \Carbon\Carbon::parse($teacher->entry_in_service)->year : now()->year;
     $idText = \App\Support\CardData::staffId($teacher, $public ?? false);
-    $qr = app(\App\Services\QrCodeService::class)->dataUri($teacher->ensureQrCode(), 300, 1);
+    $qr = \App\Support\CardData::staffQr($teacher);
 @endphp
 <!DOCTYPE html>
 <html lang="en">

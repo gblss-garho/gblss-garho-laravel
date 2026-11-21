@@ -181,6 +181,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin/contact')->name('admin.
     Route::delete('/{id}', [\App\Http\Controllers\AdminContactController::class, 'destroy'])->name('destroy');
 });
 Route::get('/privacy', fn () => view('pages.privacy', ['info' => \Illuminate\Support\Facades\DB::table('school_info')->where('id', 1)->first()]))->name('public.privacy');
+Route::get('/staff/id/{code}', [\App\Http\Controllers\PublicInfoController::class, 'staffBio'])->where('code', '[A-Za-z0-9]{6,20}')->middleware('throttle:60,1')->name('public.staff.bio');
 Route::get('/staff', [\App\Http\Controllers\PublicInfoController::class, 'staff'])->name('public.staff');
 
 Route::get('/toppers', [\App\Http\Controllers\PublicInfoController::class, 'toppers'])->name('public.toppers');

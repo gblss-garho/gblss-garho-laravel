@@ -9,7 +9,7 @@
     <div class="pc-sh"><img src="{{ $logo }}" alt=""><div><b>{{ $school['name'] }}</b><small>{{ $school['address'] }}</small></div></div>
     <div class="pc-sb"><span>ADMIT CARD</span></div>
     <div class="pc-sc">
-        <div class="pc-sp">@if ($student->photo_url)<img src="{{ $student->photo_url }}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'{{ $ini }}'}))">@else<b>{{ $ini }}</b>@endif<small>STUDENT PHOTO</small></div>
+        <div class="pc-sp">@if ($student->photo_url)<img src="{{ \App\Support\PdfPhoto::small($student->photo_url, 260, true) ?: $student->photo_url }}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'{{ $ini }}'}))">@else<b>{{ $ini }}</b>@endif<small>STUDENT PHOTO</small></div>
         <table>@foreach ($rows as [$l, $v])<tr><th>{{ $l }}</th><td>{{ $v ?: '—' }}</td></tr>@endforeach</table>
     </div>
     <div class="pc-sf">Head Master Signature: __________</div>
