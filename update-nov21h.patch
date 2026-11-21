@@ -1,0 +1,104 @@
+diff --git a/app/Support/PdfPhoto.php b/app/Support/PdfPhoto.php
+index c81c872..af1bbc9 100644
+--- a/app/Support/PdfPhoto.php
++++ b/app/Support/PdfPhoto.php
+@@ -28,7 +28,7 @@ class PdfPhoto
+ 
+         // Remote / local-path photos (what the website shows) are fetched once, shrunk and cached for a day.
+         if (! str_starts_with($src, 'data:')) {
+-            return Cache::remember('pdfphoto:v4:'.md5($src.'|'.$max.'|'.$shape), 86400, fn () => self::shrink(self::load($src), $max, $shape));
++            return Cache::remember('pdfphoto:v5:'.md5($src.'|'.$max.'|'.$shape), 86400, fn () => self::shrink(self::load($src), $max, $shape));
+         }
+ 
+         if (! preg_match('#^data:image/(?:jpe?g|png|webp|gif);base64,(.+)$#is', $src, $m)) {
+@@ -244,20 +244,42 @@ class PdfPhoto
+     }
+ 
+     /**
+-     * Passport-style frame: the complete photo is scaled (never stretched or cropped) to fit inside a
+-     * FRAME_W : FRAME_H canvas, centred, and the spare space is filled with the photo's own background colour.
++     * Passport-style frame: the photo is scaled (never stretched) so its width fills the frame edge to edge,
++     * the chest sits on the bottom line and the head keeps a clear gap from the top line. Only spare
++     * background above or below is trimmed; if the head is too close to the top, the gap is filled with
++     * the photo's own background colour.
+      */
+     private static function framed($im, int $w, int $h, int $max): string
+     {
+         $cH = $max;
+         $cW = max(1, (int) round($max * self::FRAME_W / self::FRAME_H));
++        $ratio = self::FRAME_H / self::FRAME_W;
++        [$cx, , $side, $top] = self::headCrop($im, $w, $h, true);
++
++        if ($w * $ratio <= $h) {   // normal portrait: full width, window slides vertically
++            $sx = 0;
++            $sw = $w;
++            $sh = $w * $ratio;
++            $sy = $h - $sh;                       // chest on the bottom line
++            if ($top !== null) {
++                $sy = min($sy, $top - 0.08 * $sh);   // gap above the head (may go negative = padded)
++            } else {
++                $sy = min($sy, ($h - $sh) * 0.3);
++            }
++        } else {   // wide picture: full height, centred on the person
++            $sh = $h;
++            $sw = $h / $ratio;
++            $sy = 0;
++            $sx = max(0, min($w - $sw, $cx + $side / 2 - $sw / 2));
++        }
++
+         $out = imagecreatetruecolor($cW, $cH);
+         imagefill($out, 0, 0, self::edgeColour($im, $w, $h, $out));
+-
+-        $scale = min($cW / $w, $cH / $h);
+-        $dw = max(1, (int) round($w * $scale));
+-        $dh = max(1, (int) round($h * $scale));
+-        imagecopyresampled($out, $im, (int) round(($cW - $dw) / 2), (int) round(($cH - $dh) / 2), 0, 0, $dw, $dh, $w, $h);
++        $k = $cW / $sw;
++        $srcY = max(0, $sy);
++        $dstY = (int) round(($srcY - $sy) * $k);
++        $copyH = min($h - $srcY, $sh - ($srcY - $sy));
++        imagecopyresampled($out, $im, 0, $dstY, (int) round($sx), (int) round($srcY), $cW, max(1, (int) round($copyH * $k)), (int) round($sw), max(1, (int) round($copyH)));
+         imagedestroy($im);
+         ob_start();
+         imagejpeg($out, null, 82);
+diff --git a/tests/Feature/StaffBioAndPhotoCropTest.php b/tests/Feature/StaffBioAndPhotoCropTest.php
+index 07190a9..903446c 100644
+--- a/tests/Feature/StaffBioAndPhotoCropTest.php
++++ b/tests/Feature/StaffBioAndPhotoCropTest.php
+@@ -79,25 +79,26 @@ class StaffBioAndPhotoCropTest extends TestCase
+         }
+     }
+ 
+-    public function test_id_card_photo_keeps_the_whole_picture_without_cropping(): void
++    public function test_id_card_photo_fills_frame_width_with_chest_on_bottom_and_gap_above_head(): void
+     {
+         if (! extension_loaded('gd')) {
+             $this->markTestSkipped('PHP GD extension not installed here.');
+         }
+         $im = imagecreatetruecolor(600, 800);
+         imagefill($im, 0, 0, imagecolorallocate($im, 240, 240, 240));
+-        imagefilledrectangle($im, 0, 0, 599, 40, imagecolorallocate($im, 255, 0, 0));      // top edge
+-        imagefilledrectangle($im, 0, 760, 599, 799, imagecolorallocate($im, 0, 0, 255));   // bottom edge
++        imagefilledellipse($im, 300, 260, 200, 260, imagecolorallocate($im, 200, 150, 120));   // head
++        imagefilledrectangle($im, 60, 420, 540, 799, imagecolorallocate($im, 20, 20, 20));      // shoulders to the bottom
+         ob_start();
+         imagepng($im);
+         $uri = 'data:image/png;base64,'.base64_encode(ob_get_clean());
+-        $out = imagecreatefromstring(base64_decode(substr(PdfPhoto::small($uri, 340, false, true), strpos(PdfPhoto::small($uri, 340, false, true), ',') + 1)));
+-        $c = imagecolorat($out, (int) (imagesx($out) / 2), 3);
+-        $this->assertGreaterThan(200, ($c >> 16) & 255);
+-        $this->assertLessThan(80, ($c >> 8) & 255);
+-        $c = imagecolorat($out, (int) (imagesx($out) / 2), imagesy($out) - 4);
+-        $this->assertGreaterThan(200, $c & 255);
+-        $this->assertLessThan(80, ($c >> 16) & 255);
++        $res = PdfPhoto::small($uri, 340, false, true);
++        $out = imagecreatefromstring(base64_decode(substr($res, strpos($res, ',') + 1)));
++        $w = imagesx($out);
++        $h = imagesy($out);
++        $lum = fn ($x, $y) => (imagecolorat($out, $x, $y) >> 8) & 255;
++        $this->assertGreaterThan(200, $lum((int) ($w / 2), 2));        // clear background gap at the top, head does not touch the line
++        $this->assertLessThan(60, $lum((int) ($w / 2), $h - 3));       // chest reaches the bottom line
++        $this->assertLessThan(60, $lum((int) ($w * 0.15), $h - 3));    // shoulders spread towards the side lines
+     }
+ 
+     public function test_student_and_staff_card_photo_frames_share_the_same_size(): void
