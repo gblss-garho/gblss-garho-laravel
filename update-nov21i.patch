@@ -1,0 +1,42 @@
+diff --git a/app/Support/PdfPhoto.php b/app/Support/PdfPhoto.php
+index af1bbc9..1368474 100644
+--- a/app/Support/PdfPhoto.php
++++ b/app/Support/PdfPhoto.php
+@@ -28,14 +28,35 @@ class PdfPhoto
+ 
+         // Remote / local-path photos (what the website shows) are fetched once, shrunk and cached for a day.
+         if (! str_starts_with($src, 'data:')) {
+-            return Cache::remember('pdfphoto:v5:'.md5($src.'|'.$max.'|'.$shape), 86400, fn () => self::shrink(self::load($src), $max, $shape));
++            $key = 'pdfphoto:v5:'.md5($src.'|'.$max.'|'.$shape);
++            if ($hit = Cache::get($key)) {
++                return $hit;
++            }
++            $res = self::safely($src, fn () => self::shrink(self::load($src), $max, $shape));
++            if ($res) {   // failures are never cached, so a photo that failed once is retried next time
++                Cache::put($key, $res, 86400);
++            }
++
++            return $res;
+         }
+ 
+         if (! preg_match('#^data:image/(?:jpe?g|png|webp|gif);base64,(.+)$#is', $src, $m)) {
+             return null;
+         }
+ 
+-        return self::shrink(base64_decode($m[1], true) ?: null, $max, $shape);
++        return self::safely('data-uri', fn () => self::shrink(base64_decode($m[1], true) ?: null, $max, $shape));
++    }
++
++    /** A bad photo must never break the page or PDF: log it and fall back to the placeholder. */
++    private static function safely(string $what, \Closure $fn): ?string
++    {
++        try {
++            return $fn();
++        } catch (\Throwable $e) {
++            \Log::warning('PdfPhoto failed: '.$e->getMessage(), ['src' => substr($what, 0, 200)]);
++
++            return null;
++        }
+     }
+ 
+     /** Saves an uploaded photo under public/uploads/students and returns the relative URL stored in photo_url. */
