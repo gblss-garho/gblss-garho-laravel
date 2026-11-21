@@ -53,7 +53,7 @@
             <p><i>{{ $isT ? 'Employed At :' : 'Address :' }}</i><b>{{ $isT ? ($person->school_name ?: $school['name']) : ($public ? '—' : ($person->address ?: '—')) }}</b></p>
             <p><i>Valid Up To :</i><b>{{ $validUpTo }}</b></p>
         </div>
-        <div class="pc-qr"><img src="{{ $qr }}" alt="QR"><small>{{ $isT ? 'Scan for school &amp; staff biodata' : 'Scan to verify / mark attendance' }}</small></div>
+        <div class="pc-qr"><img src="{{ $qr }}" alt="QR"><small>{{ $isT ? 'Scan for school & staff biodata' : 'Scan to verify / mark attendance' }}</small></div>
     </div>
     <div class="pc-tc"><div>TERMS &amp; CONDITIONS</div><ul>
         <li>This card is the property of {{ $school['name'] }} and is non-transferable.</li>
