@@ -1,0 +1,137 @@
+diff --git a/app/Http/Controllers/AdminTeacherController.php b/app/Http/Controllers/AdminTeacherController.php
+index 1236e1a..579e073 100644
+--- a/app/Http/Controllers/AdminTeacherController.php
++++ b/app/Http/Controllers/AdminTeacherController.php
+@@ -28,9 +28,26 @@ class AdminTeacherController extends Controller
+             'auth_email' => ['required', 'email', 'max:190', Rule::unique('users', 'email')->ignore($teacher?->user_id)],
+             'pin' => [$teacher ? 'nullable' : 'required', 'digits:4'],
+             'classes' => ['nullable', 'string', 'max:200'],
++            'photo_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
++            'photo_link' => ['nullable', 'url', 'max:240'],
++            'remove_photo' => ['nullable', 'boolean'],
+         ];
+     }
+ 
++    /** photo_file / photo_link / remove_photo -> photo_url (null = leave the current photo alone). */
++    private function photoFrom(array $data, string $id): array
++    {
++        $link = trim((string) ($data['photo_link'] ?? ''));
++        if (! empty($data['photo_file'])) {
++            return ['photo_url' => \App\Support\PdfPhoto::saveUpload($data['photo_file'], $id, 'teachers')];
++        }
++        if ($link !== '') {
++            return ['photo_url' => $link];
++        }
++
++        return ! empty($data['remove_photo']) ? ['photo_url' => null] : [];
++    }
++
+     private function saveClasses(string $teacherId, ?string $csv): void
+     {
+         DB::table('teacher_classes')->where('teacher_id', $teacherId)->delete();
+@@ -65,9 +82,11 @@ class AdminTeacherController extends Controller
+                 'password' => Hash::make($data['pin']), 'role' => 'teacher', 'is_active' => 1,
+                 'created_at' => $now, 'updated_at' => $now,
+             ]);
++            $id = (string) Str::uuid();
+             $teacher = Teacher::create(array_merge(
+-                ['id' => (string) Str::uuid(), 'user_id' => $userId, 'auth_email' => strtolower($data['auth_email'])],
+-                array_intersect_key($data, array_flip(self::FIELDS))
++                ['id' => $id, 'user_id' => $userId, 'auth_email' => strtolower($data['auth_email'])],
++                array_intersect_key($data, array_flip(self::FIELDS)),
++                $this->photoFrom($data, $id)
+             ));
+             $this->saveClasses($teacher->id, $data['classes'] ?? '');
+         });
+@@ -88,6 +107,7 @@ class AdminTeacherController extends Controller
+         DB::transaction(function () use ($data, $teacher, $request, $now) {
+             $teacher->fill(array_intersect_key($data, array_flip(self::FIELDS)));
+             $teacher->auth_email = strtolower($data['auth_email']);
++            $teacher->fill($this->photoFrom($data, $teacher->id));
+             if ($request->boolean('reset_face')) {
+                 $teacher->face_descriptor = null;
+             }
+diff --git a/app/Support/PdfPhoto.php b/app/Support/PdfPhoto.php
+index b73750e..64184f8 100644
+--- a/app/Support/PdfPhoto.php
++++ b/app/Support/PdfPhoto.php
+@@ -39,9 +39,10 @@ class PdfPhoto
+     }
+ 
+     /** Saves an uploaded photo under public/uploads/students and returns the relative URL stored in photo_url. */
+-    public static function saveUpload(\Illuminate\Http\UploadedFile $file, string $id): string
++    public static function saveUpload(\Illuminate\Http\UploadedFile $file, string $id, string $folder = 'students'): string
+     {
+-        $dir = public_path('uploads/students');
++        $folder = preg_replace('/[^a-z]/', '', $folder) ?: 'students';
++        $dir = public_path('uploads/'.$folder);
+         if (! is_dir($dir)) {
+             @mkdir($dir, 0755, true);
+         }
+@@ -56,7 +57,7 @@ class PdfPhoto
+             file_put_contents("{$dir}/{$name}.{$ext}", $bin);
+         }
+ 
+-        return "/uploads/students/{$name}.{$ext}?v=".time();
++        return "/uploads/{$folder}/{$name}.{$ext}?v=".time();
+     }
+ 
+     /**
+diff --git a/resources/views/admin/teachers/form.blade.php b/resources/views/admin/teachers/form.blade.php
+index ceca43a..d51490d 100644
+--- a/resources/views/admin/teachers/form.blade.php
++++ b/resources/views/admin/teachers/form.blade.php
+@@ -10,7 +10,7 @@
+         <ul style="color:red">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
+     @endif
+ 
+-    <form method="POST" action="{{ $teacher ? route('admin.teachers.update', $teacher) : route('admin.teachers.store') }}">
++    <form method="POST" enctype="multipart/form-data" action="{{ $teacher ? route('admin.teachers.update', $teacher) : route('admin.teachers.store') }}">
+         @csrf
+         @if ($teacher) @method('PUT') @endif
+         @php
+@@ -22,6 +22,15 @@
+             $cls = old('classes', $teacher ? $teacher->classes->pluck('class_name')->implode(', ') : '');
+         @endphp
+         <p>Naam<br><input name="name" value="{{ $f('name') }}" required></p>
++        <div style="border:1px solid #d9d9d9;border-radius:8px;padding:10px;margin:10px 0">
++            <b>Photo (Staff ID card)</b>
++            @if ($teacher && $teacher->photo_url)
++                <p><img src="{{ \Illuminate\Support\Str::startsWith($teacher->photo_url, ['data:','http','/']) ? $teacher->photo_url : '/'.$teacher->photo_url }}" alt="" style="width:90px;height:105px;object-fit:cover;object-position:center top;border-radius:6px;border:1px solid #ccc"><br>
++                <label><input type="checkbox" name="remove_photo" value="1"> Photo hata dein</label></p>
++            @endif
++            <p>Photo upload karein (jpg/png)<br><input type="file" name="photo_file" accept="image/*"></p>
++            <p>Ya photo ka link<br><input name="photo_link" value="{{ old('photo_link') }}" placeholder="https://..." style="width:100%"></p>
++        </div>
+         <p>Login email <span class="sd">(ٽيچر جو لاگ ان اي ميل، پورٽل رسائي لاءِ)</span><br><input type="email" name="auth_email" value="{{ $f('auth_email') }}" required></p>
+         <p>Login PIN (4 digit){{ $teacher ? ' - khali chhorein to purana PIN rahega' : '' }}<br>
+             <input name="pin" inputmode="numeric" maxlength="4" autocomplete="off" {{ $teacher ? '' : 'required' }}></p>
+diff --git a/tests/Feature/AdminExtrasTest.php b/tests/Feature/AdminExtrasTest.php
+index 6a15069..461fc92 100644
+--- a/tests/Feature/AdminExtrasTest.php
++++ b/tests/Feature/AdminExtrasTest.php
+@@ -104,4 +104,24 @@ class AdminExtrasTest extends TestCase
+         DB::table('result_publish_status')->insert(['id' => 'x2', 'class_name' => 'VII', 'exam_type' => 'annual', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
+         $this->post('/results', ['gr_number' => '9', 'dob' => '2012-01-02'])->assertOk()->assertSee('<td>91</td>', false);
+     }
++
++    public function test_admin_can_set_staff_photo_by_link_and_upload_and_remove_it(): void
++    {
++        $this->actingAs($this->admin());
++        $base = ['name' => 'Staff One', 'auth_email' => 'staff1@example.test', 'pin' => '1234'];
++        $this->post('/admin/teachers', $base + ['photo_link' => 'https://example.com/t.jpg'])->assertSessionHasNoErrors();
++        $t = \App\Models\Teacher::where('name', 'Staff One')->first();
++        $this->assertSame('https://example.com/t.jpg', $t->photo_url);
++
++        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('t.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));
++        $this->put('/admin/teachers/'.$t->id, $base + ['photo_file' => $file])->assertSessionHasNoErrors();
++        $t->refresh();
++        $this->assertStringStartsWith('/uploads/teachers/'.$t->id.'.', $t->photo_url);
++        @unlink(public_path(strtok(ltrim($t->photo_url, '/'), '?')));
++
++        $this->put('/admin/teachers/'.$t->id, $base + ['remove_photo' => 1])->assertSessionHasNoErrors();
++        $this->assertNull($t->fresh()->photo_url);
++        $this->get('/admin/teachers/'.$t->id.'/edit')->assertOk()->assertSee('photo_file', false);
++        $this->get('/admin/teachers/create')->assertOk()->assertSee('photo_link', false);
++    }
+ }
