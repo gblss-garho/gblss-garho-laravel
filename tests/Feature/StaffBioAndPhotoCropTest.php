@@ -79,6 +79,27 @@ class StaffBioAndPhotoCropTest extends TestCase
         }
     }
 
+    public function test_id_card_photo_keeps_the_whole_picture_without_cropping(): void
+    {
+        if (! extension_loaded('gd')) {
+            $this->markTestSkipped('PHP GD extension not installed here.');
+        }
+        $im = imagecreatetruecolor(600, 800);
+        imagefill($im, 0, 0, imagecolorallocate($im, 240, 240, 240));
+        imagefilledrectangle($im, 0, 0, 599, 40, imagecolorallocate($im, 255, 0, 0));      // top edge
+        imagefilledrectangle($im, 0, 760, 599, 799, imagecolorallocate($im, 0, 0, 255));   // bottom edge
+        ob_start();
+        imagepng($im);
+        $uri = 'data:image/png;base64,'.base64_encode(ob_get_clean());
+        $out = imagecreatefromstring(base64_decode(substr(PdfPhoto::small($uri, 340, false, true), strpos(PdfPhoto::small($uri, 340, false, true), ',') + 1)));
+        $c = imagecolorat($out, (int) (imagesx($out) / 2), 3);
+        $this->assertGreaterThan(200, ($c >> 16) & 255);
+        $this->assertLessThan(80, ($c >> 8) & 255);
+        $c = imagecolorat($out, (int) (imagesx($out) / 2), imagesy($out) - 4);
+        $this->assertGreaterThan(200, $c & 255);
+        $this->assertLessThan(80, ($c >> 16) & 255);
+    }
+
     public function test_student_and_staff_card_photo_frames_share_the_same_size(): void
     {
         $css = file_get_contents(public_path('css/card-preview.css'));
