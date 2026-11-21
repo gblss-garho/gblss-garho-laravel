@@ -28,7 +28,24 @@ class AdminTeacherController extends Controller
             'auth_email' => ['required', 'email', 'max:190', Rule::unique('users', 'email')->ignore($teacher?->user_id)],
             'pin' => [$teacher ? 'nullable' : 'required', 'digits:4'],
             'classes' => ['nullable', 'string', 'max:200'],
+            'photo_file' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:8192'],
+            'photo_link' => ['nullable', 'url', 'max:240'],
+            'remove_photo' => ['nullable', 'boolean'],
         ];
+    }
+
+    /** photo_file / photo_link / remove_photo -> photo_url (null = leave the current photo alone). */
+    private function photoFrom(array $data, string $id): array
+    {
+        $link = trim((string) ($data['photo_link'] ?? ''));
+        if (! empty($data['photo_file'])) {
+            return ['photo_url' => \App\Support\PdfPhoto::saveUpload($data['photo_file'], $id, 'teachers')];
+        }
+        if ($link !== '') {
+            return ['photo_url' => $link];
+        }
+
+        return ! empty($data['remove_photo']) ? ['photo_url' => null] : [];
     }
 
     private function saveClasses(string $teacherId, ?string $csv): void
@@ -65,9 +82,11 @@ class AdminTeacherController extends Controller
                 'password' => Hash::make($data['pin']), 'role' => 'teacher', 'is_active' => 1,
                 'created_at' => $now, 'updated_at' => $now,
             ]);
+            $id = (string) Str::uuid();
             $teacher = Teacher::create(array_merge(
-                ['id' => (string) Str::uuid(), 'user_id' => $userId, 'auth_email' => strtolower($data['auth_email'])],
-                array_intersect_key($data, array_flip(self::FIELDS))
+                ['id' => $id, 'user_id' => $userId, 'auth_email' => strtolower($data['auth_email'])],
+                array_intersect_key($data, array_flip(self::FIELDS)),
+                $this->photoFrom($data, $id)
             ));
             $this->saveClasses($teacher->id, $data['classes'] ?? '');
         });
@@ -88,6 +107,7 @@ class AdminTeacherController extends Controller
         DB::transaction(function () use ($data, $teacher, $request, $now) {
             $teacher->fill(array_intersect_key($data, array_flip(self::FIELDS)));
             $teacher->auth_email = strtolower($data['auth_email']);
+            $teacher->fill($this->photoFrom($data, $teacher->id));
             if ($request->boolean('reset_face')) {
                 $teacher->face_descriptor = null;
             }

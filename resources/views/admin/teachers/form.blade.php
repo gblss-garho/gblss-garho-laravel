@@ -10,7 +10,7 @@
         <ul style="color:red">@foreach ($errors->all() as $e)<li>{{ $e }}</li>@endforeach</ul>
     @endif
 
-    <form method="POST" action="{{ $teacher ? route('admin.teachers.update', $teacher) : route('admin.teachers.store') }}">
+    <form method="POST" enctype="multipart/form-data" action="{{ $teacher ? route('admin.teachers.update', $teacher) : route('admin.teachers.store') }}">
         @csrf
         @if ($teacher) @method('PUT') @endif
         @php
@@ -22,6 +22,15 @@
             $cls = old('classes', $teacher ? $teacher->classes->pluck('class_name')->implode(', ') : '');
         @endphp
         <p>Naam<br><input name="name" value="{{ $f('name') }}" required></p>
+        <div style="border:1px solid #d9d9d9;border-radius:8px;padding:10px;margin:10px 0">
+            <b>Photo (Staff ID card)</b>
+            @if ($teacher && $teacher->photo_url)
+                <p><img src="{{ \Illuminate\Support\Str::startsWith($teacher->photo_url, ['data:','http','/']) ? $teacher->photo_url : '/'.$teacher->photo_url }}" alt="" style="width:90px;height:105px;object-fit:cover;object-position:center top;border-radius:6px;border:1px solid #ccc"><br>
+                <label><input type="checkbox" name="remove_photo" value="1"> Photo hata dein</label></p>
+            @endif
+            <p>Photo upload karein (jpg/png)<br><input type="file" name="photo_file" accept="image/*"></p>
+            <p>Ya photo ka link<br><input name="photo_link" value="{{ old('photo_link') }}" placeholder="https://..." style="width:100%"></p>
+        </div>
         <p>Login email <span class="sd">(ٽيچر جو لاگ ان اي ميل، پورٽل رسائي لاءِ)</span><br><input type="email" name="auth_email" value="{{ $f('auth_email') }}" required></p>
         <p>Login PIN (4 digit){{ $teacher ? ' - khali chhorein to purana PIN rahega' : '' }}<br>
             <input name="pin" inputmode="numeric" maxlength="4" autocomplete="off" {{ $teacher ? '' : 'required' }}></p>

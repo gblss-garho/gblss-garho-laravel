@@ -104,4 +104,24 @@ class AdminExtrasTest extends TestCase
         DB::table('result_publish_status')->insert(['id' => 'x2', 'class_name' => 'VII', 'exam_type' => 'annual', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
         $this->post('/results', ['gr_number' => '9', 'dob' => '2012-01-02'])->assertOk()->assertSee('<td>91</td>', false);
     }
+
+    public function test_admin_can_set_staff_photo_by_link_and_upload_and_remove_it(): void
+    {
+        $this->actingAs($this->admin());
+        $base = ['name' => 'Staff One', 'auth_email' => 'staff1@example.test', 'pin' => '1234'];
+        $this->post('/admin/teachers', $base + ['photo_link' => 'https://example.com/t.jpg'])->assertSessionHasNoErrors();
+        $t = \App\Models\Teacher::where('name', 'Staff One')->first();
+        $this->assertSame('https://example.com/t.jpg', $t->photo_url);
+
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('t.png', base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));
+        $this->put('/admin/teachers/'.$t->id, $base + ['photo_file' => $file])->assertSessionHasNoErrors();
+        $t->refresh();
+        $this->assertStringStartsWith('/uploads/teachers/'.$t->id.'.', $t->photo_url);
+        @unlink(public_path(strtok(ltrim($t->photo_url, '/'), '?')));
+
+        $this->put('/admin/teachers/'.$t->id, $base + ['remove_photo' => 1])->assertSessionHasNoErrors();
+        $this->assertNull($t->fresh()->photo_url);
+        $this->get('/admin/teachers/'.$t->id.'/edit')->assertOk()->assertSee('photo_file', false);
+        $this->get('/admin/teachers/create')->assertOk()->assertSee('photo_link', false);
+    }
 }

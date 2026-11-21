@@ -39,9 +39,10 @@ class PdfPhoto
     }
 
     /** Saves an uploaded photo under public/uploads/students and returns the relative URL stored in photo_url. */
-    public static function saveUpload(\Illuminate\Http\UploadedFile $file, string $id): string
+    public static function saveUpload(\Illuminate\Http\UploadedFile $file, string $id, string $folder = 'students'): string
     {
-        $dir = public_path('uploads/students');
+        $folder = preg_replace('/[^a-z]/', '', $folder) ?: 'students';
+        $dir = public_path('uploads/'.$folder);
         if (! is_dir($dir)) {
             @mkdir($dir, 0755, true);
         }
@@ -56,7 +57,7 @@ class PdfPhoto
             file_put_contents("{$dir}/{$name}.{$ext}", $bin);
         }
 
-        return "/uploads/students/{$name}.{$ext}?v=".time();
+        return "/uploads/{$folder}/{$name}.{$ext}?v=".time();
     }
 
     /**
