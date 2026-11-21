@@ -28,7 +28,7 @@ class PdfPhoto
 
         // Remote / local-path photos (what the website shows) are fetched once, shrunk and cached for a day.
         if (! str_starts_with($src, 'data:')) {
-            return Cache::remember('pdfphoto:'.md5($src.'|'.$max.'|'.$shape), 86400, fn () => self::shrink(self::load($src), $max, $shape));
+            return Cache::remember('pdfphoto:v3:'.md5($src.'|'.$max.'|'.$shape), 86400, fn () => self::shrink(self::load($src), $max, $shape));
         }
 
         if (! preg_match('#^data:image/(?:jpe?g|png|webp|gif);base64,(.+)$#is', $src, $m)) {
