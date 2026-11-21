@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Http;
  */
 class PdfPhoto
 {
+    /** ID-card photo frame (inner size, px): passport style, width : height. */
+    public const FRAME_W = 91;
+    public const FRAME_H = 106;
+
     /** Accepts a data: URI, an http(s) URL, or a path under /public; returns a small JPEG data URI (or null). */
     /** $square: true = head-and-shoulders square crop; $portrait: 3:4 portrait crop (ID card photo frames). */
     public static function small(?string $src, int $max = 220, bool $square = false, bool $portrait = false): ?string
@@ -60,13 +64,16 @@ class PdfPhoto
      * Plain-background photos are measured (so a small full-length figure is zoomed in, while a tight
      * face photo is left almost as it is); busy or edge-to-edge photos only get a gentle top-biased trim.
      */
-    private static function headCrop($im, int $w, int $h): array
+    private static function headCrop($im, int $w, int $h, bool $passport = false): array
     {
         $full = min($w, $h);
-        $gentle = function () use ($w, $h, $full) {
+        $gentle = function () use ($w, $h, $full, $passport) {
+            if ($passport) {   // already a head-and-shoulders photo: keep its full width
+                return [0, 0, $w, null];
+            }
             $side = (int) round($full * 0.92);
 
-            return [(int) (($w - $side) / 2), (int) round(($h - $side) * 0.12), $side];
+            return [(int) (($w - $side) / 2), (int) round(($h - $side) * 0.12), $side, null];
         };
 
         $tw = 64;
@@ -121,7 +128,7 @@ class PdfPhoto
             return $gentle();
         }
         // Width of the subject over its upper part only (head + shoulders; arms hanging lower are ignored).
-        $yTop = $y0 + max(1, (int) round(($y1 - $y0) * 0.45));
+        $yTop = $y0 + max(1, (int) round(($y1 - $y0) * ($passport ? 0.6 : 0.45)));
         $x0 = null;
         $x1 = null;
         for ($x = 0; $x < $tw; $x++) {
@@ -140,13 +147,21 @@ class PdfPhoto
         if ($bw >= 0.85 * $w && ($y1 - $y0 + 1) >= 0.85 * $th) {   // subject already fills the frame
             return $gentle();
         }
-        $side = (int) round(min($full, max(0.5 * $full, 1.35 * $bw)));
+        // Passport style: shoulders reach the frame edges (a little tighter than the square crop used on admit slips).
+        if ($passport) {
+            // Wide enough for the shoulders, and tall enough to show roughly the top 60% of the figure (head to chest).
+            $subjH = ($y1 - $y0 + 1) * $h / $th;
+            $side = (int) round(min($w, max(0.35 * $w, 1.08 * $bw, 0.6 * $subjH * self::FRAME_W / self::FRAME_H)));
+        } else {
+            $side = (int) round(min($full, max(0.5 * $full, 1.35 * $bw)));
+        }
         $cx = (($x0 + $x1 + 1) / 2) * $w / $tw;
-        $top = $y0 * $h / $th - 0.06 * $side;
+        $subjectTop = $y0 * $h / $th;
+        $top = $subjectTop - 0.06 * $side;
         $sx = (int) max(0, min($w - $side, round($cx - $side / 2)));
         $sy = (int) max(0, min($h - $side, round($top)));
 
-        return [$sx, $sy, $side];
+        return [$sx, $sy, $side, $subjectTop];
     }
 
     /** Raw bytes for a URL or public-path photo, or null. Only http(s) to public hosts is allowed. */
@@ -206,16 +221,18 @@ class PdfPhoto
         $sw = $info[0];
         $sh = $info[1];
         if ($shape > 0) {
-            [$sx, $sy, $side] = self::headCrop($im, $sw, $sh);
+            [$sx, $sy, $side, $subjectTop] = self::headCrop($im, $sw, $sh, $shape === 2);
             $cw = $ch = $side;
-            if ($shape === 2) {   // 3:4 portrait: same width, taller; never stretched
-                $ch = (int) round($side * 4 / 3);
+            if ($shape === 2) {   // passport portrait (FRAME_W : FRAME_H): never stretched
+                $ratio = self::FRAME_H / self::FRAME_W;
+                $ch = (int) round($side * $ratio);
                 if ($ch > $sh) {
                     $ch = $sh;
-                    $cw = (int) round($sh * 3 / 4);
+                    $cw = (int) round($sh / $ratio);
                 }
                 $sx = (int) max(0, min($sw - $cw, round($sx + $side / 2 - $cw / 2)));
-                $sy = (int) max(0, min($sh - $ch, $sy - ($ch - $side) * 0.1));
+                // Small space above the head; plain photos are placed by the measured head, others keep their top.
+                $sy = (int) max(0, min($sh - $ch, $subjectTop !== null ? $subjectTop - 0.12 * $ch : ($sh - $ch) * 0.15));
             }
             $sw = $cw;
             $sh = $ch;

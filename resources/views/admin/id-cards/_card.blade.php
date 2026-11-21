@@ -76,11 +76,11 @@
     </tr></table>
     <table class="w"><tr>
         <td style="width:108px;padding:6px 0 0 16px;">
-            <div style="background:#DBB43C;padding:3px;width:84px;height:112px;">
+            <div style="background:#DBB43C;padding:3px;width:91px;height:106px;">
                 @if ($photoOk)
-                    <img src="{{ $smallPhoto }}" width="84" height="112">
+                    <img src="{{ $smallPhoto }}" width="91" height="106">
                 @else
-                    <div style="width:84px;height:76px;padding-top:36px;background:#EDE7D3;text-align:center;font-size:38px;color:#123B7A;">{{ $initial }}</div>
+                    <div style="width:91px;height:72px;padding-top:34px;background:#EDE7D3;text-align:center;font-size:38px;color:#123B7A;">{{ $initial }}</div>
                 @endif
             </div>
         </td>

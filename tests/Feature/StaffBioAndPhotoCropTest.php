@@ -43,7 +43,7 @@ class StaffBioAndPhotoCropTest extends TestCase
         imagefill($a, 0, 0, imagecolorallocate($a, 255, 255, 255));
         imagefilledellipse($a, 300, 330, 120, 150, imagecolorallocate($a, 200, 150, 120));
         imagefilledrectangle($a, 180, 400, 420, 800, imagecolorallocate($a, 20, 20, 20));
-        [$x, $y, $side] = $crop->invoke(null, $a, 600, 800);
+        [$x, $y, $side] = $crop->invoke(null, $a, 600, 800);   // square (admit slip) mode
         $this->assertLessThan(420, $side);                 // zoomed in
         $this->assertLessThanOrEqual(255, $y);              // starts above the head (top at y=255)
         $this->assertGreaterThanOrEqual(180, $y + $side);   // still includes the whole face
@@ -62,7 +62,7 @@ class StaffBioAndPhotoCropTest extends TestCase
         $this->assertGreaterThan(500, $side2);
     }
 
-    public function test_id_card_photo_is_a_3_by_4_portrait_crop_never_stretched(): void
+    public function test_id_card_photo_is_a_passport_portrait_crop_never_stretched(): void
     {
         if (! extension_loaded('gd')) {
             $this->markTestSkipped('PHP GD extension not installed here.');
@@ -75,16 +75,16 @@ class StaffBioAndPhotoCropTest extends TestCase
             $uri = 'data:image/png;base64,'.base64_encode(ob_get_clean());
             $out = PdfPhoto::small($uri, 340, false, true);
             $info = getimagesizefromstring(base64_decode(substr($out, strpos($out, ',') + 1)));
-            $this->assertEqualsWithDelta(0.75, $info[0] / $info[1], 0.02, "{$w}x{$h} must come out 3:4");
+            $this->assertEqualsWithDelta(91 / 106, $info[0] / $info[1], 0.02, "{$w}x{$h} must match the passport frame");
         }
     }
 
     public function test_student_and_staff_card_photo_frames_share_the_same_size(): void
     {
         $css = file_get_contents(public_path('css/card-preview.css'));
-        $this->assertStringContainsString('.pc-ph { width:84px; height:112px;', $css);
+        $this->assertStringContainsString('.pc-ph { width:91px; height:106px;', $css);
         $card = file_get_contents(resource_path('views/admin/id-cards/_card.blade.php'));
-        $this->assertStringContainsString('width:84px;height:112px;', $card);   // one shared view for students and staff
-        $this->assertStringContainsString('width="84" height="112"', $card);
+        $this->assertStringContainsString('width:91px;height:106px;', $card);   // one shared view for students and staff
+        $this->assertStringContainsString('width="91" height="106"', $card);
     }
 }
