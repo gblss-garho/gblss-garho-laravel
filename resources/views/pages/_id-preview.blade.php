@@ -30,7 +30,7 @@
         <img src="{{ $logo }}" alt="">
     </div>
     <div class="pc-b">
-        <div class="pc-ph">@if ($person->photo_url)<img src="{{ \App\Support\PdfPhoto::small($person->photo_url, 260, true) ?: $person->photo_url }}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}'}))">@else<b>{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}</b>@endif</div>
+        <div class="pc-ph">@if ($person->photo_url)<img src="{{ \App\Support\PdfPhoto::small($person->photo_url, 340, false, true) ?: $person->photo_url }}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}'}))">@else<b>{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}</b>@endif</div>
         <div class="pc-i">
             <h4>{{ mb_strtoupper($person->name) }}</h4>
             @foreach ($rows as [$l, $v])<p><i>{{ $l }} :</i><b>{{ $v }}</b></p>@endforeach

@@ -10,8 +10,8 @@
 .pc-hn small.pc-sd { font-family:'PcSindhi','Noto Naskh Arabic',serif; font-size:12px; line-height:1.6; margin-top:1px; }
 .pc-h2 { padding:5px 56px 5px 14px; min-height:46px; } .pc-h2 img { height:36px; margin-right:6px; } .pc-h2 .pc-hn { font-size:10px; }
 .pc-b { display:flex; gap:12px; padding:7px 14px 0 16px; }
-.pc-ph { width:96px; height:96px; flex:none; background:#DBB43C; padding:3px; box-sizing:content-box; display:flex; align-items:center; justify-content:center; }
-.pc-ph { overflow:hidden; } .pc-ph img { width:96px; height:96px; object-fit:cover; object-position:50% 12%; display:block; } .pc-ph b { font-size:38px; color:#123B7A; background:#EDE7D3; width:96px; height:96px; display:flex; align-items:center; justify-content:center; }
+.pc-ph { width:84px; height:112px; flex:none; background:#DBB43C; padding:3px; box-sizing:content-box; display:flex; align-items:center; justify-content:center; }
+.pc-ph { overflow:hidden; } .pc-ph img { width:84px; height:112px; object-fit:cover; object-position:center center; display:block; } .pc-ph b { font-size:38px; color:#123B7A; background:#EDE7D3; width:84px; height:112px; display:flex; align-items:center; justify-content:center; }
 .pc-i h4 { margin:0 0 6px; font-size:12.5px; color:#123B7A; }
 .pc-i p, .pc-i2 p { margin:0 0 3px; display:flex; gap:6px; }
 .pc-i p i { font-style:normal; width:78px; flex:none; color:#8B7B1E; font-weight:700; } .pc-i p b { color:#123B7A; font-size:9.5px; }

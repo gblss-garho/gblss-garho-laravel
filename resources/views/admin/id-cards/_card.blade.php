@@ -4,7 +4,7 @@
     $public = $public ?? false;   // public pages: no DOB, masked PID, no guardian phone / home address
     $logo = collect([public_path('images/logo-glow.png'), public_path('images/logo.png'), public_path('images/lc/emblem.jpg')])->first(fn ($f) => is_file($f)) ?: public_path('images/logo.png');
     $logoOk = is_file($logo);
-    $smallPhoto = \App\Support\PdfPhoto::small($person->photo_url ?? null, 260, true);
+    $smallPhoto = \App\Support\PdfPhoto::small($person->photo_url ?? null, 340, false, true);
     $photoOk = $smallPhoto !== null;
     $fmt = fn ($d) => $d ? \Carbon\Carbon::parse($d)->format('M d, Y') : '—';
     $session = app(\App\Services\SchoolScheduleService::class)->academicYearFor(now());
@@ -76,11 +76,11 @@
     </tr></table>
     <table class="w"><tr>
         <td style="width:108px;padding:6px 0 0 16px;">
-            <div style="background:#DBB43C;padding:3px;width:96px;height:96px;">
+            <div style="background:#DBB43C;padding:3px;width:84px;height:112px;">
                 @if ($photoOk)
-                    <img src="{{ $smallPhoto }}" width="96" height="96">
+                    <img src="{{ $smallPhoto }}" width="84" height="112">
                 @else
-                    <div style="width:96px;height:70px;padding-top:26px;background:#EDE7D3;text-align:center;font-size:38px;color:#123B7A;">{{ $initial }}</div>
+                    <div style="width:84px;height:76px;padding-top:36px;background:#EDE7D3;text-align:center;font-size:38px;color:#123B7A;">{{ $initial }}</div>
                 @endif
             </div>
         </td>

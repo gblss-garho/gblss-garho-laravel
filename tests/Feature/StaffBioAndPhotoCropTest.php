@@ -61,4 +61,30 @@ class StaffBioAndPhotoCropTest extends TestCase
         [, , $side2] = $crop->invoke(null, $b, 600, 800);
         $this->assertGreaterThan(500, $side2);
     }
+
+    public function test_id_card_photo_is_a_3_by_4_portrait_crop_never_stretched(): void
+    {
+        if (! extension_loaded('gd')) {
+            $this->markTestSkipped('PHP GD extension not installed here.');
+        }
+        foreach ([[600, 800], [1000, 700], [400, 400]] as [$w, $h]) {
+            $im = imagecreatetruecolor($w, $h);
+            imagefill($im, 0, 0, imagecolorallocate($im, 240, 240, 240));
+            ob_start();
+            imagepng($im);
+            $uri = 'data:image/png;base64,'.base64_encode(ob_get_clean());
+            $out = PdfPhoto::small($uri, 340, false, true);
+            $info = getimagesizefromstring(base64_decode(substr($out, strpos($out, ',') + 1)));
+            $this->assertEqualsWithDelta(0.75, $info[0] / $info[1], 0.02, "{$w}x{$h} must come out 3:4");
+        }
+    }
+
+    public function test_student_and_staff_card_photo_frames_share_the_same_size(): void
+    {
+        $css = file_get_contents(public_path('css/card-preview.css'));
+        $this->assertStringContainsString('.pc-ph { width:84px; height:112px;', $css);
+        $card = file_get_contents(resource_path('views/admin/id-cards/_card.blade.php'));
+        $this->assertStringContainsString('width:84px;height:112px;', $card);   // one shared view for students and staff
+        $this->assertStringContainsString('width="84" height="112"', $card);
+    }
 }

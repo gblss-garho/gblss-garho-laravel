@@ -13,23 +13,25 @@ use Illuminate\Support\Facades\Http;
 class PdfPhoto
 {
     /** Accepts a data: URI, an http(s) URL, or a path under /public; returns a small JPEG data URI (or null). */
-    public static function small(?string $src, int $max = 220, bool $square = false): ?string
+    /** $square: true = head-and-shoulders square crop; $portrait: 3:4 portrait crop (ID card photo frames). */
+    public static function small(?string $src, int $max = 220, bool $square = false, bool $portrait = false): ?string
     {
         $src = trim((string) $src);
+        $shape = $portrait ? 2 : ($square ? 1 : 0);
         if ($src === '' || ! function_exists('imagecreatefromstring')) {
             return null;
         }
 
         // Remote / local-path photos (what the website shows) are fetched once, shrunk and cached for a day.
         if (! str_starts_with($src, 'data:')) {
-            return Cache::remember('pdfphoto:'.md5($src.'|'.$max.'|'.(int) $square), 86400, fn () => self::shrink(self::load($src), $max, $square));
+            return Cache::remember('pdfphoto:'.md5($src.'|'.$max.'|'.$shape), 86400, fn () => self::shrink(self::load($src), $max, $shape));
         }
 
         if (! preg_match('#^data:image/(?:jpe?g|png|webp|gif);base64,(.+)$#is', $src, $m)) {
             return null;
         }
 
-        return self::shrink(base64_decode($m[1], true) ?: null, $max, $square);
+        return self::shrink(base64_decode($m[1], true) ?: null, $max, $shape);
     }
 
     /** Saves an uploaded photo under public/uploads/students and returns the relative URL stored in photo_url. */
@@ -184,7 +186,7 @@ class PdfPhoto
     }
 
     /** $square = close-up crop (centred, biased towards the top where faces are) to a square so it fills a photo frame. */
-    private static function shrink(?string $bin, int $max, bool $square = false): ?string
+    private static function shrink(?string $bin, int $max, int $shape = 0): ?string
     {
         if (! $bin) {
             return null;
@@ -203,9 +205,20 @@ class PdfPhoto
         $sy = 0;
         $sw = $info[0];
         $sh = $info[1];
-        if ($square) {
+        if ($shape > 0) {
             [$sx, $sy, $side] = self::headCrop($im, $sw, $sh);
-            $sw = $sh = $side;
+            $cw = $ch = $side;
+            if ($shape === 2) {   // 3:4 portrait: same width, taller; never stretched
+                $ch = (int) round($side * 4 / 3);
+                if ($ch > $sh) {
+                    $ch = $sh;
+                    $cw = (int) round($sh * 3 / 4);
+                }
+                $sx = (int) max(0, min($sw - $cw, round($sx + $side / 2 - $cw / 2)));
+                $sy = (int) max(0, min($sh - $ch, $sy - ($ch - $side) * 0.1));
+            }
+            $sw = $cw;
+            $sh = $ch;
         }
         $ratio = min(1, $max / max($sw, $sh));
         $w = max(1, (int) round($sw * $ratio));
