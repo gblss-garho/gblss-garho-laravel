@@ -1,0 +1,156 @@
+diff --git a/app/Support/PdfPhoto.php b/app/Support/PdfPhoto.php
+index 3ea8a2c..c5387fd 100644
+--- a/app/Support/PdfPhoto.php
++++ b/app/Support/PdfPhoto.php
+@@ -13,23 +13,25 @@ use Illuminate\Support\Facades\Http;
+ class PdfPhoto
+ {
+     /** Accepts a data: URI, an http(s) URL, or a path under /public; returns a small JPEG data URI (or null). */
+-    public static function small(?string $src, int $max = 220, bool $square = false): ?string
++    /** $square: true = head-and-shoulders square crop; $portrait: 3:4 portrait crop (ID card photo frames). */
++    public static function small(?string $src, int $max = 220, bool $square = false, bool $portrait = false): ?string
+     {
+         $src = trim((string) $src);
++        $shape = $portrait ? 2 : ($square ? 1 : 0);
+         if ($src === '' || ! function_exists('imagecreatefromstring')) {
+             return null;
+         }
+ 
+         // Remote / local-path photos (what the website shows) are fetched once, shrunk and cached for a day.
+         if (! str_starts_with($src, 'data:')) {
+-            return Cache::remember('pdfphoto:'.md5($src.'|'.$max.'|'.(int) $square), 86400, fn () => self::shrink(self::load($src), $max, $square));
++            return Cache::remember('pdfphoto:'.md5($src.'|'.$max.'|'.$shape), 86400, fn () => self::shrink(self::load($src), $max, $shape));
+         }
+ 
+         if (! preg_match('#^data:image/(?:jpe?g|png|webp|gif);base64,(.+)$#is', $src, $m)) {
+             return null;
+         }
+ 
+-        return self::shrink(base64_decode($m[1], true) ?: null, $max, $square);
++        return self::shrink(base64_decode($m[1], true) ?: null, $max, $shape);
+     }
+ 
+     /** Saves an uploaded photo under public/uploads/students and returns the relative URL stored in photo_url. */
+@@ -184,7 +186,7 @@ class PdfPhoto
+     }
+ 
+     /** $square = close-up crop (centred, biased towards the top where faces are) to a square so it fills a photo frame. */
+-    private static function shrink(?string $bin, int $max, bool $square = false): ?string
++    private static function shrink(?string $bin, int $max, int $shape = 0): ?string
+     {
+         if (! $bin) {
+             return null;
+@@ -203,9 +205,20 @@ class PdfPhoto
+         $sy = 0;
+         $sw = $info[0];
+         $sh = $info[1];
+-        if ($square) {
++        if ($shape > 0) {
+             [$sx, $sy, $side] = self::headCrop($im, $sw, $sh);
+-            $sw = $sh = $side;
++            $cw = $ch = $side;
++            if ($shape === 2) {   // 3:4 portrait: same width, taller; never stretched
++                $ch = (int) round($side * 4 / 3);
++                if ($ch > $sh) {
++                    $ch = $sh;
++                    $cw = (int) round($sh * 3 / 4);
++                }
++                $sx = (int) max(0, min($sw - $cw, round($sx + $side / 2 - $cw / 2)));
++                $sy = (int) max(0, min($sh - $ch, $sy - ($ch - $side) * 0.1));
++            }
++            $sw = $cw;
++            $sh = $ch;
+         }
+         $ratio = min(1, $max / max($sw, $sh));
+         $w = max(1, (int) round($sw * $ratio));
+diff --git a/public/css/card-preview.css b/public/css/card-preview.css
+index 59398ee..a7190aa 100644
+--- a/public/css/card-preview.css
++++ b/public/css/card-preview.css
+@@ -10,8 +10,8 @@
+ .pc-hn small.pc-sd { font-family:'PcSindhi','Noto Naskh Arabic',serif; font-size:12px; line-height:1.6; margin-top:1px; }
+ .pc-h2 { padding:5px 56px 5px 14px; min-height:46px; } .pc-h2 img { height:36px; margin-right:6px; } .pc-h2 .pc-hn { font-size:10px; }
+ .pc-b { display:flex; gap:12px; padding:7px 14px 0 16px; }
+-.pc-ph { width:96px; height:96px; flex:none; background:#DBB43C; padding:3px; box-sizing:content-box; display:flex; align-items:center; justify-content:center; }
+-.pc-ph { overflow:hidden; } .pc-ph img { width:96px; height:96px; object-fit:cover; object-position:50% 12%; display:block; } .pc-ph b { font-size:38px; color:#123B7A; background:#EDE7D3; width:96px; height:96px; display:flex; align-items:center; justify-content:center; }
++.pc-ph { width:84px; height:112px; flex:none; background:#DBB43C; padding:3px; box-sizing:content-box; display:flex; align-items:center; justify-content:center; }
++.pc-ph { overflow:hidden; } .pc-ph img { width:84px; height:112px; object-fit:cover; object-position:center center; display:block; } .pc-ph b { font-size:38px; color:#123B7A; background:#EDE7D3; width:84px; height:112px; display:flex; align-items:center; justify-content:center; }
+ .pc-i h4 { margin:0 0 6px; font-size:12.5px; color:#123B7A; }
+ .pc-i p, .pc-i2 p { margin:0 0 3px; display:flex; gap:6px; }
+ .pc-i p i { font-style:normal; width:78px; flex:none; color:#8B7B1E; font-weight:700; } .pc-i p b { color:#123B7A; font-size:9.5px; }
+diff --git a/resources/views/admin/id-cards/_card.blade.php b/resources/views/admin/id-cards/_card.blade.php
+index bba25ed..6294d5c 100644
+--- a/resources/views/admin/id-cards/_card.blade.php
++++ b/resources/views/admin/id-cards/_card.blade.php
+@@ -4,7 +4,7 @@
+     $public = $public ?? false;   // public pages: no DOB, masked PID, no guardian phone / home address
+     $logo = collect([public_path('images/logo-glow.png'), public_path('images/logo.png'), public_path('images/lc/emblem.jpg')])->first(fn ($f) => is_file($f)) ?: public_path('images/logo.png');
+     $logoOk = is_file($logo);
+-    $smallPhoto = \App\Support\PdfPhoto::small($person->photo_url ?? null, 260, true);
++    $smallPhoto = \App\Support\PdfPhoto::small($person->photo_url ?? null, 340, false, true);
+     $photoOk = $smallPhoto !== null;
+     $fmt = fn ($d) => $d ? \Carbon\Carbon::parse($d)->format('M d, Y') : '—';
+     $session = app(\App\Services\SchoolScheduleService::class)->academicYearFor(now());
+@@ -76,11 +76,11 @@
+     </tr></table>
+     <table class="w"><tr>
+         <td style="width:108px;padding:6px 0 0 16px;">
+-            <div style="background:#DBB43C;padding:3px;width:96px;height:96px;">
++            <div style="background:#DBB43C;padding:3px;width:84px;height:112px;">
+                 @if ($photoOk)
+-                    <img src="{{ $smallPhoto }}" width="96" height="96">
++                    <img src="{{ $smallPhoto }}" width="84" height="112">
+                 @else
+-                    <div style="width:96px;height:70px;padding-top:26px;background:#EDE7D3;text-align:center;font-size:38px;color:#123B7A;">{{ $initial }}</div>
++                    <div style="width:84px;height:76px;padding-top:36px;background:#EDE7D3;text-align:center;font-size:38px;color:#123B7A;">{{ $initial }}</div>
+                 @endif
+             </div>
+         </td>
+diff --git a/resources/views/pages/_id-preview.blade.php b/resources/views/pages/_id-preview.blade.php
+index 62a5a53..c2116bf 100644
+--- a/resources/views/pages/_id-preview.blade.php
++++ b/resources/views/pages/_id-preview.blade.php
+@@ -30,7 +30,7 @@
+         <img src="{{ $logo }}" alt="">
+     </div>
+     <div class="pc-b">
+-        <div class="pc-ph">@if ($person->photo_url)<img src="{{ \App\Support\PdfPhoto::small($person->photo_url, 260, true) ?: $person->photo_url }}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}'}))">@else<b>{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}</b>@endif</div>
++        <div class="pc-ph">@if ($person->photo_url)<img src="{{ \App\Support\PdfPhoto::small($person->photo_url, 340, false, true) ?: $person->photo_url }}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}'}))">@else<b>{{ mb_strtoupper(mb_substr($person->name ?? '?', 0, 1)) }}</b>@endif</div>
+         <div class="pc-i">
+             <h4>{{ mb_strtoupper($person->name) }}</h4>
+             @foreach ($rows as [$l, $v])<p><i>{{ $l }} :</i><b>{{ $v }}</b></p>@endforeach
+diff --git a/tests/Feature/StaffBioAndPhotoCropTest.php b/tests/Feature/StaffBioAndPhotoCropTest.php
+index e3e3c1c..0851c2f 100644
+--- a/tests/Feature/StaffBioAndPhotoCropTest.php
++++ b/tests/Feature/StaffBioAndPhotoCropTest.php
+@@ -61,4 +61,30 @@ class StaffBioAndPhotoCropTest extends TestCase
+         [, , $side2] = $crop->invoke(null, $b, 600, 800);
+         $this->assertGreaterThan(500, $side2);
+     }
++
++    public function test_id_card_photo_is_a_3_by_4_portrait_crop_never_stretched(): void
++    {
++        if (! extension_loaded('gd')) {
++            $this->markTestSkipped('PHP GD extension not installed here.');
++        }
++        foreach ([[600, 800], [1000, 700], [400, 400]] as [$w, $h]) {
++            $im = imagecreatetruecolor($w, $h);
++            imagefill($im, 0, 0, imagecolorallocate($im, 240, 240, 240));
++            ob_start();
++            imagepng($im);
++            $uri = 'data:image/png;base64,'.base64_encode(ob_get_clean());
++            $out = PdfPhoto::small($uri, 340, false, true);
++            $info = getimagesizefromstring(base64_decode(substr($out, strpos($out, ',') + 1)));
++            $this->assertEqualsWithDelta(0.75, $info[0] / $info[1], 0.02, "{$w}x{$h} must come out 3:4");
++        }
++    }
++
++    public function test_student_and_staff_card_photo_frames_share_the_same_size(): void
++    {
++        $css = file_get_contents(public_path('css/card-preview.css'));
++        $this->assertStringContainsString('.pc-ph { width:84px; height:112px;', $css);
++        $card = file_get_contents(resource_path('views/admin/id-cards/_card.blade.php'));
++        $this->assertStringContainsString('width:84px;height:112px;', $card);   // one shared view for students and staff
++        $this->assertStringContainsString('width="84" height="112"', $card);
++    }
+ }
