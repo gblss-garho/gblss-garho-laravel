@@ -3,6 +3,12 @@
 @section('title', 'E-Library')
 
 @section('content')
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Urdu stories need a real Urdu font: the Sindhi font draws ے ھ ٹ ں wrongly. */
+        .fb-item .ur { font-family: 'Noto Nastaliq Urdu','Noto Naskh Arabic',serif !important; line-height: 2.4 !important; }
+        .fb-item h3.ur { line-height: 2.2 !important; }
+    </style>
     @include('pages._hero', ['pill' => 'E-Library — Stories, Poems, Books, Videos & Songs'])
     @if (session('ok'))<div class="ok">{{ session('ok') }}</div>@endif
     @if ($errors->any())<div class="err">{{ $errors->first() }}</div>@endif
@@ -52,7 +58,7 @@
             @php $embed = \App\Http\Controllers\ElibraryController::youtubeEmbed($f->media_url); [$label, $icon, $cta] = $types[$f->type]; @endphp
             <div class="fb-item">
                 <small>{{ $icon }} {{ $label }}</small>
-                <h3 dir="auto" style="margin:4px 0 8px">{{ $f->title }}</h3>
+                <h3 dir="auto" @class(['ur' => preg_match('/[\x{06D2}\x{06BA}\x{06C1}\x{0679}\x{0691}]/u', $f->title)]) style="margin:4px 0 8px">{{ $f->title }}</h3>
                 @if ($f->image_url)<img src="{{ $f->image_url }}" alt="" style="max-width:100%;border-radius:12px;margin-bottom:8px">@endif
                 @if ($embed)
                     <div style="position:relative;padding-top:56%;margin-bottom:8px"><iframe src="{{ $embed }}" allowfullscreen loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px"></iframe></div>
@@ -61,7 +67,7 @@
                 @elseif ($f->media_url)
                     <a class="btn" href="{{ $f->media_url }}" target="_blank" rel="noopener noreferrer">{{ $cta }}</a>
                 @endif
-                @if ($f->content)<p dir="auto" style="white-space:pre-wrap;line-height:1.7">{{ $f->content }}</p>@endif
+                @if ($f->content)<p dir="auto" @class(['ur' => preg_match('/[\x{06D2}\x{06BA}\x{06C1}\x{0679}\x{0691}]/u', $f->content)]) style="white-space:pre-wrap;line-height:1.7">{{ $f->content }}</p>@endif
                 @if ($staff)
                     <a href="{{ route('public.elibrary', ['type' => $f->type, 'edit' => $f->id], false) }}">Edit</a>
                     <form method="POST" action="{{ route('elibrary.destroy', $f->id, false) }}" style="display:inline" onsubmit="return confirm('Ye item delete karein?')">

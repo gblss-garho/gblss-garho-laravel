@@ -70,8 +70,16 @@ table.bb-m { border-collapse:separate; border-spacing:0; width:100%; font-size:1
 .bb-k { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 .bb-k div { background:#F4F0E3; border-radius:14px; padding:14px 8px; text-align:center; font-size:13px; color:#6b6450; }
 .bb-k b { display:block; font-size:26px; color:#0F5132; } .bb-k b.g { color:#A8861F; } .bb-k b.b { color:#1E4D6B; }
+@page { size: A4 landscape; margin: 8mm; }
 @media print {
-  .bb-m .bb-sn { position:static; } .bb-m th, .bb-m td { border:1px solid #888 !important; padding:3px 4px; font-size:10.5px; } .bb-m th { background:#eee !important; -webkit-print-color-adjust:exact; }
+  /* the register must fit the page width: no scroll box, fixed columns, smaller type */
+  .wrap, main, .bb-card, .bb-scroll { max-width:none !important; width:100% !important; overflow:visible !important; padding-left:0 !important; padding-right:0 !important; }
+  table.bb-m { table-layout:fixed; width:100% !important; min-width:0 !important; }
+  .bb-m th.bb-sn, .bb-m td.bb-sn { width:34px; } .bb-m td:nth-child(2), .bb-m th:nth-child(2) { width:92px; white-space:normal !important; }
+  .bb-m th.sb { white-space:normal; font-size:8px; padding:2px 1px; word-break:break-word; }
+  .bb-m td { white-space:normal !important; overflow:hidden; } .bb-m tr { break-inside:avoid; }
+  .bb-m thead { display:table-header-group; }
+  .bb-m .bb-sn { position:static; } .bb-m th, .bb-m td { border:1px solid #888 !important; padding:2px 3px; font-size:9.5px; } .bb-m th { background:#eee !important; -webkit-print-color-adjust:exact; }
   .bb-panel, .bb-bar, .bb-top { display:none !important; }
   .site-head, .site-foot, .m-nav, .more-sheet, .more-backdrop, nav, .bb-noprint, .bb-tabs, .bb-form, .bb-tools, .bb-hero, .page-title { display:none !important; }
   .bb-pr { display:block; text-align:center; margin-bottom:10px; }

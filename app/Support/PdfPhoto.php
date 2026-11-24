@@ -267,8 +267,7 @@ class PdfPhoto
     /**
      * Passport-style frame: the photo is scaled (never stretched) so its width fills the frame edge to edge,
      * the chest sits on the bottom line and the head keeps a clear gap from the top line. Only spare
-     * background above or below is trimmed; if the head is too close to the top, the gap is filled with
-     * the photo's own background colour.
+     * background above or below is trimmed; if the head is too close to the top, the gap is plain white.
      */
     private static function framed($im, int $w, int $h, int $max): string
     {
@@ -295,7 +294,7 @@ class PdfPhoto
         }
 
         $out = imagecreatetruecolor($cW, $cH);
-        imagefill($out, 0, 0, self::edgeColour($im, $w, $h, $out));
+        imagefill($out, 0, 0, imagecolorallocate($out, 255, 255, 255));
         $k = $cW / $sw;
         $srcY = max(0, $sy);
         $dstY = (int) round(($srcY - $sy) * $k);
@@ -308,41 +307,5 @@ class PdfPhoto
         imagedestroy($out);
 
         return 'data:image/jpeg;base64,'.base64_encode($jpg);
-    }
-
-    /** Average colour of the photo's outer edge when it is a plain backdrop; white when the edge is busy. */
-    private static function edgeColour($im, int $w, int $h, $canvas): int
-    {
-        $tw = 48;
-        $th = max(8, (int) round(48 * $h / $w));
-        $t = imagecreatetruecolor($tw, $th);
-        imagecopyresampled($t, $im, 0, 0, 0, 0, $tw, $th, $w, $h);
-        $px = [];
-        for ($x = 0; $x < $tw; $x++) {
-            $px[] = imagecolorat($t, $x, 0);
-            $px[] = imagecolorat($t, $x, $th - 1);
-        }
-        for ($y = 1; $y < $th - 1; $y++) {
-            $px[] = imagecolorat($t, 0, $y);
-            $px[] = imagecolorat($t, $tw - 1, $y);
-        }
-        imagedestroy($t);
-        $n = count($px);
-        $sum = [0, 0, 0];
-        foreach ($px as $c) {
-            $sum[0] += ($c >> 16) & 255;
-            $sum[1] += ($c >> 8) & 255;
-            $sum[2] += $c & 255;
-        }
-        $mean = array_map(fn ($v) => $v / $n, $sum);
-        $var = 0;
-        foreach ($px as $c) {
-            $var += (((($c >> 16) & 255) - $mean[0]) ** 2 + ((($c >> 8) & 255) - $mean[1]) ** 2 + (($c & 255) - $mean[2]) ** 2) / 3;
-        }
-        if (sqrt($var / $n) > 38) {
-            return imagecolorallocate($canvas, 255, 255, 255);
-        }
-
-        return imagecolorallocate($canvas, (int) round($mean[0]), (int) round($mean[1]), (int) round($mean[2]));
     }
 }
