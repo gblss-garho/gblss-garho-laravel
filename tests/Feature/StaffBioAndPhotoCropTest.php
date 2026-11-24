@@ -109,4 +109,12 @@ class StaffBioAndPhotoCropTest extends TestCase
         $this->assertStringContainsString('width:91px;height:106px;', $card);   // one shared view for students and staff
         $this->assertStringContainsString('width="91" height="106"', $card);
     }
+
+    public function test_admit_card_photo_frame_is_portrait_like_the_id_card(): void
+    {
+        $slip = file_get_contents(resource_path('views/admin/admit-cards/_slip.blade.php'));
+        $this->assertStringContainsString('width="72" height="84"', $slip);
+        $this->assertStringContainsString('PdfPhoto::small($student->photo_url, 340, false, true)', $slip);
+        $this->assertStringContainsString('width:72px; height:84px;', file_get_contents(public_path('css/card-preview.css')));
+    }
 }

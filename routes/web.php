@@ -20,7 +20,8 @@ Route::post('/login', [LoginController::class, 'login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
-    Route::get('/admin/dashboard', fn () => view('dashboards.admin'))->name('admin.dashboard');
+    Route::get('/admin/dashboard', fn (\App\Services\AttendanceOverview $o) => view('dashboards.admin', ['att' => $o->today(now())]))->name('admin.dashboard');
+    Route::get('/admin/attendance-overview', [\App\Http\Controllers\AttendanceOverviewController::class, 'index'])->name('admin.attendance-overview');
     Route::get('/admin/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'index'])->name('admin.daily-attendance');
     Route::post('/admin/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'mark'])->name('admin.daily-attendance.mark');
     Route::get('/admin/class-attendance', [\App\Http\Controllers\ClassAttendanceController::class, 'index'])->name('admin.class-attendance');

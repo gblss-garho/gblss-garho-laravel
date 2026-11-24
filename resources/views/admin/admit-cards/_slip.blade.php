@@ -5,7 +5,7 @@
     $examYear = $school['exam_year'] ?? null;
     $examLine = ($examTitle ?: '—').($examYear ? ' ('.$examYear.')' : '');
     $class = $student->class.($student->section ? '-'.$student->section : '');
-    $photo = (string) \App\Support\PdfPhoto::small($student->photo_url, 260, true);
+    $photo = (string) \App\Support\PdfPhoto::small($student->photo_url, 340, false, true);   // same passport-style fit as the ID card
     $photoOk = $photo !== '';
     $rows = [
         ['Exam', $examLine],
@@ -41,9 +41,9 @@
             <td style="width:84px;text-align:center;padding-top:14px;">
                 <div style="border:2px solid #DBB43C;padding:2px;width:76px;">
                     @if ($photoOk)
-                        <img src="{{ $photo }}" width="72" height="72">
+                        <img src="{{ $photo }}" width="72" height="84">
                     @else
-                        <div style="width:72px;height:56px;padding-top:16px;background:#F5F1E6;text-align:center;font-size:22px;color:#0F5132;">{{ mb_strtoupper(mb_substr($student->name ?? '?', 0, 1)) }}</div>
+                        <div style="width:72px;height:56px;padding-top:28px;background:#F5F1E6;text-align:center;font-size:22px;color:#0F5132;">{{ mb_strtoupper(mb_substr($student->name ?? '?', 0, 1)) }}</div>
                     @endif
                 </div>
                 <div style="font-size:7px;color:#8B8371;margin-top:4px;">STUDENT PHOTO</div>

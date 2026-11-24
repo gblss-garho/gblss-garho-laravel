@@ -7,7 +7,39 @@
     <p class="sd sd-note">اسڪول جو رڪارڊ، نتيجا، ڪارڊ ۽ سيٽنگون هتان سنڀاليو.</p>
     <p class="who">Logged in as: {{ auth()->user()->name }} ({{ auth()->user()->email }})</p>
 
+    @if (! empty($att))
+        <link rel="stylesheet" href="{{ asset('css/attendance-overview.css') }}">
+        <section class="att-card">
+            <h2><span>Aaj ki Hazri &middot; {{ $att['date']->format('D, j M') }}</span><a href="{{ route('admin.attendance-overview', [], false) }}">Poora record</a></h2>
+            <div class="att-grid">
+                <div class="att-box">
+                    <h3>Students ({{ $att['students']['classes_marked'] }}/{{ $att['students']['classes_total'] }} class ki hazri lagi)</h3>
+                    <div class="att-row">
+                        <span class="g"><b>{{ $att['students']['present'] }}</b> present</span>
+                        <span class="r"><b>{{ $att['students']['absent'] }}</b> absent</span>
+                        <span class="v"><b>{{ $att['students']['leave'] }}</b> leave</span>
+                    </div>
+                </div>
+                <div class="att-box">
+                    <h3>Staff ({{ $att['staff']['total'] }})</h3>
+                    @if ($att['school_day'])
+                        <div class="att-row">
+                            <span class="g"><b>{{ $att['staff']['present'] }}</b> present</span>
+                            <span class="t"><b>{{ $att['staff']['late'] }}</b> late</span>
+                            <span class="v"><b>{{ $att['staff']['leave'] }}</b> leave</span>
+                            <span class="r"><b>{{ $att['staff']['absent'] }}</b> absent</span>
+                        </div>
+                    @else
+                        <div class="att-row">Aaj school ki chhutti hai.</div>
+                    @endif
+                </div>
+            </div>
+            <p class="att-note">Staff ka "absent" din ke aakhri hisse (check-out ka waqt) se pehle nahi ginta.</p>
+        </section>
+    @endif
+
     <div class="tiles">
+        <a class="tile" href="{{ route('admin.attendance-overview', [], false) }}"><b>Attendance Overview</b><span>Staff + students, koi bhi hafta ya mahina</span></a>
         <a class="tile" href="{{ route('admin.students.index', [], false) }}"><b>Students</b><span>Register, edit, add</span></a>
         <a class="tile" href="{{ route('admin.daily-attendance', [], false) }}"><b>Daily Attendance</b><span>Present / Absent / Leave hath se</span></a>
         <a class="tile" href="{{ route('admin.class-attendance', [], false) }}"><b>Students Attendance</b><span>Weekly / monthly record aur status</span></a>
