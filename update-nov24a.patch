@@ -1,0 +1,595 @@
+diff --git a/app/Http/Controllers/AttendanceOverviewController.php b/app/Http/Controllers/AttendanceOverviewController.php
+new file mode 100644
+index 0000000..2b4fe23
+--- /dev/null
++++ b/app/Http/Controllers/AttendanceOverviewController.php
+@@ -0,0 +1,44 @@
++<?php
++
++namespace App\Http\Controllers;
++
++use App\Services\AttendanceOverview;
++use Carbon\Carbon;
++use Illuminate\Http\Request;
++
++/** Admin: staff + student attendance for any week or month. */
++class AttendanceOverviewController extends Controller
++{
++    public function index(Request $request, AttendanceOverview $overview)
++    {
++        $now = Carbon::now();
++        $mode = $request->query('mode') === 'week' ? 'week' : 'month';
++        $tab = $request->query('tab') === 'staff' ? 'staff' : 'students';
++
++        $month = (string) $request->query('month', '');
++        $month = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $month) ? $month : $now->format('Y-m');
++        $anchor = (string) $request->query('week', '');
++        try {
++            $anchor = preg_match('/^\d{4}-\d{2}-\d{2}$/', $anchor) ? Carbon::parse($anchor) : $now->copy();
++        } catch (\Throwable $e) {
++            $anchor = $now->copy();
++        }
++
++        if ($mode === 'week') {
++            $from = $anchor->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
++            $to = $from->copy()->addDays(6);
++        } else {
++            $from = Carbon::parse($month.'-01')->startOfMonth();
++            $to = $from->copy()->endOfMonth();
++        }
++
++        return view('attendance.overview', [
++            'mode' => $mode, 'tab' => $tab, 'month' => $month, 'from' => $from, 'to' => $to, 'now' => $now,
++            'students' => $tab === 'students' ? $overview->students($from, $to, $mode) : null,
++            'staff' => $tab === 'staff' ? $overview->staff($from, $to, $now, $mode) : null,
++            'prev' => $mode === 'week' ? $from->copy()->subWeek()->toDateString() : $from->copy()->subMonth()->format('Y-m'),
++            'next' => $mode === 'week' ? $from->copy()->addWeek()->toDateString() : $from->copy()->addMonth()->format('Y-m'),
++            'base' => route('admin.attendance-overview', [], false),
++        ]);
++    }
++}
+diff --git a/app/Services/AttendanceOverview.php b/app/Services/AttendanceOverview.php
+new file mode 100644
+index 0000000..d5333d5
+--- /dev/null
++++ b/app/Services/AttendanceOverview.php
+@@ -0,0 +1,154 @@
++<?php
++
++namespace App\Services;
++
++use App\Models\AttendanceMark;
++use App\Models\AttendanceRecord;
++use App\Models\Student;
++use App\Models\Teacher;
++use App\Models\TeacherAttendance;
++use Carbon\Carbon;
++use Illuminate\Support\Facades\DB;
++
++/** School-wide attendance for the admin: every class and every staff member over any week or month. */
++class AttendanceOverview
++{
++    public function __construct(protected SchoolScheduleService $schedule, protected ClassAttendanceReport $classReport)
++    {
++    }
++
++    /** One row per class with present / absent / leave totals for the period. */
++    public function students(Carbon $from, Carbon $to, string $mode): array
++    {
++        $order = ResultSessionFix::ORDER;
++        $classes = Student::where('passed_out', false)->distinct()->pluck('class')->filter()->values()->all();
++        usort($classes, function ($a, $b) use ($order) {
++            $ia = array_search($a, $order, true);
++            $ib = array_search($b, $order, true);
++
++            return [$ia === false ? 99 : $ia, $a] <=> [$ib === false ? 99 : $ib, $b];
++        });
++
++        $rows = [];
++        $tot = ['strength' => 0, 'p' => 0, 'a' => 0, 'l' => 0];
++        foreach ($classes as $class) {
++            $d = $this->classReport->build($class, $from, $to, $mode);
++            $p = array_sum(array_column($d['students'], 'p'));
++            $a = array_sum(array_column($d['students'], 'a'));
++            $l = array_sum(array_column($d['students'], 'l'));
++            $rows[] = [
++                'class' => $class, 'strength' => $d['summary']['total'], 'days' => $d['summary']['class_days'],
++                'p' => $p, 'a' => $a, 'l' => $l, 'pct' => $this->pct($p, $a),
++                'regular' => $d['summary']['regular'], 'irregular' => $d['summary']['irregular'],
++            ];
++            $tot['strength'] += $d['summary']['total'];
++            $tot['p'] += $p;
++            $tot['a'] += $a;
++            $tot['l'] += $l;
++        }
++        $tot['pct'] = $this->pct($tot['p'], $tot['a']);
++
++        return ['rows' => $rows, 'total' => $tot];
++    }
++
++    /**
++     * Every staff member, day by day. Cell codes: P present, T late, V approved leave, A absent, - nothing to show.
++     * Week = all 7 days (off days shown); month = school days only.
++     */
++    public function staff(Carbon $from, Carbon $to, Carbon $now, string $mode): array
++    {
++        $days = [];
++        for ($d = $from->copy(); $d->lte($to); $d->addDay()) {
++            $school = $this->schedule->isSchoolDay($d);
++            if ($mode === 'week' || $school) {
++                $days[] = ['date' => $d->copy(), 'key' => $d->toDateString(), 'school' => $school];
++            }
++        }
++
++        $records = TeacherAttendance::whereDate('date', '>=', $from->toDateString())->whereDate('date', '<=', $to->toDateString())
++            ->get()->groupBy('teacher_id')->map(fn ($g) => $g->keyBy(fn ($r) => $r->date->toDateString()));
++        $leaves = DB::table('leave_requests')->where('status', 'approved')
++            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
++            ->get()->groupBy('teacher_id')->map(fn ($g) => $g->keyBy(fn ($l) => substr((string) $l->date, 0, 10)));
++
++        $rows = [];
++        $dayTot = [];
++        foreach (Teacher::orderBy('name')->get() as $t) {
++            $joined = $t->created_at ? Carbon::parse($t->created_at)->startOfDay() : null;
++            $cells = [];
++            $c = ['present' => 0, 'late' => 0, 'leave' => 0, 'absent' => 0, 'late_minutes' => 0];
++            foreach ($days as $day) {
++                $d = $day['date'];
++                $r = $records->get($t->id)?->get($day['key']);
++                $code = '-';
++                $late = 0;
++                if ($r && $r->check_in_at) {
++                    $late = (int) $r->late_minutes > 0 ? (int) $r->late_minutes : $this->schedule->lateMinutes($r->check_in_at->copy());
++                    $code = $late > 0 ? 'T' : 'P';
++                    $c['present']++;
++                    if ($late > 0) {
++                        $c['late']++;
++                        $c['late_minutes'] += $late;
++                    }
++                } elseif (! $day['school']) {
++                    $code = 'O';
++                } elseif ($leaves->get($t->id)?->has($day['key'])) {
++                    $code = 'V';
++                    $c['leave']++;
++                } elseif ($d->gt($now->copy()->endOfDay()) || ($joined && $d->lt($joined))) {
++                    $code = '-';
++                } elseif ($d->isSameDay($now) && $now->lt($now->copy()->setTimeFromTimeString($this->schedule->timesFor($d)['out_start']))) {
++                    $code = '-';
++                } else {
++                    $code = 'A';
++                    $c['absent']++;
++                }
++                $cells[] = ['code' => $code, 'late' => $late];
++                $dayTot[$day['key']][$code] = ($dayTot[$day['key']][$code] ?? 0) + 1;
++            }
++            $rows[] = ['teacher' => $t, 'cells' => $cells] + $c + ['pct' => $this->pct($c['present'], $c['absent'])];
++        }
++
++        $sum = ['present' => array_sum(array_column($rows, 'present')), 'late' => array_sum(array_column($rows, 'late')),
++            'leave' => array_sum(array_column($rows, 'leave')), 'absent' => array_sum(array_column($rows, 'absent'))];
++        $sum['pct'] = $this->pct($sum['present'], $sum['absent']);
++
++        return ['days' => $days, 'rows' => $rows, 'sum' => $sum, 'dayTotals' => $dayTot, 'staff' => count($rows)];
++    }
++
++    /** Quick numbers for the dashboard card. Never throws: the dashboard must always open. */
++    public function today(Carbon $now): ?array
++    {
++        try {
++            $date = $now->toDateString();
++            $records = AttendanceRecord::whereDate('date', $date)->get();
++            $marks = $records->isEmpty() ? collect() : AttendanceMark::whereIn('attendance_record_id', $records->pluck('id'))->get(['status'])->countBy('status');
++            $markedClasses = $records->pluck('class_name')->unique()->values();
++            $strength = $markedClasses->isEmpty() ? 0 : Student::where('passed_out', false)->whereIn('class', $markedClasses)->count();
++            $p = (int) $marks->get('P', 0);
++            $l = (int) $marks->get('L', 0);
++            $totalClasses = Student::where('passed_out', false)->distinct()->count('class');
++
++            $staff = $this->staff($now->copy()->startOfDay(), $now->copy()->startOfDay(), $now, 'week');
++            $codes = $staff['dayTotals'][$date] ?? [];
++
++            return [
++                'date' => $now,
++                'school_day' => $this->schedule->isSchoolDay($now),
++                'students' => ['present' => $p, 'leave' => $l, 'absent' => max(0, $strength - $p - $l), 'strength' => $strength,
++                    'classes_marked' => $markedClasses->count(), 'classes_total' => $totalClasses],
++                'staff' => ['present' => ($codes['P'] ?? 0) + ($codes['T'] ?? 0), 'late' => $codes['T'] ?? 0, 'leave' => $codes['V'] ?? 0,
++                    'absent' => $codes['A'] ?? 0, 'total' => $staff['staff']],
++            ];
++        } catch (\Throwable $e) {
++            \Log::warning('Attendance overview (today) failed: '.$e->getMessage());
++
++            return null;
++        }
++    }
++
++    private function pct(int $p, int $a): ?int
++    {
++        return ($p + $a) > 0 ? (int) round($p * 100 / ($p + $a)) : null;
++    }
++}
+diff --git a/public/css/attendance-overview.css b/public/css/attendance-overview.css
+new file mode 100644
+index 0000000..a32c5d1
+--- /dev/null
++++ b/public/css/attendance-overview.css
+@@ -0,0 +1,36 @@
++.ao { max-width: 980px; }
++.ao-tabs { display:flex; gap:8px; margin:6px 0 4px; }
++.ao-tabs a { flex:1; text-align:center; text-decoration:none; font-weight:700; font-size:14px; padding:10px; border-radius:999px; background:#EFEAD8; color:#555; }
++.ao-tabs a.on { background:#0F5132; color:#FAF6EC; }
++.ao-period { display:flex; align-items:center; justify-content:space-between; background:#fff; border:1px solid #E3DCC7; border-radius:16px; padding:6px 8px; margin:10px 0; }
++.ao-period b { font-family:'Noto Serif',Georgia,serif; font-size:16px; color:#0F5132; }
++.ao-period a { text-decoration:none; width:36px; height:36px; line-height:36px; text-align:center; border-radius:50%; background:#EFEAD8; color:#0F5132; font-size:18px; }
++.ao-stats { background:radial-gradient(130% 120% at 0% 0%, #1B7A4D 0%, #0F5132 60%, #0a3a24 100%); color:#FAF6EC; border-radius:20px; padding:10px; margin:10px 0; }
++.ao-scroll { overflow-x:auto; background:#fff; border:1px solid #E3DCC7; border-radius:16px; margin:10px 0; -webkit-overflow-scrolling:touch; }
++.ao-t { width:100%; border-collapse:collapse; font-size:13.5px; }
++.ao-t th, .ao-t td { padding:9px 8px; text-align:center; border-bottom:1px solid #F0EBDA; white-space:nowrap; }
++.ao-t th { background:#F6F2E3; color:#5b5640; font-size:11.5px; position:sticky; top:0; }
++.ao-t th small { display:block; font-weight:600; font-size:9px; opacity:.7; }
++.ao-t th.off { opacity:.45; }
++.ao-t .g { color:#15803D; font-weight:700; } .ao-t .r { color:#B91C1C; font-weight:700; } .ao-t .v { color:#4F46E5; font-weight:700; }
++.ao-t td a { color:#0F5132; text-decoration:none; }
++.ao-pct { font-weight:800; padding:2px 9px; border-radius:999px; background:#EEE9D8; color:#555; }
++.ao-pct.hi { background:#DCFCE7; color:#14532D; } .ao-pct.mid { background:#FEF3C7; color:#92400E; } .ao-pct.lo { background:#FEE2E2; color:#991B1B; }
++.ao-g .nm { text-align:left; position:sticky; left:0; background:#fff; min-width:130px; max-width:160px; white-space:normal; font-weight:700; z-index:1; }
++.ao-g .nm small { display:block; font-weight:500; font-size:10.5px; color:#8a8470; }
++.ao-g thead .nm { background:#F6F2E3; }
++.ao-g td.cc { font-weight:800; font-size:12px; padding:6px 4px; min-width:26px; color:#999; }
++.ao-g .c-P { background:#DCFCE7; color:#14532D; } .ao-g .c-T { background:#FEF3C7; color:#92400E; }
++.ao-g .c-V { background:#E0E7FF; color:#3730A3; } .ao-g .c-A { background:#FEE2E2; color:#991B1B; } .ao-g .c-O { background:#F6F2E3; }
++.cr-legend .t { background:#F59E0B; }
++/* dashboard card */
++.att-card { background:#fff; border-radius:14px; padding:14px 16px; margin:10px 0 14px; box-shadow:0 2px 10px rgba(0,0,0,.07); border-top:4px solid #DBB43C; }
++.att-card h2 { margin:0 0 8px; font-size:16px; color:#0F5132; display:flex; justify-content:space-between; align-items:center; gap:8px; }
++.att-card h2 a { font-size:12.5px; font-weight:700; background:#0F5132; color:#FAF6EC; padding:6px 12px; border-radius:999px; text-decoration:none; white-space:nowrap; }
++.att-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
++.att-box { background:#FBF9F2; border:1px solid #EFE9D2; border-radius:12px; padding:10px; }
++.att-box h3 { margin:0 0 6px; font-size:13px; color:#6b6b5c; }
++.att-row { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:13px; }
++.att-row b { font-size:18px; font-family:'Noto Serif',Georgia,serif; } .att-row .g { color:#15803D; } .att-row .r { color:#B91C1C; } .att-row .v { color:#4F46E5; } .att-row .t { color:#B45309; }
++.att-note { font-size:12px; color:#8a8470; margin:8px 0 0; }
++@media (max-width:420px) { .att-grid { grid-template-columns:1fr; } }
+diff --git a/public/css/card-preview.css b/public/css/card-preview.css
+index e1be8c7..a80b66e 100644
+--- a/public/css/card-preview.css
++++ b/public/css/card-preview.css
+@@ -34,7 +34,7 @@
+ .pc-sh { background:linear-gradient(180deg,#0F5132,#0B3D26); color:#FAF6EC; display:flex; align-items:center; gap:10px; padding:12px 16px 4px; } .pc-sh img { height:72px; } .pc-sh div { flex:1; text-align:center; } .pc-sh b { display:block; font-size:13px; line-height:1.35; } .pc-sh small { font-size:8.5px; opacity:.85; }
+ .pc-sb { background:#0B3D26; text-align:center; padding:0 0 12px; } .pc-sb span { display:inline-block; border:1px solid #DBB43C; color:#F0D989; font-size:9px; font-weight:700; letter-spacing:1px; padding:3px 12px; }
+ .pc-sc { display:flex; gap:12px; padding:14px 16px 6px; }
+-.pc-sp { width:80px; overflow:hidden; flex:none; text-align:center; } .pc-sp img, .pc-sp b { width:72px; height:72px; border:2px solid #0F5132; padding:2px; object-fit:cover; object-position:50% 12%; box-sizing:content-box; display:flex; align-items:center; justify-content:center; font-size:22px; color:#0F5132; margin:0 auto; } .pc-sp small { display:block; font-size:7px; color:#8B8371; margin-top:4px; }
++.pc-sp { width:80px; overflow:hidden; flex:none; text-align:center; } .pc-sp img, .pc-sp b { width:72px; height:84px; border:2px solid #0F5132; padding:2px; object-fit:contain; object-position:center center; background:#fff; box-sizing:content-box; display:flex; align-items:center; justify-content:center; font-size:22px; color:#0F5132; margin:0 auto; } .pc-sp small { display:block; font-size:7px; color:#8B8371; margin-top:4px; }
+ .pc-slip table { flex:1; width:auto; margin:0; border-radius:0; box-shadow:none; background:transparent; border-collapse:collapse; }
+ .pc-slip th { background:transparent; text-align:left; color:#0F5132; font-size:11px; font-weight:700; width:104px; padding:5px 0; border-bottom:1px dashed #E3DCC7; }
+ .pc-slip td { background:transparent !important; font-size:11px; padding:5px 0; border-bottom:1px dashed #E3DCC7; }
+diff --git a/resources/views/admin/admit-cards/_slip.blade.php b/resources/views/admin/admit-cards/_slip.blade.php
+index 9bfa8db..b7c3cfb 100644
+--- a/resources/views/admin/admit-cards/_slip.blade.php
++++ b/resources/views/admin/admit-cards/_slip.blade.php
+@@ -5,7 +5,7 @@
+     $examYear = $school['exam_year'] ?? null;
+     $examLine = ($examTitle ?: '—').($examYear ? ' ('.$examYear.')' : '');
+     $class = $student->class.($student->section ? '-'.$student->section : '');
+-    $photo = (string) \App\Support\PdfPhoto::small($student->photo_url, 260, true);
++    $photo = (string) \App\Support\PdfPhoto::small($student->photo_url, 340, false, true);   // same passport-style fit as the ID card
+     $photoOk = $photo !== '';
+     $rows = [
+         ['Exam', $examLine],
+@@ -41,9 +41,9 @@
+             <td style="width:84px;text-align:center;padding-top:14px;">
+                 <div style="border:2px solid #DBB43C;padding:2px;width:76px;">
+                     @if ($photoOk)
+-                        <img src="{{ $photo }}" width="72" height="72">
++                        <img src="{{ $photo }}" width="72" height="84">
+                     @else
+-                        <div style="width:72px;height:56px;padding-top:16px;background:#F5F1E6;text-align:center;font-size:22px;color:#0F5132;">{{ mb_strtoupper(mb_substr($student->name ?? '?', 0, 1)) }}</div>
++                        <div style="width:72px;height:56px;padding-top:28px;background:#F5F1E6;text-align:center;font-size:22px;color:#0F5132;">{{ mb_strtoupper(mb_substr($student->name ?? '?', 0, 1)) }}</div>
+                     @endif
+                 </div>
+                 <div style="font-size:7px;color:#8B8371;margin-top:4px;">STUDENT PHOTO</div>
+diff --git a/resources/views/attendance/overview.blade.php b/resources/views/attendance/overview.blade.php
+new file mode 100644
+index 0000000..112826b
+--- /dev/null
++++ b/resources/views/attendance/overview.blade.php
+@@ -0,0 +1,111 @@
++@extends('layouts.portal')
++
++@section('title', 'Attendance Overview')
++
++@section('content')
++    <link rel="stylesheet" href="{{ asset('css/class-report.css') }}">
++    <link rel="stylesheet" href="{{ asset('css/attendance-overview.css') }}">
++    @php
++        $nav = fn ($v) => $mode === 'week' ? ['week' => $v] : ['month' => $v];
++        $keep = ['mode' => $mode, 'tab' => $tab];
++        $label = $mode === 'week' ? $from->format('j M').' – '.$to->format('j M Y') : $from->format('F Y');
++        $own = $mode === 'week' ? ['week' => $from->toDateString()] : ['month' => $from->format('Y-m')];
++    @endphp
++    <div class="cr ao">
++        <p style="margin:0"><a href="{{ route('admin.dashboard', [], false) }}">&larr; Dashboard</a></p>
++        <h1 style="margin:4px 0 2px">Attendance Overview</h1>
++        <p class="sd sd-note" style="margin:0">اسٽاف ۽ شاگردن جي حاضري: ڪنهن به هفتي يا مهيني جو پورو رڪارڊ.</p>
++
++        <form method="GET" action="{{ $base }}" class="cr-form">
++            <input type="hidden" name="tab" value="{{ $tab }}">
++            <div class="cr-seg">
++                <button name="mode" value="month" @class(['on' => $mode === 'month'])>Mahina</button>
++                <button name="mode" value="week" @class(['on' => $mode === 'week'])>Hafta</button>
++            </div>
++            @if ($mode === 'month')
++                <label class="cr-wide">Mahina <input type="month" name="month" value="{{ $month }}" onchange="this.form.submit()"></label>
++            @else
++                <label class="cr-wide">Hafta (koi bhi din) <input type="date" name="week" value="{{ $from->toDateString() }}" onchange="this.form.submit()"></label>
++            @endif
++        </form>
++
++        <div class="ao-tabs">
++            <a href="{{ $base }}?{{ http_build_query(['mode' => $mode, 'tab' => 'students'] + $own) }}" @class(['on' => $tab === 'students'])>Students</a>
++            <a href="{{ $base }}?{{ http_build_query(['mode' => $mode, 'tab' => 'staff'] + $own) }}" @class(['on' => $tab === 'staff'])>Staff</a>
++        </div>
++
++        <div class="ao-period">
++            <a href="{{ $base }}?{{ http_build_query($keep + $nav($prev)) }}">&larr;</a>
++            <b>{{ $label }}</b>
++            <a href="{{ $base }}?{{ http_build_query($keep + $nav($next)) }}">&rarr;</a>
++        </div>
++
++        @if ($tab === 'students')
++            @php $t = $students['total']; @endphp
++            <div class="cr-stats ao-stats">
++                <div><strong>{{ $t['pct'] !== null ? $t['pct'].'%' : '—' }}</strong><small>HAZRI</small></div>
++                <div><strong>{{ $t['p'] }}</strong><small>PRESENT</small></div>
++                <div><strong>{{ $t['a'] }}</strong><small>ABSENT</small></div>
++                <div><strong>{{ $t['l'] }}</strong><small>LEAVE</small></div>
++            </div>
++            @if (count($students['rows']) === 0)
++                <p class="cr-note">Koi active student nahi mila.</p>
++            @else
++                <div class="ao-scroll"><table class="ao-t">
++                    <thead><tr><th>Class</th><th>Students</th><th>Din</th><th>Present</th><th>Absent</th><th>Leave</th><th>%</th></tr></thead>
++                    <tbody>
++                    @foreach ($students['rows'] as $r)
++                        <tr>
++                            <td><a href="{{ route('admin.class-attendance', ['class' => $r['class'], 'mode' => $mode] + $own, false) }}"><b>{{ $r['class'] }}</b></a></td>
++                            <td>{{ $r['strength'] }}</td>
++                            <td>{{ $r['days'] }}</td>
++                            <td class="g">{{ $r['p'] }}</td>
++                            <td class="r">{{ $r['a'] }}</td>
++                            <td class="v">{{ $r['l'] }}</td>
++                            <td><span @class(['ao-pct', 'hi' => $r['pct'] !== null && $r['pct'] >= 85, 'mid' => $r['pct'] !== null && $r['pct'] >= 70 && $r['pct'] < 85, 'lo' => $r['pct'] !== null && $r['pct'] < 70])>{{ $r['pct'] !== null ? $r['pct'].'%' : '—' }}</span></td>
++                        </tr>
++                    @endforeach
++                    </tbody>
++                </table></div>
++                <p class="cr-note">Class ke naam par dabayen: us class ke har bachay ka din-ba-din record khulega. "Din" = jitne din us class ki hazri lagi.</p>
++            @endif
++        @else
++            @php $s = $staff['sum']; @endphp
++            <div class="cr-stats ao-stats">
++                <div><strong>{{ $s['pct'] !== null ? $s['pct'].'%' : '—' }}</strong><small>HAZRI</small></div>
++                <div><strong>{{ $s['present'] }}</strong><small>PRESENT</small></div>
++                <div><strong>{{ $s['absent'] }}</strong><small>ABSENT</small></div>
++                <div><strong>{{ $s['late'] }}</strong><small>LATE</small></div>
++            </div>
++            @if ($staff['staff'] === 0)
++                <p class="cr-note">Koi staff record nahi mila.</p>
++            @else
++                <div class="ao-scroll"><table class="ao-t ao-g">
++                    <thead><tr>
++                        <th class="nm">Staff</th>
++                        @foreach ($staff['days'] as $d)
++                            <th @class(['off' => ! $d['school']])><small>{{ $d['date']->format('D') }}</small>{{ $d['date']->format('j') }}</th>
++                        @endforeach
++                        <th>P</th><th>A</th><th>L</th><th>Late</th>
++                    </tr></thead>
++                    <tbody>
++                    @foreach ($staff['rows'] as $r)
++                        <tr>
++                            <td class="nm">{{ $r['teacher']->name }}<small>{{ $r['teacher']->designation }}</small></td>
++                            @foreach ($r['cells'] as $c)
++                                <td class="cc c-{{ $c['code'] }}" @if ($c['late']) title="Late {{ $c['late'] }} min" @endif>{{ ['P' => 'P', 'T' => 'T', 'V' => 'L', 'A' => 'A', 'O' => '', '-' => '·'][$c['code']] }}</td>
++                            @endforeach
++                            <td class="g">{{ $r['present'] }}</td><td class="r">{{ $r['absent'] }}</td><td class="v">{{ $r['leave'] }}</td><td>{{ $r['late_minutes'] ? $r['late_minutes'].'m' : '' }}</td>
++                        </tr>
++                    @endforeach
++                    </tbody>
++                </table></div>
++                <div class="cr-legend">
++                    <span><i class="p"></i>P = Present</span><span><i class="t"></i>T = Late</span>
++                    <span><i class="l"></i>L = Chhutti manzoor</span><span><i class="a"></i>A = Absent</span>
++                    <small>Late par ungli rakhein to minute dikhte hain. Jumma/Hafte ki chhutti wale din khali hain.</small>
++                </div>
++            @endif
++        @endif
++    </div>
++@endsection
+diff --git a/resources/views/dashboards/admin.blade.php b/resources/views/dashboards/admin.blade.php
+index 1551e4c..8d96837 100644
+--- a/resources/views/dashboards/admin.blade.php
++++ b/resources/views/dashboards/admin.blade.php
+@@ -7,7 +7,39 @@
+     <p class="sd sd-note">اسڪول جو رڪارڊ، نتيجا، ڪارڊ ۽ سيٽنگون هتان سنڀاليو.</p>
+     <p class="who">Logged in as: {{ auth()->user()->name }} ({{ auth()->user()->email }})</p>
+ 
++    @if (! empty($att))
++        <link rel="stylesheet" href="{{ asset('css/attendance-overview.css') }}">
++        <section class="att-card">
++            <h2><span>Aaj ki Hazri &middot; {{ $att['date']->format('D, j M') }}</span><a href="{{ route('admin.attendance-overview', [], false) }}">Poora record</a></h2>
++            <div class="att-grid">
++                <div class="att-box">
++                    <h3>Students ({{ $att['students']['classes_marked'] }}/{{ $att['students']['classes_total'] }} class ki hazri lagi)</h3>
++                    <div class="att-row">
++                        <span class="g"><b>{{ $att['students']['present'] }}</b> present</span>
++                        <span class="r"><b>{{ $att['students']['absent'] }}</b> absent</span>
++                        <span class="v"><b>{{ $att['students']['leave'] }}</b> leave</span>
++                    </div>
++                </div>
++                <div class="att-box">
++                    <h3>Staff ({{ $att['staff']['total'] }})</h3>
++                    @if ($att['school_day'])
++                        <div class="att-row">
++                            <span class="g"><b>{{ $att['staff']['present'] }}</b> present</span>
++                            <span class="t"><b>{{ $att['staff']['late'] }}</b> late</span>
++                            <span class="v"><b>{{ $att['staff']['leave'] }}</b> leave</span>
++                            <span class="r"><b>{{ $att['staff']['absent'] }}</b> absent</span>
++                        </div>
++                    @else
++                        <div class="att-row">Aaj school ki chhutti hai.</div>
++                    @endif
++                </div>
++            </div>
++            <p class="att-note">Staff ka "absent" din ke aakhri hisse (check-out ka waqt) se pehle nahi ginta.</p>
++        </section>
++    @endif
++
+     <div class="tiles">
++        <a class="tile" href="{{ route('admin.attendance-overview', [], false) }}"><b>Attendance Overview</b><span>Staff + students, koi bhi hafta ya mahina</span></a>
+         <a class="tile" href="{{ route('admin.students.index', [], false) }}"><b>Students</b><span>Register, edit, add</span></a>
+         <a class="tile" href="{{ route('admin.daily-attendance', [], false) }}"><b>Daily Attendance</b><span>Present / Absent / Leave hath se</span></a>
+         <a class="tile" href="{{ route('admin.class-attendance', [], false) }}"><b>Students Attendance</b><span>Weekly / monthly record aur status</span></a>
+diff --git a/resources/views/pages/_admit-preview.blade.php b/resources/views/pages/_admit-preview.blade.php
+index 4a16b2b..d812c4d 100644
+--- a/resources/views/pages/_admit-preview.blade.php
++++ b/resources/views/pages/_admit-preview.blade.php
+@@ -9,7 +9,7 @@
+     <div class="pc-sh"><img src="{{ $logo }}" alt=""><div><b>{{ $school['name'] }}</b><small>{{ $school['address'] }}</small></div></div>
+     <div class="pc-sb"><span>ADMIT CARD</span></div>
+     <div class="pc-sc">
+-        <div class="pc-sp">@if ($student->photo_url)<img src="{{ \App\Support\PdfPhoto::small($student->photo_url, 260, true) ?: $student->photo_url }}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'{{ $ini }}'}))">@else<b>{{ $ini }}</b>@endif<small>STUDENT PHOTO</small></div>
++        <div class="pc-sp">@if ($student->photo_url)<img src="{{ \App\Support\PdfPhoto::small($student->photo_url, 340, false, true) ?: $student->photo_url }}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'{{ $ini }}'}))">@else<b>{{ $ini }}</b>@endif<small>STUDENT PHOTO</small></div>
+         <table>@foreach ($rows as [$l, $v])<tr><th>{{ $l }}</th><td>{{ $v ?: '—' }}</td></tr>@endforeach</table>
+     </div>
+     <div class="pc-sf">Head Master Signature: __________</div>
+diff --git a/routes/web.php b/routes/web.php
+index c7bcc1b..4959b45 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -20,7 +20,8 @@ Route::post('/login', [LoginController::class, 'login']);
+ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+ 
+ Route::middleware(['auth', 'role:admin'])->group(function () {
+-    Route::get('/admin/dashboard', fn () => view('dashboards.admin'))->name('admin.dashboard');
++    Route::get('/admin/dashboard', fn (\App\Services\AttendanceOverview $o) => view('dashboards.admin', ['att' => $o->today(now())]))->name('admin.dashboard');
++    Route::get('/admin/attendance-overview', [\App\Http\Controllers\AttendanceOverviewController::class, 'index'])->name('admin.attendance-overview');
+     Route::get('/admin/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'index'])->name('admin.daily-attendance');
+     Route::post('/admin/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'mark'])->name('admin.daily-attendance.mark');
+     Route::get('/admin/class-attendance', [\App\Http\Controllers\ClassAttendanceController::class, 'index'])->name('admin.class-attendance');
+diff --git a/tests/Feature/AttendanceOverviewTest.php b/tests/Feature/AttendanceOverviewTest.php
+new file mode 100644
+index 0000000..afc4a09
+--- /dev/null
++++ b/tests/Feature/AttendanceOverviewTest.php
+@@ -0,0 +1,94 @@
++<?php
++
++namespace Tests\Feature;
++
++use App\Models\AttendanceMark;
++use App\Models\AttendanceRecord;
++use App\Models\Student;
++use App\Models\Teacher;
++use App\Models\TeacherAttendance;
++use App\Models\User;
++use App\Services\AttendanceOverview;
++use Carbon\Carbon;
++use Illuminate\Foundation\Testing\RefreshDatabase;
++use Illuminate\Support\Facades\DB;
++use Tests\TestCase;
++
++class AttendanceOverviewTest extends TestCase
++{
++    use RefreshDatabase;
++
++    private function seedWeek(): User
++    {
++        Carbon::setTestNow(Carbon::parse('2026-11-12 15:00'));   // Thursday afternoon
++        $admin = User::forceCreate(['name' => 'A', 'email' => 'a@example.test', 'password' => bcrypt('x'), 'role' => 'admin', 'is_active' => 1]);
++
++        foreach ([['s1', '1', 'Ali'], ['s2', '2', 'Sara']] as [$id, $gr, $n]) {
++            Student::forceCreate(['id' => $id, 'gr_number' => $gr, 'name' => $n, 'class' => 'VI', 'passed_out' => 0]);
++        }
++        foreach (['2026-11-09' => ['P', 'P'], '2026-11-10' => ['P', 'A']] as $d => [$a, $b]) {
++            $r = AttendanceRecord::create(['id' => 'r'.$d, 'date' => $d, 'class_name' => 'VI']);
++            AttendanceMark::create(['attendance_record_id' => $r->id, 'student_id' => 's1', 'status' => $a]);
++            AttendanceMark::create(['attendance_record_id' => $r->id, 'student_id' => 's2', 'status' => $b]);
++        }
++
++        $u = User::forceCreate(['name' => 'T One', 'email' => 't1@example.test', 'password' => bcrypt('x'), 'role' => 'teacher', 'is_active' => 1]);
++        $t = Teacher::forceCreate(['id' => 'tch0000001', 'user_id' => $u->id, 'name' => 'T One', 'auth_email' => 't1@example.test', 'created_at' => '2026-01-01 00:00:00']);
++        TeacherAttendance::create(['teacher_id' => $t->id, 'date' => '2026-11-09', 'check_in_at' => '2026-11-09 08:40:00', 'check_out_at' => '2026-11-09 13:50:00', 'late_minutes' => 0]);
++        TeacherAttendance::create(['teacher_id' => $t->id, 'date' => '2026-11-10', 'check_in_at' => '2026-11-10 09:25:00', 'check_out_at' => '2026-11-10 13:55:00', 'late_minutes' => 25]);
++        DB::table('leave_requests')->insert(['id' => 'lv0000000001', 'teacher_id' => $t->id, 'teacher_name' => 'T One', 'date' => '2026-11-11', 'reason' => 'Fever', 'status' => 'approved', 'created_at' => now(), 'updated_at' => now()]);
++
++        return $admin;
++    }
++
++    protected function tearDown(): void
++    {
++        Carbon::setTestNow();
++        parent::tearDown();
++    }
++
++    public function test_service_totals_for_students_and_staff(): void
++    {
++        $this->seedWeek();
++        $o = app(AttendanceOverview::class);
++        $from = Carbon::parse('2026-11-09');
++        $to = Carbon::parse('2026-11-15');
++
++        $st = $o->students($from, $to, 'week');
++        $this->assertSame(3, $st['total']['p']);
++        $this->assertSame(1, $st['total']['a']);
++        $this->assertSame(75, $st['total']['pct']);
++
++        $sf = $o->staff($from, $to, Carbon::now(), 'week');
++        $this->assertSame(2, $sf['sum']['present']);   // Mon on time + Tue late
++        $this->assertSame(1, $sf['sum']['late']);
++        $this->assertSame(1, $sf['sum']['leave']);
++        $this->assertSame(1, $sf['sum']['absent']);    // Thursday, today after hours, no check-in
++
++        $month = $o->staff(Carbon::parse('2026-11-01'), Carbon::parse('2026-11-30'), Carbon::now(), 'month');
++        $this->assertSame(2, $month['sum']['present']);   // whole month, same teacher
++    }
++
++    public function test_overview_page_shows_students_and_staff_for_week_and_month(): void
++    {
++        $admin = $this->seedWeek();
++        $this->actingAs($admin);
++
++        $this->get('/admin/attendance-overview?mode=week&week=2026-11-10')->assertOk()
++            ->assertSee('Attendance Overview')->assertSee('VI')->assertSee('75%');
++        $this->get('/admin/attendance-overview?mode=week&week=2026-11-10&tab=staff')->assertOk()
++            ->assertSee('T One')->assertSee('Late 25 min', false);
++        $this->get('/admin/attendance-overview?mode=month&month=2026-11&tab=staff')->assertOk()->assertSee('T One');
++        $this->get('/admin/attendance-overview?mode=month&month=bad&week=nonsense')->assertOk();
++    }
++
++    public function test_dashboard_has_todays_card_and_link_and_only_admin_can_open_overview(): void
++    {
++        $admin = $this->seedWeek();
++        $this->actingAs($admin)->get('/admin/dashboard')->assertOk()
++            ->assertSee('Aaj ki Hazri')->assertSee('Poora record')->assertSee('/admin/attendance-overview', false);
++
++        $teacher = User::where('role', 'teacher')->first();
++        $this->actingAs($teacher)->get('/admin/attendance-overview')->assertForbidden();
++    }
++}
+diff --git a/tests/Feature/StaffBioAndPhotoCropTest.php b/tests/Feature/StaffBioAndPhotoCropTest.php
+index 903446c..dd67ecf 100644
+--- a/tests/Feature/StaffBioAndPhotoCropTest.php
++++ b/tests/Feature/StaffBioAndPhotoCropTest.php
+@@ -109,4 +109,12 @@ class StaffBioAndPhotoCropTest extends TestCase
+         $this->assertStringContainsString('width:91px;height:106px;', $card);   // one shared view for students and staff
+         $this->assertStringContainsString('width="91" height="106"', $card);
+     }
++
++    public function test_admit_card_photo_frame_is_portrait_like_the_id_card(): void
++    {
++        $slip = file_get_contents(resource_path('views/admin/admit-cards/_slip.blade.php'));
++        $this->assertStringContainsString('width="72" height="84"', $slip);
++        $this->assertStringContainsString('PdfPhoto::small($student->photo_url, 340, false, true)', $slip);
++        $this->assertStringContainsString('width:72px; height:84px;', file_get_contents(public_path('css/card-preview.css')));
++    }
+ }
