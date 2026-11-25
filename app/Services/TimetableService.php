@@ -19,7 +19,7 @@ class TimetableService
             ->distinct()->pluck('class')->map(fn ($c) => (string) $c)
             ->reject(fn ($c) => in_array($c, ResultSessionFix::ORDER, true))->sort()->values()->all();
 
-        return array_merge(ResultSessionFix::ORDER, $extra);
+        return ['VI', 'VII', 'VIII'];
     }
 
     public static function validClass(?string $class): ?string
