@@ -1,0 +1,113 @@
+From e6b6488e2b28ceab25225c587276f0c9cb45003d Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 11:39:39 +0500
+Subject: [PATCH] Timetable: winter period times (8:30-2:00, break after period
+ 4), show break row; set SEMIS code 404030082
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HttsdfoZKD8pHnvrLZEBS2
+---
+ ...000_winter_period_times_and_semis_code.php | 42 +++++++++++++++++++
+ public/css/timetable.css                      |  1 +
+ resources/views/timetable/_grid.blade.php     |  3 ++
+ tests/Feature/TimetableTest.php               | 11 +++++
+ 4 files changed, 57 insertions(+)
+ create mode 100644 database/migrations/2026_11_25_100000_winter_period_times_and_semis_code.php
+
+diff --git a/database/migrations/2026_11_25_100000_winter_period_times_and_semis_code.php b/database/migrations/2026_11_25_100000_winter_period_times_and_semis_code.php
+new file mode 100644
+index 0000000..ebf101a
+--- /dev/null
++++ b/database/migrations/2026_11_25_100000_winter_period_times_and_semis_code.php
+@@ -0,0 +1,42 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Support\Facades\DB;
++
++return new class extends Migration
++{
++    /**
++     * Winter timing: school 8:30 - 2:00.
++     * Assembly 8:30-8:45, then 7 periods with a 30 minute break after period 4.
++     */
++    private const TIMES = [
++        1 => ['08:45', '09:25'],
++        2 => ['09:25', '10:05'],
++        3 => ['10:05', '10:45'],
++        4 => ['10:45', '11:30'],
++        // break 11:30 - 12:00
++        5 => ['12:00', '12:40'],
++        6 => ['12:40', '13:20'],
++        7 => ['13:20', '14:00'],
++    ];
++
++    public function up(): void
++    {
++        foreach (self::TIMES as $period => [$start, $end]) {
++            $row = DB::table('timetable_periods')->where('period', $period)->first();
++            if (! $row) {
++                DB::table('timetable_periods')->insert(['period' => $period, 'starts_at' => $start, 'ends_at' => $end]);
++            } elseif (empty($row->starts_at) && empty($row->ends_at)) {
++                DB::table('timetable_periods')->where('period', $period)->update(['starts_at' => $start, 'ends_at' => $end]);
++            }
++        }
++
++        // The school's SEMIS code.
++        DB::table('school_info')->update(['semis_code' => '404030082']);
++    }
++
++    public function down(): void
++    {
++        // Times and the code are data; nothing to undo.
++    }
++};
+diff --git a/public/css/timetable.css b/public/css/timetable.css
+index ce6b237..96fcda5 100644
+--- a/public/css/timetable.css
++++ b/public/css/timetable.css
+@@ -26,6 +26,7 @@
+ .tt-t td small { display: block; color: #8a8470; font-size: 10.5px; }
+ .tt-t .tt-today { background: #FFF8E1; }
+ .tt-t td.tt-empty { color: #ccc; }
++.tt-t tr.tt-break td { background:#EFEAD8; color:#5b5640; font-weight:700; font-size:12px; padding:5px; }
+ .tt-edit select { width: 100%; min-width: 120px; font-size: 12px; padding: 6px 4px; }
+ .tt-edit th.tt-p input { display: block; width: 84px; margin: 3px auto 0; font-size: 11px; padding: 4px; }
+ @media print {
+diff --git a/resources/views/timetable/_grid.blade.php b/resources/views/timetable/_grid.blade.php
+index d57feae..c3b4740 100644
+--- a/resources/views/timetable/_grid.blade.php
++++ b/resources/views/timetable/_grid.blade.php
+@@ -25,6 +25,9 @@
+                 </td>
+             @endforeach
+         </tr>
++        @if ($p < \App\Services\TimetableService::PERIODS && $periods[$p]['ends_at'] && $periods[$p + 1]['starts_at'] && $periods[$p]['ends_at'] !== $periods[$p + 1]['starts_at'])
++            <tr class="tt-break"><td colspan="{{ count(\App\Services\TimetableService::DAYS) + 1 }}">Break &middot; {{ $periods[$p]['ends_at'] }}&ndash;{{ $periods[$p + 1]['starts_at'] }}</td></tr>
++        @endif
+     @endfor
+     </tbody>
+ </table></div>
+diff --git a/tests/Feature/TimetableTest.php b/tests/Feature/TimetableTest.php
+index 307e478..78b5b52 100644
+--- a/tests/Feature/TimetableTest.php
++++ b/tests/Feature/TimetableTest.php
+@@ -111,4 +111,15 @@ class TimetableTest extends TestCase
+         $this->actingAs($u)->get('/admin/timetable')->assertForbidden();
+         $this->post('/admin/timetable', ['class_name' => 'V'])->assertForbidden();
+     }
++
++    public function test_winter_period_times_and_semis_code_are_set_by_migration(): void
++    {
++        $this->assertDatabaseHas('timetable_periods', ['period' => 1, 'starts_at' => '08:45', 'ends_at' => '09:25']);
++        $this->assertDatabaseHas('timetable_periods', ['period' => 4, 'starts_at' => '10:45', 'ends_at' => '11:30']);
++        $this->assertDatabaseHas('timetable_periods', ['period' => 5, 'starts_at' => '12:00', 'ends_at' => '12:40']);
++        $this->assertDatabaseHas('timetable_periods', ['period' => 7, 'starts_at' => '13:20', 'ends_at' => '14:00']);
++        $this->assertSame(7, \App\Models\TimetablePeriod::count());
++
++        $this->get('/timetable?class=VI')->assertOk()->assertSee('Break')->assertSee('11:30');
++    }
+ }
+-- 
+2.43.0
+
