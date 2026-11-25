@@ -1,0 +1,46 @@
+From a3533781d17a0264c10666a863be2f2ef33bb495 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 19:22:55 +0500
+Subject: [PATCH] Timetable: redirects used route(..., false) as HTTP status
+ (500); build the relative URL instead
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HttsdfoZKD8pHnvrLZEBS2
+---
+ app/Http/Controllers/TimetableController.php | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/app/Http/Controllers/TimetableController.php b/app/Http/Controllers/TimetableController.php
+index 6d1c8bf..a182758 100644
+--- a/app/Http/Controllers/TimetableController.php
++++ b/app/Http/Controllers/TimetableController.php
+@@ -52,7 +52,7 @@ class TimetableController extends Controller
+             TimetableEntry::where('class_name', $class)->where('subject', $subject)->update(['teacher_id' => $data['teacher_id']]);
+         }
+ 
+-        return redirect()->route('admin.teaching.index', ['class' => $class], false)->with('ok', 'Teaching assignment save ho gaya.');
++        return redirect(route('admin.teaching.index', ['class' => $class], false))->with('ok', 'Teaching assignment save ho gaya.');
+     }
+ 
+     public function assignmentDestroy(int $id)
+@@ -63,7 +63,7 @@ class TimetableController extends Controller
+             $a->delete();
+         });
+ 
+-        return redirect()->route('admin.teaching.index', ['class' => $a->class_name], false)->with('ok', 'Hata diya (timetable se bhi).');
++        return redirect(route('admin.teaching.index', ['class' => $a->class_name], false))->with('ok', 'Hata diya (timetable se bhi).');
+     }
+ 
+     // ---------- admin: timetable grid ----------
+@@ -136,7 +136,7 @@ class TimetableController extends Controller
+             }
+         });
+ 
+-        return redirect()->route('admin.timetable.edit', ['class' => $class], false)->with('ok', 'Timetable save ho gaya.');
++        return redirect(route('admin.timetable.edit', ['class' => $class], false))->with('ok', 'Timetable save ho gaya.');
+     }
+ 
+     // ---------- teacher: own week ----------
+-- 
+2.43.0
+
