@@ -22,6 +22,11 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/dashboard', fn (\App\Services\AttendanceOverview $o) => view('dashboards.admin', ['att' => $o->today(now())]))->name('admin.dashboard');
     Route::get('/admin/attendance-overview', [\App\Http\Controllers\AttendanceOverviewController::class, 'index'])->name('admin.attendance-overview');
+    Route::get('/admin/teaching-assignments', [\App\Http\Controllers\TimetableController::class, 'assignments'])->name('admin.teaching.index');
+    Route::post('/admin/teaching-assignments', [\App\Http\Controllers\TimetableController::class, 'assignmentStore'])->name('admin.teaching.store');
+    Route::delete('/admin/teaching-assignments/{id}', [\App\Http\Controllers\TimetableController::class, 'assignmentDestroy'])->whereNumber('id')->name('admin.teaching.destroy');
+    Route::get('/admin/timetable', [\App\Http\Controllers\TimetableController::class, 'edit'])->name('admin.timetable.edit');
+    Route::post('/admin/timetable', [\App\Http\Controllers\TimetableController::class, 'save'])->name('admin.timetable.save');
     Route::get('/admin/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'index'])->name('admin.daily-attendance');
     Route::post('/admin/daily-attendance', [\App\Http\Controllers\DailyAttendanceController::class, 'mark'])->name('admin.daily-attendance.mark');
     Route::get('/admin/class-attendance', [\App\Http\Controllers\ClassAttendanceController::class, 'index'])->name('admin.class-attendance');
@@ -50,6 +55,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
 Route::middleware(['auth', 'role:teacher'])->group(function () {
     Route::get('/teacher/dashboard', fn () => view('dashboards.teacher'))->name('teacher.dashboard');
+    Route::get('/teacher/timetable', [\App\Http\Controllers\TimetableController::class, 'mine'])->name('teacher.timetable');
     Route::get('/teacher/attendance', [TeacherAttendanceController::class, 'index'])->name('teacher.attendance.index');
     Route::post('/teacher/attendance/checkin', [TeacherAttendanceController::class, 'checkIn'])->name('teacher.attendance.checkin');
     Route::post('/teacher/attendance/checkout', [TeacherAttendanceController::class, 'checkOut'])->name('teacher.attendance.checkout');
@@ -177,6 +183,7 @@ Route::get('/about', [\App\Http\Controllers\PublicInfoController::class, 'about'
 Route::get('/contact', [\App\Http\Controllers\PublicContactController::class, 'show'])->name('public.contact');
 Route::post('/contact', [\App\Http\Controllers\PublicContactController::class, 'store'])->middleware('throttle:5,10')->name('public.contact.store');
 Route::get('/calendar', [\App\Http\Controllers\PublicContactController::class, 'calendar'])->name('public.calendar');
+Route::get('/timetable', [\App\Http\Controllers\TimetableController::class, 'show'])->middleware('throttle:60,1')->name('public.timetable');
 Route::middleware(['auth', 'role:admin'])->prefix('admin/contact')->name('admin.contact.')->group(function () {
     Route::get('/', [\App\Http\Controllers\AdminContactController::class, 'index'])->name('index');
     Route::delete('/{id}', [\App\Http\Controllers\AdminContactController::class, 'destroy'])->name('destroy');
