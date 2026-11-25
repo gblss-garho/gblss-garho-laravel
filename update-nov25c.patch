@@ -1,0 +1,62 @@
+From 26a903357bd5a6dfd335eaadf378ce9093ae335b Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Wed, 25 Nov 2026 19:14:18 +0500
+Subject: [PATCH] Timetable: fill grid cells (isset on null skipped every
+ entry); keep period times when a save sends none
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HttsdfoZKD8pHnvrLZEBS2
+---
+ app/Http/Controllers/TimetableController.php | 9 ++++++---
+ app/Services/TimetableService.php            | 4 ++--
+ 2 files changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/app/Http/Controllers/TimetableController.php b/app/Http/Controllers/TimetableController.php
+index eee2916..6d1c8bf 100644
+--- a/app/Http/Controllers/TimetableController.php
++++ b/app/Http/Controllers/TimetableController.php
+@@ -123,13 +123,16 @@ class TimetableController extends Controller
+             }
+         }
+ 
+-        DB::transaction(function () use ($class, $new, $times) {
++        $hasTimes = $request->has('times');
++        DB::transaction(function () use ($class, $new, $times, $hasTimes) {
+             TimetableEntry::where('class_name', $class)->delete();
+             foreach ($new as $n) {
+                 TimetableEntry::create($n + ['class_name' => $class]);
+             }
+-            foreach ($times as $p => $t) {
+-                TimetablePeriod::updateOrCreate(['period' => $p], $t);
++            if ($hasTimes) {
++                foreach ($times as $p => $t) {
++                    TimetablePeriod::updateOrCreate(['period' => $p], $t);
++                }
+             }
+         });
+ 
+diff --git a/app/Services/TimetableService.php b/app/Services/TimetableService.php
+index c12e21a..cc272cc 100644
+--- a/app/Services/TimetableService.php
++++ b/app/Services/TimetableService.php
+@@ -45,7 +45,7 @@ class TimetableService
+     {
+         $grid = $this->emptyGrid();
+         foreach (TimetableEntry::with('teacher:id,name')->where('class_name', $class)->get() as $e) {
+-            if (isset($grid[$e->day][$e->period])) {
++            if (array_key_exists($e->day, $grid) && array_key_exists($e->period, $grid[$e->day])) {
+                 $grid[$e->day][$e->period] = $e;
+             }
+         }
+@@ -58,7 +58,7 @@ class TimetableService
+     {
+         $grid = $this->emptyGrid();
+         foreach (TimetableEntry::where('teacher_id', $teacherId)->orderBy('class_name')->get() as $e) {
+-            if (isset($grid[$e->day][$e->period])) {
++            if (array_key_exists($e->day, $grid) && array_key_exists($e->period, $grid[$e->day])) {
+                 $grid[$e->day][$e->period] = $e;
+             }
+         }
+-- 
+2.43.0
+
