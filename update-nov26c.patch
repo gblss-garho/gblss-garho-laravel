@@ -1,0 +1,28 @@
+From c03d1f509a606394efde0279d6c399e8f63b8cb8 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 10:54:47 +0500
+Subject: [PATCH] Staff attendance log: date range filter works with
+ datetime-stored dates
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HttsdfoZKD8pHnvrLZEBS2
+---
+ app/Http/Controllers/StaffAttendanceLogController.php | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/app/Http/Controllers/StaffAttendanceLogController.php b/app/Http/Controllers/StaffAttendanceLogController.php
+index 333810c..80958f2 100644
+--- a/app/Http/Controllers/StaffAttendanceLogController.php
++++ b/app/Http/Controllers/StaffAttendanceLogController.php
+@@ -35,7 +35,7 @@ class StaffAttendanceLogController extends Controller
+         $radius = (int) ($this->geo->config()['radius'] ?? 200);
+ 
+         $teachers = Teacher::orderBy('name')->get(['id', 'name', 'designation']);
+-        $recs = TeacherAttendance::whereBetween('date', [$from->toDateString(), $to->toDateString()])
++        $recs = TeacherAttendance::whereDate('date', '>=', $from->toDateString())->whereDate('date', '<=', $to->toDateString())
+             ->when($teacherId !== '', fn ($q) => $q->where('teacher_id', $teacherId))
+             ->get();
+         $byKey = $recs->keyBy(fn ($r) => $r->teacher_id.'|'.$r->date->toDateString());
+-- 
+2.43.0
+
