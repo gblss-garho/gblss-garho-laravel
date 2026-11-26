@@ -40,6 +40,7 @@
 
     <div class="tiles">
         <a class="tile" href="{{ route('admin.attendance-overview', [], false) }}"><b>Attendance Overview</b><span>Staff + students, koi bhi hafta ya mahina</span></a>
+        <a class="tile" href="{{ route('admin.staff-attendance', [], false) }}"><b>Staff Time In/Out</b><span>Har teacher ka waqt aur location</span></a>
         <a class="tile" href="{{ route('admin.timetable.edit', [], false) }}"><b>Timetable</b><span>Class-wise, 7 periods, Somwar-Jumma</span></a>
         <a class="tile" href="{{ route('admin.teaching.index', [], false) }}"><b>Teaching Assignment</b><span>Teacher, class aur subject</span></a>
         <a class="tile" href="{{ route('admin.students.index', [], false) }}"><b>Students</b><span>Register, edit, add</span></a>

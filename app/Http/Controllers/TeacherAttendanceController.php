@@ -238,8 +238,11 @@ class TeacherAttendanceController extends Controller
             return back()->withErrors(['attendance' => 'Check-in ka waqt khatam ho chuka hai ya aaj school off hai. Details ke liye Principal/Admin se rabta karen.']);
         }
 
-        if ($geoErr = $this->geo->check($request)) {
-            return back()->withErrors(['geo' => $geoErr]);
+        $geo = $this->geo->inspect($request);
+        if ($geo['error']) {
+            $this->logAttempt($teacher, (string) $geo['reason'], 'check_in');
+
+            return back()->withErrors(['geo' => $geo['error']]);
         }
 
         if ($err = $this->liveness->verify($request, $teacher, 'check_in')) {
@@ -263,6 +266,7 @@ class TeacherAttendanceController extends Controller
         }
 
         $record->check_in_at = $now;
+        $record->forceFill($this->proof('check_in', $geo['reading'], $request));
         $record->check_in_method = 'face_recognition';
         $record->late_minutes = $this->schedule->lateMinutes($now);
         $record->save();
@@ -288,8 +292,11 @@ class TeacherAttendanceController extends Controller
             return back()->withErrors(['attendance' => 'Check-out sirf school khatam hone se pehle aakhri 15 minutes mein ho sakta hai.']);
         }
 
-        if ($geoErr = $this->geo->check($request)) {
-            return back()->withErrors(['geo' => $geoErr]);
+        $geo = $this->geo->inspect($request);
+        if ($geo['error']) {
+            $this->logAttempt($teacher, (string) $geo['reason'], 'check_out');
+
+            return back()->withErrors(['geo' => $geo['error']]);
         }
 
         if ($err = $this->liveness->verify($request, $teacher, 'check_out')) {
@@ -319,10 +326,35 @@ class TeacherAttendanceController extends Controller
         }
 
         $record->check_out_at = $now;
+        $record->forceFill($this->proof('check_out', $geo['reading'], $request));
         $record->check_out_method = 'face_recognition';
         $record->save();
 
         return back()->with('status', 'Check-out ho gaya: ' . $now->format('h:i A'));
+    }
+
+    /** What the phone reported, stored with the record so the admin can review it. The time itself is always the server's clock. */
+    private function proof(string $prefix, array $reading, Request $request): array
+    {
+        return [
+            $prefix.'_lat' => $reading['lat'] ?? null,
+            $prefix.'_lng' => $reading['lng'] ?? null,
+            $prefix.'_acc' => $reading['acc'] ?? null,
+            $prefix.'_dist' => $reading['dist'] ?? null,
+            $prefix.'_ip' => substr((string) $request->ip(), 0, 45),
+            $prefix.'_device' => substr(sha1((string) $request->userAgent()), 0, 12),
+        ];
+    }
+
+    /** A refused attempt (outside the school, no GPS, ...) is kept for the admin's log. */
+    private function logAttempt($teacher, string $reason, string $type): void
+    {
+        DB::table('teacher_liveness_failures')->insert([
+            'teacher_id' => (string) $teacher->id,
+            'reason' => substr($reason, 0, 60),
+            'failure_type' => $type,
+            'occurred_at' => now(),
+        ]);
     }
 
     private function logFace($teacher, string $type): void
