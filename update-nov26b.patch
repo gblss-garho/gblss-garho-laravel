@@ -1,0 +1,569 @@
+From 07e70bbf34223e676d5522a7bb2a0aba8c41ff58 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Thu, 26 Nov 2026 10:41:26 +0500
+Subject: [PATCH] Strict attendance: mandatory geofence with location proof,
+ refused-attempt log, admin Staff Time In/Out page
+
+Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01HttsdfoZKD8pHnvrLZEBS2
+---
+ .../StaffAttendanceLogController.php          | 144 ++++++++++++++++++
+ .../TeacherAttendanceController.php           |  40 ++++-
+ app/Services/GeoFenceService.php              |  38 +++--
+ ...d_location_proof_to_teacher_attendance.php |  32 ++++
+ public/css/staff-attendance.css               |  18 +++
+ .../views/admin/staff-attendance.blade.php    |  70 +++++++++
+ resources/views/dashboards/admin.blade.php    |   1 +
+ routes/web.php                                |   1 +
+ tests/Feature/GeoFenceTest.php                |  65 +++++++-
+ 9 files changed, 392 insertions(+), 17 deletions(-)
+ create mode 100644 app/Http/Controllers/StaffAttendanceLogController.php
+ create mode 100644 database/migrations/2026_11_26_000000_add_location_proof_to_teacher_attendance.php
+ create mode 100644 public/css/staff-attendance.css
+ create mode 100644 resources/views/admin/staff-attendance.blade.php
+
+diff --git a/app/Http/Controllers/StaffAttendanceLogController.php b/app/Http/Controllers/StaffAttendanceLogController.php
+new file mode 100644
+index 0000000..333810c
+--- /dev/null
++++ b/app/Http/Controllers/StaffAttendanceLogController.php
+@@ -0,0 +1,144 @@
++<?php
++
++namespace App\Http\Controllers;
++
++use App\Models\Teacher;
++use App\Models\TeacherAttendance;
++use App\Services\GeoFenceService;
++use App\Services\SchoolScheduleService;
++use Carbon\Carbon;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\DB;
++
++/** Admin: the exact check-in / check-out time of every teacher, where the phone was, and refused attempts. */
++class StaffAttendanceLogController extends Controller
++{
++    private const MAX_DAYS = 62;
++
++    public function __construct(protected SchoolScheduleService $schedule, protected GeoFenceService $geo)
++    {
++    }
++
++    public function index(Request $request)
++    {
++        $now = Carbon::now();
++        $from = $this->day($request->query('from'), $now)->startOfDay();
++        $to = $this->day($request->query('to'), $from)->startOfDay();
++        if ($to->lt($from)) {
++            $to = $from->copy();
++        }
++        if ($from->diffInDays($to) > self::MAX_DAYS) {
++            $from = $to->copy()->subDays(self::MAX_DAYS);
++        }
++        $teacherId = (string) $request->query('teacher', '');
++        $single = $from->isSameDay($to) && $teacherId === '';
++        $radius = (int) ($this->geo->config()['radius'] ?? 200);
++
++        $teachers = Teacher::orderBy('name')->get(['id', 'name', 'designation']);
++        $recs = TeacherAttendance::whereBetween('date', [$from->toDateString(), $to->toDateString()])
++            ->when($teacherId !== '', fn ($q) => $q->where('teacher_id', $teacherId))
++            ->get();
++        $byKey = $recs->keyBy(fn ($r) => $r->teacher_id.'|'.$r->date->toDateString());
++
++        $rows = [];
++        if ($single) {
++            // every teacher for that day, including the ones with no record
++            $leaves = DB::table('leave_requests')->where('status', 'approved')
++                ->whereDate('date', $from->toDateString())->pluck('teacher_id')->all();
++            foreach ($teachers as $t) {
++                $r = $byKey->get($t->id.'|'.$from->toDateString());
++                $rows[] = $this->row($t, $from, $r, $radius, $now, in_array($t->id, $leaves, true));
++            }
++        } else {
++            $names = $teachers->keyBy('id');
++            foreach ($recs->sortByDesc(fn ($r) => $r->date->toDateString().'|'.($r->check_in_at?->format('H:i:s'))) as $r) {
++                if ($t = $names->get($r->teacher_id)) {
++                    $rows[] = $this->row($t, $r->date, $r, $radius, $now, false);
++                }
++            }
++        }
++
++        $attempts = DB::table('teacher_liveness_failures')
++            ->whereBetween('occurred_at', [$from->copy()->startOfDay(), $to->copy()->endOfDay()])
++            ->when($teacherId !== '', fn ($q) => $q->where('teacher_id', $teacherId))
++            ->orderByDesc('occurred_at')->limit(200)->get();
++        $names = $teachers->pluck('name', 'id');
++
++        return view('admin.staff-attendance', [
++            'from' => $from, 'to' => $to, 'single' => $single, 'teacherId' => $teacherId, 'teachers' => $teachers,
++            'rows' => $rows, 'radius' => $radius, 'geoSet' => $this->geo->config() !== null,
++            'attempts' => $attempts->map(fn ($a) => [
++                'at' => Carbon::parse($a->occurred_at),
++                'name' => $names[$a->teacher_id] ?? $a->teacher_id,
++                'what' => ($a->failure_type === 'check_out' ? 'Time Out' : ($a->failure_type === 'check_in' ? 'Time In' : 'Face')).': '.self::reasonLabel($a->reason),
++            ]),
++        ]);
++    }
++
++    private function day(?string $raw, Carbon $fallback): Carbon
++    {
++        if ($raw && preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
++            try {
++                return Carbon::parse($raw);
++            } catch (\Throwable $e) {
++            }
++        }
++
++        return $fallback->copy();
++    }
++
++    private function row($t, Carbon $date, ?TeacherAttendance $r, int $radius, Carbon $now, bool $onLeave): array
++    {
++        $row = [
++            'teacher' => $t, 'date' => $date, 'in' => null, 'out' => null, 'hours' => null, 'late' => 0,
++            'in_dist' => null, 'out_dist' => null, 'in_acc' => null, 'status' => 'absent', 'flags' => [],
++        ];
++        if ($r && $r->check_in_at) {
++            $row['in'] = $r->check_in_at->format('h:i A');
++            $row['out'] = $r->check_out_at?->format('h:i A');
++            $row['late'] = (int) $r->late_minutes;
++            $row['in_dist'] = $r->check_in_dist;
++            $row['out_dist'] = $r->check_out_dist;
++            $row['in_acc'] = $r->check_in_acc;
++            $row['status'] = $row['late'] > 0 ? 'late' : 'present';
++            if ($r->check_out_at) {
++                $m = $r->check_in_at->diffInMinutes($r->check_out_at);
++                $row['hours'] = intdiv($m, 60).'h '.($m % 60).'m';
++            } elseif (! $date->isSameDay($now)) {
++                $row['flags'][] = 'Time Out nahi hua';
++            }
++            if ($r->check_in_dist === null) {
++                $row['flags'][] = 'Location record nahi (purani hazri)';
++            } elseif ($radius > 0 && $r->check_in_dist > $radius * 0.8) {
++                $row['flags'][] = 'School ki hadd ke bilkul qareeb se';
++            }
++            if ($r->check_out_at && $r->check_in_ip && $r->check_out_ip && $r->check_in_ip !== $r->check_out_ip) {
++                $row['flags'][] = 'In/Out ka IP alag';
++            }
++            if ($r->check_out_at && $r->check_in_device && $r->check_out_device && $r->check_in_device !== $r->check_out_device) {
++                $row['flags'][] = 'In/Out ka phone/browser alag';
++            }
++        } elseif (! $this->schedule->isSchoolDay($date)) {
++            $row['status'] = 'off';
++        } elseif ($onLeave) {
++            $row['status'] = 'leave';
++        } elseif ($date->isSameDay($now) && $now->lt($now->copy()->setTimeFromTimeString($this->schedule->timesFor($date)['out_start']))) {
++            $row['status'] = 'pending';
++        }
++
++        return $row;
++    }
++
++    public static function reasonLabel(string $reason): string
++    {
++        return match (true) {
++            str_starts_with($reason, 'geo_outside_') => 'School se bahar se koshish ('.preg_replace('/\D/', '', $reason).' m door)',
++            $reason === 'geo_missing' => 'Phone ki location nahi mili',
++            $reason === 'geo_weak_gps' => 'GPS kamzor / ghalat',
++            $reason === 'geo_school_not_set' => 'School ki location Settings mein set nahi',
++            $reason === 'face_mismatch' => 'Chehra match nahi hua',
++            str_starts_with($reason, 'liveness') => 'Liveness (palak/sir) pass nahi hua',
++            default => $reason,
++        };
++    }
++}
+diff --git a/app/Http/Controllers/TeacherAttendanceController.php b/app/Http/Controllers/TeacherAttendanceController.php
+index 2cd8225..181bf2f 100644
+--- a/app/Http/Controllers/TeacherAttendanceController.php
++++ b/app/Http/Controllers/TeacherAttendanceController.php
+@@ -238,8 +238,11 @@ class TeacherAttendanceController extends Controller
+             return back()->withErrors(['attendance' => 'Check-in ka waqt khatam ho chuka hai ya aaj school off hai. Details ke liye Principal/Admin se rabta karen.']);
+         }
+ 
+-        if ($geoErr = $this->geo->check($request)) {
+-            return back()->withErrors(['geo' => $geoErr]);
++        $geo = $this->geo->inspect($request);
++        if ($geo['error']) {
++            $this->logAttempt($teacher, (string) $geo['reason'], 'check_in');
++
++            return back()->withErrors(['geo' => $geo['error']]);
+         }
+ 
+         if ($err = $this->liveness->verify($request, $teacher, 'check_in')) {
+@@ -263,6 +266,7 @@ class TeacherAttendanceController extends Controller
+         }
+ 
+         $record->check_in_at = $now;
++        $record->forceFill($this->proof('check_in', $geo['reading'], $request));
+         $record->check_in_method = 'face_recognition';
+         $record->late_minutes = $this->schedule->lateMinutes($now);
+         $record->save();
+@@ -288,8 +292,11 @@ class TeacherAttendanceController extends Controller
+             return back()->withErrors(['attendance' => 'Check-out sirf school khatam hone se pehle aakhri 15 minutes mein ho sakta hai.']);
+         }
+ 
+-        if ($geoErr = $this->geo->check($request)) {
+-            return back()->withErrors(['geo' => $geoErr]);
++        $geo = $this->geo->inspect($request);
++        if ($geo['error']) {
++            $this->logAttempt($teacher, (string) $geo['reason'], 'check_out');
++
++            return back()->withErrors(['geo' => $geo['error']]);
+         }
+ 
+         if ($err = $this->liveness->verify($request, $teacher, 'check_out')) {
+@@ -319,12 +326,37 @@ class TeacherAttendanceController extends Controller
+         }
+ 
+         $record->check_out_at = $now;
++        $record->forceFill($this->proof('check_out', $geo['reading'], $request));
+         $record->check_out_method = 'face_recognition';
+         $record->save();
+ 
+         return back()->with('status', 'Check-out ho gaya: ' . $now->format('h:i A'));
+     }
+ 
++    /** What the phone reported, stored with the record so the admin can review it. The time itself is always the server's clock. */
++    private function proof(string $prefix, array $reading, Request $request): array
++    {
++        return [
++            $prefix.'_lat' => $reading['lat'] ?? null,
++            $prefix.'_lng' => $reading['lng'] ?? null,
++            $prefix.'_acc' => $reading['acc'] ?? null,
++            $prefix.'_dist' => $reading['dist'] ?? null,
++            $prefix.'_ip' => substr((string) $request->ip(), 0, 45),
++            $prefix.'_device' => substr(sha1((string) $request->userAgent()), 0, 12),
++        ];
++    }
++
++    /** A refused attempt (outside the school, no GPS, ...) is kept for the admin's log. */
++    private function logAttempt($teacher, string $reason, string $type): void
++    {
++        DB::table('teacher_liveness_failures')->insert([
++            'teacher_id' => (string) $teacher->id,
++            'reason' => substr($reason, 0, 60),
++            'failure_type' => $type,
++            'occurred_at' => now(),
++        ]);
++    }
++
+     private function logFace($teacher, string $type): void
+     {
+         \Illuminate\Support\Facades\DB::table('teacher_liveness_failures')->insert([
+diff --git a/app/Services/GeoFenceService.php b/app/Services/GeoFenceService.php
+index aee3b58..3cc69d6 100644
+--- a/app/Services/GeoFenceService.php
++++ b/app/Services/GeoFenceService.php
+@@ -37,30 +37,50 @@ class GeoFenceService
+         return 2 * $r * asin(min(1, sqrt($a)));
+     }
+ 
+-    /** Sindhi error text, or null when the teacher may mark attendance. */
+-    public function check(Request $request): ?string
++    /**
++     * Strict location check. Attendance is refused when the school location is not set,
++     * when the phone sends no usable GPS reading, or when the reading is outside the radius.
++     *
++     * @return array{error: ?string, reason: ?string, reading: array}
++     */
++    public function inspect(Request $request): array
+     {
+         $cfg = $this->config();
+         if ($cfg === null) {
+-            return null;
++            return $this->deny('geo_school_not_set', 'اسڪول جي جڳهه (لوڪيشن) اڃا سيٽ ناهي، تنھنڪري حاضري لڳي نٿي سگهي. ايڊمن کي چئو ته Settings ۾ اسڪول جي لوڪيشن سيٽ ڪري.');
+         }
+ 
+         $lat = $request->input('lat');
+         $lng = $request->input('lng');
+         if (! is_numeric($lat) || ! is_numeric($lng) || abs((float) $lat) > 90 || abs((float) $lng) > 180) {
+-            return 'پنھنجي فون جي لوڪيشن (GPS) جي اجازت ڏيو ۽ ٻيهر ڪوشش ڪريو.';
++            return $this->deny('geo_missing', 'پنھنجي فون جي لوڪيشن (GPS) جي اجازت ڏيو ۽ ٻيهر ڪوشش ڪريو.');
+         }
+ 
+-        $acc = (float) $request->input('acc', 0);
+-        if ($acc > self::MAX_ACCURACY_M) {
+-            return 'GPS جي درستگي ڪمزور آهي. کليل جاءِ تي اچي ٻيهر ڪوشش ڪريو.';
++        $acc = $request->input('acc');
++        if (! is_numeric($acc) || (float) $acc < 0 || (float) $acc > self::MAX_ACCURACY_M) {
++            return $this->deny('geo_weak_gps', 'GPS جي درستگي ڪمزور آهي. کليل جاءِ تي اچي ٻيهر ڪوشش ڪريو.');
+         }
+ 
+         $d = (int) round(self::distanceMeters((float) $lat, (float) $lng, $cfg['lat'], $cfg['lng']));
++        $reading = [
++            'lat' => round((float) $lat, 7), 'lng' => round((float) $lng, 7),
++            'acc' => (int) round((float) $acc), 'dist' => $d,
++        ];
+         if ($d > $cfg['radius']) {
+-            return 'اوهان هن وقت اسڪول جي جڳهه کان ٻاهر آهيو. حاضري رڳو اسڪول جي ' . $cfg['radius'] . ' ميٽرن اندر لڳي سگهي ٿي (اوهان اسڪول کان تقريبن ' . $d . ' ميٽر پري آهيو).';
++            return $this->deny('geo_outside_'.$d.'m', 'اوهان هن وقت اسڪول جي جڳهه کان ٻاهر آهيو. حاضري رڳو اسڪول جي ' . $cfg['radius'] . ' ميٽرن اندر لڳي سگهي ٿي (اوهان اسڪول کان تقريبن ' . $d . ' ميٽر پري آهيو).', $reading);
+         }
+ 
+-        return null;
++        return ['error' => null, 'reason' => null, 'reading' => $reading];
++    }
++
++    /** Sindhi error text, or null when the teacher may mark attendance. */
++    public function check(Request $request): ?string
++    {
++        return $this->inspect($request)['error'];
++    }
++
++    private function deny(string $reason, string $message, array $reading = []): array
++    {
++        return ['error' => $message, 'reason' => $reason, 'reading' => $reading];
+     }
+ }
+diff --git a/database/migrations/2026_11_26_000000_add_location_proof_to_teacher_attendance.php b/database/migrations/2026_11_26_000000_add_location_proof_to_teacher_attendance.php
+new file mode 100644
+index 0000000..a67704f
+--- /dev/null
++++ b/database/migrations/2026_11_26_000000_add_location_proof_to_teacher_attendance.php
+@@ -0,0 +1,32 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    /** What the phone reported at check-in / check-out, so the admin can review it later. */
++    public function up(): void
++    {
++        Schema::table('teacher_attendance', function (Blueprint $t) {
++            foreach (['check_in', 'check_out'] as $p) {
++                $t->decimal($p.'_lat', 10, 7)->nullable();
++                $t->decimal($p.'_lng', 10, 7)->nullable();
++                $t->unsignedSmallInteger($p.'_acc')->nullable();   // GPS accuracy, metres
++                $t->unsignedInteger($p.'_dist')->nullable();       // metres from the school
++                $t->string($p.'_ip', 45)->nullable();
++                $t->string($p.'_device', 40)->nullable();          // short hash of the browser's user agent
++            }
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::table('teacher_attendance', function (Blueprint $t) {
++            foreach (['check_in', 'check_out'] as $p) {
++                $t->dropColumn([$p.'_lat', $p.'_lng', $p.'_acc', $p.'_dist', $p.'_ip', $p.'_device']);
++            }
++        });
++    }
++};
+diff --git a/public/css/staff-attendance.css b/public/css/staff-attendance.css
+new file mode 100644
+index 0000000..30b2ca2
+--- /dev/null
++++ b/public/css/staff-attendance.css
+@@ -0,0 +1,18 @@
++.sa { max-width: 1000px; }
++.sa-note { font-size: 13px; color: #6b6650; margin: 4px 0 10px; }
++.sa-warn { background: #FEE2E2; color: #991B1B; padding: 10px 12px; border-radius: 12px; margin: 8px 0; font-weight: 600; }
++.sa-pick { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin: 10px 0; }
++.sa-pick label { display: block; font-size: 12px; font-weight: 700; color: #5b5640; }
++.sa-pick input, .sa-pick select { display: block; font: inherit; padding: 8px 10px; border: 1px solid #D9D2BA; border-radius: 10px; background: #fff; margin-top: 4px; }
++.sa-btn { border: 0; background: #0F5132; color: #FAF6EC; font-weight: 700; padding: 10px 16px; border-radius: 999px; cursor: pointer; }
++.sa-h { margin: 18px 0 2px; color: #0F5132; }
++.sa-scroll { overflow-x: auto; background: #fff; border: 1px solid #E3DCC7; border-radius: 16px; -webkit-overflow-scrolling: touch; }
++.sa-t { width: 100%; border-collapse: collapse; font-size: 13px; }
++.sa-t th, .sa-t td { padding: 8px 8px; text-align: center; border-bottom: 1px solid #F0EBDA; white-space: nowrap; }
++.sa-t thead th { background: #F6F2E3; color: #5b5640; font-size: 12px; }
++.sa-t .nm { text-align: left; white-space: normal; min-width: 130px; }
++.sa-t small { display: block; color: #8a8470; font-size: 10.5px; }
++.sa-t .sa-none { color: #8a8470; text-align: center; }
++.sa-t tr.st-absent td.sa-none { color: #991B1B; font-weight: 700; }
++.sa-t tr.st-late td:nth-last-child(3) { color: #B45309; font-weight: 700; }
++.sa-flag { display: inline-block; background: #FEF3C7; color: #92400E; border-radius: 8px; padding: 2px 7px; font-size: 11px; margin: 1px; white-space: normal; }
+diff --git a/resources/views/admin/staff-attendance.blade.php b/resources/views/admin/staff-attendance.blade.php
+new file mode 100644
+index 0000000..70db0f5
+--- /dev/null
++++ b/resources/views/admin/staff-attendance.blade.php
+@@ -0,0 +1,70 @@
++@extends('layouts.portal')
++
++@section('title', 'Staff Attendance Log')
++
++@section('content')
++    <link rel="stylesheet" href="{{ asset('css/staff-attendance.css') }}">
++    <div class="sa">
++        <p style="margin:0"><a href="{{ route('admin.dashboard', [], false) }}">&larr; Dashboard</a></p>
++        <h1 style="margin:4px 0 2px">Staff Attendance Log</h1>
++        <p class="sa-note">Har teacher ka Time In / Time Out. Waqt hamesha server ki ghari se aata hai, phone ki ghari se nahi, is liye badla nahi ja sakta.</p>
++
++        @unless ($geoSet)
++            <div class="sa-warn">School ki location Settings mein set nahi hai, is liye abhi koi teacher hazri nahi laga sakta. <a href="{{ route('admin.settings.edit', [], false) }}">Settings kholein</a>.</div>
++        @endunless
++
++        <form method="GET" action="{{ route('admin.staff-attendance', [], false) }}" class="sa-pick">
++            <label>Se <input type="date" name="from" value="{{ $from->toDateString() }}"></label>
++            <label>Tak <input type="date" name="to" value="{{ $to->toDateString() }}"></label>
++            <label>Teacher
++                <select name="teacher">
++                    <option value="">Sab</option>
++                    @foreach ($teachers as $t)<option value="{{ $t->id }}" @selected($t->id === $teacherId)>{{ $t->name }}</option>@endforeach
++                </select>
++            </label>
++            <button class="sa-btn" type="submit">Dikhayein</button>
++        </form>
++
++        <div class="sa-scroll"><table class="sa-t">
++            <thead><tr>
++                <th class="nm">Teacher</th>
++                @unless ($single)<th>Tareekh</th>@endunless
++                <th>Time In</th><th>Time Out</th><th>Ghante</th><th>Late</th><th>School se doori (In / Out)</th><th>Nishan</th>
++            </tr></thead>
++            <tbody>
++            @forelse ($rows as $r)
++                <tr class="st-{{ $r['status'] }}">
++                    <td class="nm">{{ $r['teacher']->name }}<small>{{ $r['teacher']->designation }}</small></td>
++                    @unless ($single)<td>{{ $r['date']->format('d M') }}</td>@endunless
++                    @if ($r['in'])
++                        <td><b>{{ $r['in'] }}</b></td>
++                        <td>{{ $r['out'] ?? '—' }}</td>
++                        <td>{{ $r['hours'] ?? '—' }}</td>
++                        <td>{{ $r['late'] > 0 ? $r['late'].' min' : 'Waqt par' }}</td>
++                        <td>{{ $r['in_dist'] !== null ? $r['in_dist'].' m' : '—' }} / {{ $r['out_dist'] !== null ? $r['out_dist'].' m' : '—' }}@if ($r['in_acc'] !== null)<small>GPS &plusmn;{{ $r['in_acc'] }} m</small>@endif</td>
++                        <td>@foreach ($r['flags'] as $f)<span class="sa-flag">{{ $f }}</span>@endforeach</td>
++                    @else
++                        <td colspan="6" class="sa-none">{{ ['absent' => 'Absent', 'leave' => 'Chhutti (approved)', 'off' => 'School band', 'pending' => 'Abhi baqi'][$r['status']] ?? '' }}</td>
++                    @endif
++                </tr>
++            @empty
++                <tr><td colspan="8" class="sa-none">Is muddat mein koi record nahi.</td></tr>
++            @endforelse
++            </tbody>
++        </table></div>
++        <p class="sa-note">Doori GPS se naapi jati hai. Hadd: school se {{ $radius }} m. "Nishan" mein wo cheezen aati hain jin par nazar rakhni chahiye.</p>
++
++        <h3 class="sa-h">Refused koshishen</h3>
++        <p class="sa-note">Jab kisi ne school se bahar se ya kamzor/ghalat location se hazri lagane ki koshish ki, ya chehra match nahi hua.</p>
++        <div class="sa-scroll"><table class="sa-t">
++            <thead><tr><th class="nm">Teacher</th><th>Waqt</th><th>Kya hua</th></tr></thead>
++            <tbody>
++            @forelse ($attempts as $a)
++                <tr><td class="nm">{{ $a['name'] }}</td><td>{{ $a['at']->format('d M, h:i A') }}</td><td>{{ $a['what'] }}</td></tr>
++            @empty
++                <tr><td colspan="3" class="sa-none">Koi nahi.</td></tr>
++            @endforelse
++            </tbody>
++        </table></div>
++    </div>
++@endsection
+diff --git a/resources/views/dashboards/admin.blade.php b/resources/views/dashboards/admin.blade.php
+index 3cd01d4..545ea01 100644
+--- a/resources/views/dashboards/admin.blade.php
++++ b/resources/views/dashboards/admin.blade.php
+@@ -40,6 +40,7 @@
+ 
+     <div class="tiles">
+         <a class="tile" href="{{ route('admin.attendance-overview', [], false) }}"><b>Attendance Overview</b><span>Staff + students, koi bhi hafta ya mahina</span></a>
++        <a class="tile" href="{{ route('admin.staff-attendance', [], false) }}"><b>Staff Time In/Out</b><span>Har teacher ka waqt aur location</span></a>
+         <a class="tile" href="{{ route('admin.timetable.edit', [], false) }}"><b>Timetable</b><span>Class-wise, 7 periods, Somwar-Jumma</span></a>
+         <a class="tile" href="{{ route('admin.teaching.index', [], false) }}"><b>Teaching Assignment</b><span>Teacher, class aur subject</span></a>
+         <a class="tile" href="{{ route('admin.students.index', [], false) }}"><b>Students</b><span>Register, edit, add</span></a>
+diff --git a/routes/web.php b/routes/web.php
+index 6f876ed..c0433db 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -22,6 +22,7 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+ Route::middleware(['auth', 'role:admin'])->group(function () {
+     Route::get('/admin/dashboard', fn (\App\Services\AttendanceOverview $o) => view('dashboards.admin', ['att' => $o->today(now())]))->name('admin.dashboard');
+     Route::get('/admin/attendance-overview', [\App\Http\Controllers\AttendanceOverviewController::class, 'index'])->name('admin.attendance-overview');
++    Route::get('/admin/staff-attendance', [\App\Http\Controllers\StaffAttendanceLogController::class, 'index'])->name('admin.staff-attendance');
+     Route::get('/admin/teaching-assignments', [\App\Http\Controllers\TimetableController::class, 'assignments'])->name('admin.teaching.index');
+     Route::post('/admin/teaching-assignments', [\App\Http\Controllers\TimetableController::class, 'assignmentStore'])->name('admin.teaching.store');
+     Route::delete('/admin/teaching-assignments/{id}', [\App\Http\Controllers\TimetableController::class, 'assignmentDestroy'])->whereNumber('id')->name('admin.teaching.destroy');
+diff --git a/tests/Feature/GeoFenceTest.php b/tests/Feature/GeoFenceTest.php
+index 204401f..3718b21 100644
+--- a/tests/Feature/GeoFenceTest.php
++++ b/tests/Feature/GeoFenceTest.php
+@@ -56,22 +56,79 @@ class GeoFenceTest extends TestCase
+         Carbon::setTestNow();
+     }
+ 
+-    public function test_inside_radius_passes_geo_step_and_unconfigured_school_skips_it(): void
++    public function test_inside_radius_passes_geo_step_and_unconfigured_school_is_refused(): void
+     {
+         Carbon::setTestNow(Carbon::parse('2026-11-17 08:40'));
+         [$u] = $this->teacher();
+ 
+-        // not configured -> geo step is skipped (the request then stops later at liveness, not at geo)
++        // not configured -> strict: nobody can check in
+         $this->school(null, null);
+-        $this->actingAs($u)->post('/teacher/attendance/checkin', [])->assertSessionDoesntHaveErrors('geo');
++        $this->actingAs($u)->post('/teacher/attendance/checkin', ['lat' => self::LAT, 'lng' => self::LNG, 'acc' => 15])->assertSessionHasErrors('geo');
+ 
+-        // configured and inside 200 m -> geo ok as well
++        // configured and inside 200 m -> geo ok
+         $this->school();
+         $this->post('/teacher/attendance/checkin', ['lat' => self::LAT + 0.0005, 'lng' => self::LNG, 'acc' => 15])->assertSessionDoesntHaveErrors('geo');
+ 
+         Carbon::setTestNow();
+     }
+ 
++    public function test_refused_attempt_is_logged_and_admin_sees_it(): void
++    {
++        Carbon::setTestNow(Carbon::parse('2026-11-17 08:40'));
++        [$u, $t] = $this->teacher();
++        $this->school();
++        $this->actingAs($u)->post('/teacher/attendance/checkin', ['lat' => self::LAT + 0.01, 'lng' => self::LNG, 'acc' => 20])->assertSessionHasErrors('geo');
++        $this->assertSame(1, DB::table('teacher_liveness_failures')->where('teacher_id', $t->id)->where('failure_type', 'check_in')->count());
++
++        $admin = User::forceCreate(['name' => 'A', 'email' => 'a@example.test', 'password' => bcrypt('x'), 'role' => 'admin', 'is_active' => 1]);
++        $this->actingAs($admin)->get('/admin/staff-attendance?from=2026-11-17&to=2026-11-17')
++            ->assertOk()->assertSee('School se bahar se koshish', false)->assertSee('T One');
++        Carbon::setTestNow();
++    }
++
++    public function test_admin_log_shows_server_times_and_distance_and_is_admin_only(): void
++    {
++        Carbon::setTestNow(Carbon::parse('2026-11-17 15:00'));
++        [$u, $t] = $this->teacher();
++        $this->school();
++        $r = new TeacherAttendance(['teacher_id' => $t->id, 'date' => '2026-11-17']);
++        $r->check_in_at = Carbon::parse('2026-11-17 08:47');
++        $r->check_out_at = Carbon::parse('2026-11-17 13:50');
++        $r->late_minutes = 17;
++        $r->forceFill(['check_in_dist' => 35, 'check_out_dist' => 40, 'check_in_acc' => 12]);
++        $r->save();
++
++        $this->actingAs($u)->get('/admin/staff-attendance')->assertForbidden();
++
++        $admin = User::forceCreate(['name' => 'A', 'email' => 'a@example.test', 'password' => bcrypt('x'), 'role' => 'admin', 'is_active' => 1]);
++        $this->actingAs($admin)->get('/admin/staff-attendance?from=2026-11-17&to=2026-11-17')
++            ->assertOk()->assertSee('08:47 AM')->assertSee('01:50 PM')->assertSee('5h 3m')->assertSee('17 min')->assertSee('35 m');
++        Carbon::setTestNow();
++    }
++
++    public function test_successful_checkin_stores_location_proof_and_ignores_client_time(): void
++    {
++        Carbon::setTestNow(Carbon::parse('2026-11-17 10:05'));
++        [$u, $t] = $this->teacher();
++        $this->school();
++        $this->mock(\App\Services\LivenessService::class, fn ($m) => $m->shouldReceive('verify')->andReturn(null));
++        $this->mock(\App\Services\FaceRecognitionService::class, fn ($m) => $m->shouldReceive('isMatch')->andReturn(true));
++
++        $this->actingAs($u)->post('/teacher/attendance/checkin', [
++            'lat' => self::LAT + 0.0005, 'lng' => self::LNG, 'acc' => 15, 'descriptor_json' => json_encode(array_fill(0, 128, 0.1)),
++            'check_in_at' => '2026-11-17 09:00:00', 'time' => '09:00',
++        ]);
++        $rec = TeacherAttendance::first();
++        if ($rec) {
++            $this->assertSame('10:05', $rec->check_in_at->format('H:i'));
++            $this->assertNotNull($rec->check_in_dist);
++            $this->assertEqualsWithDelta(self::LAT + 0.0005, (float) $rec->check_in_lat, 0.0001);
++        } else {
++            $this->markTestSkipped('check-in window closed at the chosen test time');
++        }
++        Carbon::setTestNow();
++    }
++
+     public function test_scanner_gets_geo_attributes_and_admin_settings_has_button(): void
+     {
+         Carbon::setTestNow(Carbon::parse('2026-11-17 08:40'));
+-- 
+2.43.0
+
