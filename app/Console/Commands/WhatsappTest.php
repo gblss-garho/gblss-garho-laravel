@@ -6,10 +6,9 @@ use App\Services\HeadMasterNotifier;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 
-/** Sends the leave-notice template once, right now, and prints exactly what Meta answered (no secrets are printed). */
 class WhatsappTest extends Command
 {
-    protected $signature = 'whatsapp:test {phone? : e.g. 923001234567 (default: WHATSAPP_HM_PHONE / school phone)}';
+    protected $signature = 'whatsapp:test {phone? : e.g. 923001234567}';
 
     protected $description = 'Check WhatsApp settings and send one test leave notice';
 
@@ -28,7 +27,7 @@ class WhatsappTest extends Command
             return self::FAILURE;
         }
         if ($c['dry_run']) {
-            $this->warn('WHATSAPP_DRY_RUN is true in the config the app is using. Fix .env and run config:clear.');
+            $this->warn('WHATSAPP_DRY_RUN is true in the config the app is using.');
 
             return self::FAILURE;
         }
