@@ -29,7 +29,7 @@
             <thead><tr>
                 <th class="nm">Teacher</th>
                 @unless ($single)<th>Tareekh</th>@endunless
-                <th>Time In</th><th>Time Out</th><th>Ghante</th><th>Late</th><th>School se doori (In / Out)</th><th>Nishan</th>
+                <th>Time In</th><th>Time Out</th><th>Ghante</th><th>Late</th><th>School se doori (In / Out)</th><th>Tasveer</th><th>Nishan</th>
             </tr></thead>
             <tbody>
             @forelse ($rows as $r)
@@ -42,17 +42,18 @@
                         <td>{{ $r['hours'] ?? '—' }}</td>
                         <td>{{ $r['late'] > 0 ? $r['late'].' min' : 'Waqt par' }}</td>
                         <td>{{ $r['in_dist'] !== null ? $r['in_dist'].' m' : '—' }} / {{ $r['out_dist'] !== null ? $r['out_dist'].' m' : '—' }}@if ($r['in_acc'] !== null)<small>GPS &plusmn;{{ $r['in_acc'] }} m</small>@endif</td>
+                        <td>@if ($r['in_photo'])<a href="{{ route('admin.staff-attendance.photo', ['id' => $r['id'], 'kind' => 'in'], false) }}" target="_blank" rel="noopener"><img class="sa-ph" loading="lazy" alt="In" src="{{ route('admin.staff-attendance.photo', ['id' => $r['id'], 'kind' => 'in'], false) }}"></a>@endif @if ($r['out_photo'])<a href="{{ route('admin.staff-attendance.photo', ['id' => $r['id'], 'kind' => 'out'], false) }}" target="_blank" rel="noopener"><img class="sa-ph" loading="lazy" alt="Out" src="{{ route('admin.staff-attendance.photo', ['id' => $r['id'], 'kind' => 'out'], false) }}"></a>@endif @unless ($r['in_photo'] || $r['out_photo'])—@endunless</td>
                         <td>@foreach ($r['flags'] as $f)<span class="sa-flag">{{ $f }}</span>@endforeach</td>
                     @else
-                        <td colspan="6" class="sa-none">{{ ['absent' => 'Absent', 'leave' => 'Chhutti (approved)', 'off' => 'School band', 'pending' => 'Abhi baqi'][$r['status']] ?? '' }}</td>
+                        <td colspan="7" class="sa-none">{{ ['absent' => 'Absent', 'leave' => 'Chhutti (approved)', 'off' => 'School band', 'pending' => 'Abhi baqi'][$r['status']] ?? '' }}</td>
                     @endif
                 </tr>
             @empty
-                <tr><td colspan="8" class="sa-none">Is muddat mein koi record nahi.</td></tr>
+                <tr><td colspan="9" class="sa-none">Is muddat mein koi record nahi.</td></tr>
             @endforelse
             </tbody>
         </table></div>
-        <p class="sa-note">Doori GPS se naapi jati hai. Hadd: school se {{ $radius }} m. "Nishan" mein wo cheezen aati hain jin par nazar rakhni chahiye.</p>
+        <p class="sa-note">Tasveer: hazri ke waqt camera se li gayi, sirf admin ko dikhti hai aur 90 din baad khud hat jati hai. Peeche ki jagah dekhein: school hai ya ghar. Doori GPS se naapi jati hai. Hadd: school se {{ $radius }} m. "Nishan" mein wo cheezen aati hain jin par nazar rakhni chahiye.</p>
 
         <h3 class="sa-h">Refused koshishen</h3>
         <p class="sa-note">Jab kisi ne school se bahar se ya kamzor/ghalat location se hazri lagane ki koshish ki, ya chehra match nahi hua.</p>

@@ -8,6 +8,7 @@ use App\Services\SchoolScheduleService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class TeacherAttendanceController extends Controller
@@ -245,6 +246,13 @@ class TeacherAttendanceController extends Controller
             return back()->withErrors(['geo' => $geo['error']]);
         }
 
+        $photo = $this->decodeSnapshot($request->input('snapshot'));
+        if (! $photo) {
+            $this->logAttempt($teacher, 'photo_missing', 'check_in');
+
+            return back()->withErrors(['attendance' => 'Camera ki tasveer nahi mili. Page refresh kar ke dobara koshish karen.']);
+        }
+
         if ($err = $this->liveness->verify($request, $teacher, 'check_in')) {
             return back()->withErrors(['attendance' => $err]);
         }
@@ -267,6 +275,7 @@ class TeacherAttendanceController extends Controller
 
         $record->check_in_at = $now;
         $record->forceFill($this->proof('check_in', $geo['reading'], $request));
+        $record->check_in_photo = $this->storePhoto($photo, $teacher, $now->toDateString(), 'in');
         $record->check_in_method = 'face_recognition';
         $record->late_minutes = $this->schedule->lateMinutes($now);
         $record->save();
@@ -299,6 +308,13 @@ class TeacherAttendanceController extends Controller
             return back()->withErrors(['geo' => $geo['error']]);
         }
 
+        $photo = $this->decodeSnapshot($request->input('snapshot'));
+        if (! $photo) {
+            $this->logAttempt($teacher, 'photo_missing', 'check_out');
+
+            return back()->withErrors(['attendance' => 'Camera ki tasveer nahi mili. Page refresh kar ke dobara koshish karen.']);
+        }
+
         if ($err = $this->liveness->verify($request, $teacher, 'check_out')) {
             return back()->withErrors(['attendance' => $err]);
         }
@@ -327,10 +343,35 @@ class TeacherAttendanceController extends Controller
 
         $record->check_out_at = $now;
         $record->forceFill($this->proof('check_out', $geo['reading'], $request));
+        $record->check_out_photo = $this->storePhoto($photo, $teacher, $now->toDateString(), 'out');
         $record->check_out_method = 'face_recognition';
         $record->save();
 
         return back()->with('status', 'Check-out ho gaya: ' . $now->format('h:i A'));
+    }
+
+    /** The camera picture as raw JPEG bytes, or null when it is missing or not a real small JPEG. */
+    private function decodeSnapshot(?string $data): ?string
+    {
+        $prefix = 'data:image/jpeg;base64,';
+        if (! $data || ! str_starts_with($data, $prefix) || strlen($data) > 400000) {
+            return null;
+        }
+        $bin = base64_decode(substr($data, strlen($prefix)), true);
+        if ($bin === false || strlen($bin) < 1500) {
+            return null;
+        }
+        $info = @getimagesizefromstring($bin);
+
+        return ($info && $info[2] === IMAGETYPE_JPEG && $info[0] >= 160 && $info[0] <= 1000) ? $bin : null;
+    }
+
+    private function storePhoto(string $bin, $teacher, string $date, string $kind): string
+    {
+        $path = 'attendance-photos/'.substr($date, 0, 7).'/'.$teacher->id.'_'.$date.'_'.$kind.'.jpg';
+        Storage::disk('local')->put($path, $bin);
+
+        return $path;
     }
 
     /** What the phone reported, stored with the record so the admin can review it. The time itself is always the server's clock. */

@@ -16,3 +16,4 @@
 .sa-t tr.st-absent td.sa-none { color: #991B1B; font-weight: 700; }
 .sa-t tr.st-late td:nth-last-child(3) { color: #B45309; font-weight: 700; }
 .sa-flag { display: inline-block; background: #FEF3C7; color: #92400E; border-radius: 8px; padding: 2px 7px; font-size: 11px; margin: 1px; white-space: normal; }
+.sa-ph { width: 54px; height: 40px; object-fit: cover; border-radius: 8px; border: 1px solid #D9D2BA; vertical-align: middle; }

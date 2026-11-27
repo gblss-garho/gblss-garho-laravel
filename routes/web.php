@@ -23,6 +23,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/dashboard', fn (\App\Services\AttendanceOverview $o) => view('dashboards.admin', ['att' => $o->today(now())]))->name('admin.dashboard');
     Route::get('/admin/attendance-overview', [\App\Http\Controllers\AttendanceOverviewController::class, 'index'])->name('admin.attendance-overview');
     Route::get('/admin/staff-attendance', [\App\Http\Controllers\StaffAttendanceLogController::class, 'index'])->name('admin.staff-attendance');
+    Route::get('/admin/staff-attendance/photo/{id}/{kind}', [\App\Http\Controllers\StaffAttendanceLogController::class, 'photo'])->whereNumber('id')->whereIn('kind', ['in', 'out'])->name('admin.staff-attendance.photo');
     Route::get('/admin/teaching-assignments', [\App\Http\Controllers\TimetableController::class, 'assignments'])->name('admin.teaching.index');
     Route::post('/admin/teaching-assignments', [\App\Http\Controllers\TimetableController::class, 'assignmentStore'])->name('admin.teaching.store');
     Route::delete('/admin/teaching-assignments/{id}', [\App\Http\Controllers\TimetableController::class, 'assignmentDestroy'])->whereNumber('id')->name('admin.teaching.destroy');

@@ -58,6 +58,17 @@
                 yaw: w > 0 ? (nose[3].x - jaw[0].x) / w : 0.5 // 0.5 = facing the camera
             };
         }
+        // One small camera picture, kept (admin only) so a check-in made away from school is visible in the background.
+        function snapshot() {
+            try {
+                var w = video.videoWidth || 320, h = video.videoHeight || 240;
+                var c = document.createElement('canvas');
+                c.width = 320;
+                c.height = Math.max(1, Math.round(h * 320 / w));
+                c.getContext('2d').drawImage(video, 0, 0, c.width, c.height);
+                return c.toDataURL('image/jpeg', 0.6);
+            } catch (e) { return ''; }
+        }
         async function frame() {
             var d = await faceapi.detectSingleFace(video, FAST()).withFaceLandmarks();
             return d ? metricsOf(d.landmarks) : null;
@@ -202,6 +213,8 @@
             field.value = JSON.stringify(Array.prototype.slice.call(found.descriptor));
             liveField.value = JSON.stringify({ c: challenges, ok: true });
             state('ok', 'Asli insan ki tasdeeq ho gayi. Save ho raha hai...');
+            var snapField = form.querySelector('input[name=snapshot]');
+            if (snapField) { snapField.value = snapshot(); }
             await sleep(700);
             form.submit();
         }

@@ -9,6 +9,7 @@ use App\Services\SchoolScheduleService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /** Admin: the exact check-in / check-out time of every teacher, where the phone was, and refused attempts. */
 class StaffAttendanceLogController extends Controller
@@ -75,6 +76,18 @@ class StaffAttendanceLogController extends Controller
         ]);
     }
 
+    /** The camera picture taken at check-in / check-out. Admin only; never public. */
+    public function photo(int $id, string $kind)
+    {
+        $r = TeacherAttendance::findOrFail($id);
+        $path = $kind === 'out' ? $r->check_out_photo : $r->check_in_photo;
+        abort_unless($path && Storage::disk('local')->exists($path), 404);
+
+        return response(Storage::disk('local')->get($path), 200, [
+            'Content-Type' => 'image/jpeg', 'Cache-Control' => 'private, max-age=3600', 'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
     private function day(?string $raw, Carbon $fallback): Carbon
     {
         if ($raw && preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
@@ -90,6 +103,7 @@ class StaffAttendanceLogController extends Controller
     private function row($t, Carbon $date, ?TeacherAttendance $r, int $radius, Carbon $now, bool $onLeave): array
     {
         $row = [
+            'id' => $r?->id, 'in_photo' => (bool) $r?->check_in_photo, 'out_photo' => (bool) $r?->check_out_photo,
             'teacher' => $t, 'date' => $date, 'in' => null, 'out' => null, 'hours' => null, 'late' => 0,
             'in_dist' => null, 'out_dist' => null, 'in_acc' => null, 'status' => 'absent', 'flags' => [],
         ];
@@ -136,6 +150,7 @@ class StaffAttendanceLogController extends Controller
             $reason === 'geo_missing' => 'Phone ki location nahi mili',
             $reason === 'geo_weak_gps' => 'GPS kamzor / ghalat',
             $reason === 'geo_school_not_set' => 'School ki location Settings mein set nahi',
+            $reason === 'photo_missing' => 'Camera ki tasveer nahi mili',
             $reason === 'face_mismatch' => 'Chehra match nahi hua',
             str_starts_with($reason, 'liveness') => 'Liveness (palak/sir) pass nahi hua',
             default => $reason,
