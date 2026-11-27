@@ -35,7 +35,7 @@ class AttendancePhotoTest extends TestCase
         DB::table('school_info')->updateOrInsert(['id' => 1], ['name' => 'GBLSS Garho', 'school_lat' => self::LAT, 'school_lng' => self::LNG, 'attendance_radius' => 200]);
         $u = User::forceCreate(['name' => 'T One', 'email' => 'p1@example.test', 'password' => bcrypt('x'), 'role' => 'teacher', 'is_active' => 1]);
         $t = Teacher::forceCreate(['id' => 'tchpho0001', 'user_id' => $u->id, 'name' => 'T One', 'auth_email' => 'p1@example.test', 'created_at' => '2026-01-01 00:00:00']);
-        $t->face_descriptor = json_encode(array_fill(0, 128, 0.1));
+        $t->face_descriptor = array_fill(0, 128, 0.1);
         $t->save();
         $this->mock(\App\Services\LivenessService::class, fn ($m) => $m->shouldReceive('verify')->andReturn(null));
         $this->mock(\App\Services\FaceRecognitionService::class, fn ($m) => $m->shouldReceive('isMatch')->andReturn(true));

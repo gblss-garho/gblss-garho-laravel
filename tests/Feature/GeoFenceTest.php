@@ -22,7 +22,7 @@ class GeoFenceTest extends TestCase
     {
         $u = User::forceCreate(['name' => 'T One', 'email' => 'g1@example.test', 'password' => bcrypt('x'), 'role' => 'teacher', 'is_active' => 1]);
         $t = Teacher::forceCreate(['id' => 'tchgeo0001', 'user_id' => $u->id, 'name' => 'T One', 'auth_email' => 'g1@example.test', 'created_at' => '2026-01-01 00:00:00']);
-        $t->face_descriptor = json_encode(array_fill(0, 128, 0.1));
+        $t->face_descriptor = array_fill(0, 128, 0.1);
         $t->save();
 
         return [$u, $t];
