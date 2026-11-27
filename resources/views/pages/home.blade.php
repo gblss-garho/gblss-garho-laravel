@@ -3,6 +3,7 @@
 @section('title', ($info->name ?? 'GBLSS Garho'))
 
 @section('content')
+<link rel="stylesheet" href="{{ asset('css/home-fx.css') }}?v={{ @filemtime(public_path('css/home-fx.css')) }}">
 <style>
     .hm-hero { position:relative; overflow:hidden; border-radius:24px; margin: 0 0 40px; min-height:440px; display:flex; flex-direction:column; justify-content:center; color:#F8FAF8; box-shadow:0 22px 55px rgba(6,54,50,.38); background: radial-gradient(ellipse at 25% 15%, #0B7A5B 0%, #075C42 55%, #032E24 100%); }
     .hm-hero.photo { background-size:cover; background-position:center; }
@@ -88,7 +89,11 @@
     <div class="notice-bar"><span class="lbl">&#128226; NOTICE</span><div class="run"><div>@foreach ($notices as $n)&#8505;&#65039; {{ str($n->text ?? '')->limit(160) }} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;@endforeach</div></div></div>
 @endif
 
-<div class="hm-hero{{ !empty($info->school_photo_url) ? ' photo' : '' }}"@if (!empty($info->school_photo_url)) style="background-image:linear-gradient(180deg,rgba(6,54,50,.5) 0%,rgba(6,54,50,.68) 45%,rgba(4,36,32,.95) 100%),url('{{ $info->school_photo_url }}')"@endif>
+@if (($festive ?? null) === 'sindhi')
+    @include('pages._sindhi-culture')
+@endif
+
+<div class="hm-hero{{ !empty($info->school_photo_url) ? ' photo' : '' }}{{ ($festive ?? null) === 'sindhi' ? ' sc-on' : '' }}"@if (!empty($info->school_photo_url)) style="background-image:linear-gradient(180deg,rgba(6,54,50,.5) 0%,rgba(6,54,50,.68) 45%,rgba(4,36,32,.95) 100%),url('{{ $info->school_photo_url }}')"@endif>
     <div class="in">
         <span class="hm-pill">GOVERNMENT SCHOOL &middot; GARHO</span>
         <h1>{{ $info->name ?? 'GBLSS Garho' }}</h1>
@@ -290,4 +295,5 @@ document.querySelectorAll('[data-lt]').forEach(function (b) {
     @endif
     <p><a href="{{ route('public.gallery', [], false) }}">Poori gallery &rarr;</a> | <a href="{{ route('public.textbooks', [], false) }}">Textbooks</a> | <a href="{{ route('public.feedback', [], false) }}">Feedback</a></p>
 @endif
+<script defer src="{{ asset('js/home-fx.js') }}?v={{ @filemtime(public_path('js/home-fx.js')) }}"></script>
 @endsection

@@ -13,6 +13,7 @@ class PublicHomeController extends Controller
             ->selectRaw('class, count(*) as c')->groupBy('class')->pluck('c', 'class');
 
         return view('pages.home', [
+            'festive' => $this->festive(),
             'info' => DB::table('school_info')->where('id', 1)->first(),
             'students' => DB::table('students')->where('passed_out', false)->count(),
             'teachers' => DB::table('teachers')->count(),
@@ -22,5 +23,21 @@ class PublicHomeController extends Controller
             'events' => DB::table('calendar_events')->whereDate('date', '>=', now()->toDateString())->orderBy('date')->limit(4)->get(),
             'photos' => DB::table('gallery')->orderByDesc('created_at')->limit(8)->get(),
         ]);
+    }
+
+    /** Which festive theme (if any) the home page should wear today. */
+    private function festive(): ?string
+    {
+        $force = request()->query('festive');
+        if ($force === 'off') {
+            return null;
+        }
+        if ($force === 'sindhi') {
+            return 'sindhi';
+        }
+        $today = now()->toDateString();
+        $w = config('festive.sindhi');
+
+        return ($today >= $w['from'] && $today <= $w['to']) ? 'sindhi' : null;
     }
 }
