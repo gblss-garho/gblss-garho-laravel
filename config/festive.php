@@ -4,7 +4,7 @@
 // Preview any time with  /?festive=sindhi   and force it off with  /?festive=off
 return [
     'sindhi' => [
-        'from' => env('FESTIVE_SINDHI_FROM', '2026-11-30'),
+        'from' => env('FESTIVE_SINDHI_FROM', '2026-11-28'),
         'to'   => env('FESTIVE_SINDHI_TO', '2026-12-06'),
     ],
 ];
