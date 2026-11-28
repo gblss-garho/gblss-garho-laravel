@@ -1,0 +1,322 @@
+diff --git a/public/css/sindhi-theme.css b/public/css/sindhi-theme.css
+index 75f8363..ee45700 100644
+--- a/public/css/sindhi-theme.css
++++ b/public/css/sindhi-theme.css
+@@ -1,67 +1,84 @@
+-/* ============ Sindhi Culture Day theme ============ */
+-/* ajrak tile (indigo, madder-red, white): used as the pattern for tabs, tiles and strips */
+-:root { --aj: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2312204F'/%3E%3Cpolygon points='32,3 61,32 32,61 3,32' fill='%23A31D35'/%3E%3Cpolygon points='32,11 53,32 32,53 11,32' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3Cpolygon points='32,19 45,32 32,45 19,32' fill='%2312204F'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%23fff'/%3E%3Ccircle cx='32' cy='32' r='2.6' fill='%23A31D35'/%3E%3Ccircle cx='3' cy='3' r='4' fill='%23fff'/%3E%3Ccircle cx='61' cy='3' r='4' fill='%23fff'/%3E%3Ccircle cx='3' cy='61' r='4' fill='%23fff'/%3E%3Ccircle cx='61' cy='61' r='4' fill='%23fff'/%3E%3Ccircle cx='32' cy='3' r='2' fill='%23fff'/%3E%3Ccircle cx='32' cy='61' r='2' fill='%23fff'/%3E%3Ccircle cx='3' cy='32' r='2' fill='%23fff'/%3E%3Ccircle cx='61' cy='32' r='2' fill='%23fff'/%3E%3C/svg%3E"); }
++:root { --ajr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Crect width='72' height='72' fill='%235E0B18'/%3E%0A%3Ccircle cx='36' cy='36' r='27' fill='%23B3122B'/%3E%3Ccircle cx='36' cy='36' r='27' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-dasharray='0.1 6.1'/%3E%0A%3Ccircle cx='36' cy='36' r='19' fill='%235E0B18'/%3E%3Ccircle cx='36' cy='36' r='19' fill='none' stroke='%23fff' stroke-width='1.4'/%3E%0A%3Crect x='26' y='26' width='20' height='20' fill='%23fff'/%3E%3Crect x='26' y='26' width='20' height='20' fill='%23fff' transform='rotate(45 36 36)'/%3E%0A%3Crect x='30' y='30' width='12' height='12' fill='%23B3122B'/%3E%3Crect x='30' y='30' width='12' height='12' fill='%23B3122B' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='3.2' fill='%23fff'/%3E%0A%3Cg fill='%2316090B' stroke='%23fff' stroke-width='1.2'%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(0,0)'/%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(72,0)'/%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(0,72)'/%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(72,72)'/%3E%3C/g%3E%0A%3Cg fill='%23fff'%3E%3Ccircle cx='36' cy='3' r='3.4'/%3E%3Ccircle cx='36' cy='69' r='3.4'/%3E%3Ccircle cx='3' cy='36' r='3.4'/%3E%3Ccircle cx='69' cy='36' r='3.4'/%3E%3Ccircle cx='13' cy='13' r='2'/%3E%3Ccircle cx='59' cy='13' r='2'/%3E%3Ccircle cx='13' cy='59' r='2'/%3E%3Ccircle cx='59' cy='59' r='2'/%3E%3C/g%3E%0A%3Cg fill='%235E0B18'%3E%3Ccircle cx='36' cy='3' r='1.5'/%3E%3Ccircle cx='36' cy='69' r='1.5'/%3E%3Ccircle cx='3' cy='36' r='1.5'/%3E%3Ccircle cx='69' cy='36' r='1.5'/%3E%3C/g%3E%3C/svg%3E"); --ajb: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Crect width='72' height='72' fill='%230B2A6B'/%3E%0A%3Ccircle cx='36' cy='36' r='27' fill='%231F74DE'/%3E%3Ccircle cx='36' cy='36' r='27' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-dasharray='0.1 6.1'/%3E%0A%3Ccircle cx='36' cy='36' r='19' fill='%230B2A6B'/%3E%3Ccircle cx='36' cy='36' r='19' fill='none' stroke='%23fff' stroke-width='1.4'/%3E%0A%3Crect x='26' y='26' width='20' height='20' fill='%23fff'/%3E%3Crect x='26' y='26' width='20' height='20' fill='%23fff' transform='rotate(45 36 36)'/%3E%0A%3Crect x='30' y='30' width='12' height='12' fill='%231F74DE'/%3E%3Crect x='30' y='30' width='12' height='12' fill='%231F74DE' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='3.2' fill='%23fff'/%3E%0A%3Cg fill='%2306163F' stroke='%23fff' stroke-width='1.2'%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(0,0)'/%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(72,0)'/%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(0,72)'/%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(72,72)'/%3E%3C/g%3E%0A%3Cg fill='%23fff'%3E%3Ccircle cx='36' cy='3' r='3.4'/%3E%3Ccircle cx='36' cy='69' r='3.4'/%3E%3Ccircle cx='3' cy='36' r='3.4'/%3E%3Ccircle cx='69' cy='36' r='3.4'/%3E%3Ccircle cx='13' cy='13' r='2'/%3E%3Ccircle cx='59' cy='13' r='2'/%3E%3Ccircle cx='13' cy='59' r='2'/%3E%3Ccircle cx='59' cy='59' r='2'/%3E%3C/g%3E%0A%3Cg fill='%230B2A6B'%3E%3Ccircle cx='36' cy='3' r='1.5'/%3E%3Ccircle cx='36' cy='69' r='1.5'/%3E%3Ccircle cx='3' cy='36' r='1.5'/%3E%3Ccircle cx='69' cy='36' r='1.5'/%3E%3C/g%3E%3C/svg%3E"); --rl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230C5C3D'/%3E%0A%3Cpolygon points='32,2 62,32 32,62 2,32' fill='%23F28C28'/%3E%3Cpolygon points='32,12 52,32 32,52 12,32' fill='%23D81B60'/%3E%3Cpolygon points='32,20 44,32 32,44 20,32' fill='%23FFD23F'/%3E%0A%3Ccircle cx='32' cy='32' r='6' fill='%23fff'/%3E%3Ccircle cx='32' cy='32' r='2.6' fill='%231565C0'/%3E%0A%3Cg fill='%23fff'%3E%3Ccircle cx='32' cy='7' r='1.8'/%3E%3Ccircle cx='32' cy='57' r='1.8'/%3E%3Ccircle cx='7' cy='32' r='1.8'/%3E%3Ccircle cx='57' cy='32' r='1.8'/%3E%3C/g%3E%0A%3Cg fill='%231E88E5' stroke='%23fff' stroke-width='1'%3E%3Cpolygon points='0,-7 7,0 0,7 -7,0' transform='translate(0,0)'/%3E%3Cpolygon points='0,-7 7,0 0,7 -7,0' transform='translate(64,0)'/%3E%3Cpolygon points='0,-7 7,0 0,7 -7,0' transform='translate(0,64)'/%3E%3Cpolygon points='0,-7 7,0 0,7 -7,0' transform='translate(64,64)'/%3E%3C/g%3E%3C/svg%3E"); }
++/* Sindhi Culture Day theme v3: madder-red & indigo ajrak, rilli patchwork, sky blue, sun yellow.
++   --ajr red ajrak, --ajb blue ajrak, --rl rilli (multicolour embroidery). */
+ 
+-/* slim greeting ribbon above the hero */
+-.sc-rib { position: relative; margin: 14px 0 16px; border-radius: 16px; padding: 7px; background: var(--aj) 0 0 / 28px 28px; box-shadow: 0 10px 26px rgba(18,32,79,.3); animation: scSlide 30s linear infinite; }
+-@keyframes scSlide { to { background-position: 28px 0; } }
+-.sc-rib-in { display: flex; align-items: center; gap: 12px; border-radius: 11px; padding: 8px 14px; background: linear-gradient(90deg, #0B1535, #1D2F6E 50%, #0B1535); color: #fff; }
+-.sc-rib-in svg.t { flex: none; width: 46px; height: 35px; filter: drop-shadow(0 3px 5px rgba(0,0,0,.4)); animation: scBob 3.6s ease-in-out infinite; }
++/* ---- greeting ribbon ---- */
++.sc-rib { position: relative; margin: 14px 0 16px; border-radius: 18px; padding: 8px; background: var(--ajr) 0 0 / 40px 40px; box-shadow: 0 12px 28px rgba(94,11,24,.38); animation: scSlide 36s linear infinite; }
++@keyframes scSlide { to { background-position: 40px 0; } }
++.sc-rib-in { position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px; border-radius: 12px; padding: 10px 14px; color: #fff; background: radial-gradient(circle at 12% 50%, rgba(246,176,30,.55) 0, rgba(246,176,30,0) 34%), linear-gradient(100deg, #5E0B18, #8E1226 55%, #5E0B18); }
++.sc-rib-in svg.t { position: relative; flex: none; width: 50px; height: 38px; filter: drop-shadow(0 3px 5px rgba(0,0,0,.45)); animation: scBob 3.6s ease-in-out infinite; }
+ @keyframes scBob { 50% { transform: translateY(-3px) rotate(-3deg); } }
+-.sc-rib-tx { flex: 1; text-align: center; line-height: 1.35; }
+-.sc-rib-tx .sd { display: block; font-size: 16px; white-space: nowrap; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.45); }
+-.sc-rib-tx small { display: block; text-transform: uppercase; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10.5px; letter-spacing: 1.2px; font-weight: 700; color: #F2C94C; }
+-.sc-rib-tx em { display: none; }
+-.sc-day { flex: none; text-align: center; padding: 3px 11px; border-radius: 10px; background: #A31D35; color: #fff; line-height: 1.05; box-shadow: 0 4px 10px rgba(163,29,53,.45); }
++.sc-rib-tx { position: relative; flex: 1; text-align: center; line-height: 1.35; }
++.sc-rib-tx .sd { display: block; font-size: 16px; white-space: nowrap; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.5); }
++.sc-rib-tx small { display: block; text-transform: uppercase; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: 1.1px; font-weight: 700; color: #FFD66B; }
++.sc-day { position: relative; flex: none; text-align: center; padding: 3px 11px; border-radius: 10px; background: #fff; color: #8E1226; line-height: 1.05; box-shadow: 0 4px 10px rgba(0,0,0,.35); }
+ .sc-day b { display: block; font-family: 'Baloo 2', serif; font-size: 22px; }
+ .sc-day span { font-size: 9.5px; letter-spacing: .8px; font-weight: 700; }
+-/* heritage-site ticker */
+-.sc-tick { margin-top: 7px; overflow: hidden; border-radius: 11px; background: #0B1535; border: 1px solid rgba(242,201,76,.25); }
++/* heritage ticker on a sky-blue band */
++.sc-tick { margin-top: 8px; overflow: hidden; border-radius: 12px; background: linear-gradient(90deg, #0D47A1, #1E88E5 50%, #0D47A1); border: 2px solid #fff; }
+ .sc-tick-run { display: inline-flex; white-space: nowrap; animation: scTick 46s linear infinite; padding: 6px 0; }
+ .sc-tick:hover .sc-tick-run { animation-play-state: paused; }
+ @keyframes scTick { to { transform: translateX(-50%); } }
+-.sc-tk { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; color: #F2C94C; font-size: 13px; }
++.sc-tk { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; color: #FFE082; font-size: 13px; }
+ .sc-tk svg { width: 34px; height: 24px; flex: none; }
+ .sc-tk b { color: #fff; font-family: 'Baloo 2', 'Noto Serif', serif; font-weight: 600; }
+-.sc-tk i { font-style: normal; color: #A31D35; }
++.sc-tk i { font-style: normal; color: #FFD23F; }
+ 
+-/* floating ajrak diamonds, topis and landmarks over the hero */
++/* ---- floating over the hero: ajrak diamonds, rilli diamonds, mirror-work, topi, landmarks ---- */
+ .sc-fl2 { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+ .sc-fl2 > * { position: absolute; bottom: -50px; opacity: 0; animation: scRise 12s linear infinite; }
+-.sc-fl2 .d { width: 18px; height: 18px; background: var(--aj) center / 18px 18px; border: 2px solid #fff; transform: rotate(45deg); }
+-.sc-fl2 svg { width: 38px; height: 28px; color: #F2C94C; }
+-.sc-fl2 > :nth-child(1) { left: 6%; animation-delay: 0s; }  .sc-fl2 > :nth-child(2) { left: 20%; animation-delay: 3s; animation-duration: 15s; }
+-.sc-fl2 > :nth-child(3) { left: 33%; animation-delay: 6s; }  .sc-fl2 > :nth-child(4) { left: 48%; animation-delay: 1.5s; animation-duration: 14s; }
+-.sc-fl2 > :nth-child(5) { left: 61%; animation-delay: 8s; }  .sc-fl2 > :nth-child(6) { left: 74%; animation-delay: 4.5s; animation-duration: 16s; }
+-.sc-fl2 > :nth-child(7) { left: 86%; animation-delay: 10s; } .sc-fl2 > :nth-child(8) { left: 93%; animation-delay: 2s; animation-duration: 13s; }
+-@keyframes scRise { 0% { transform: translateY(0) rotate(0deg); opacity: 0; } 12% { opacity: .55; } 85% { opacity: .4; } 100% { transform: translateY(-520px) rotate(25deg); opacity: 0; } }
+-.sc-fl2 .d { animation-name: scRiseD; }
+-@keyframes scRiseD { 0% { transform: translateY(0) rotate(45deg); opacity: 0; } 12% { opacity: .6; } 85% { opacity: .4; } 100% { transform: translateY(-520px) rotate(225deg); opacity: 0; } }
++.sc-fl2 .d { width: 20px; height: 20px; background: var(--ajr) center / 20px 20px; border: 2px solid #fff; transform: rotate(45deg); }
++.sc-fl2 .r { width: 20px; height: 20px; background: var(--rl) center / 20px 20px; border: 2px solid #fff; transform: rotate(45deg); }
++.sc-fl2 .m { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff 0 30%, #cfd8dc 31% 55%, #fff 56%); box-shadow: 0 0 0 3px #D81B60, 0 0 0 5px #FFD23F; }
++.sc-fl2 svg { width: 40px; height: 29px; color: #FFD23F; }
++.sc-fl2 > :nth-child(1) { left: 6%; animation-delay: 0s; }  .sc-fl2 > :nth-child(2) { left: 18%; animation-delay: 3s; animation-duration: 15s; }
++.sc-fl2 > :nth-child(3) { left: 30%; animation-delay: 6s; }  .sc-fl2 > :nth-child(4) { left: 42%; animation-delay: 1.5s; animation-duration: 14s; }
++.sc-fl2 > :nth-child(5) { left: 55%; animation-delay: 8s; }  .sc-fl2 > :nth-child(6) { left: 66%; animation-delay: 4.5s; animation-duration: 16s; }
++.sc-fl2 > :nth-child(7) { left: 77%; animation-delay: 10s; } .sc-fl2 > :nth-child(8) { left: 86%; animation-delay: 2s; animation-duration: 13s; }
++.sc-fl2 > :nth-child(9) { left: 94%; animation-delay: 7s; }  .sc-fl2 > :nth-child(10) { left: 12%; animation-delay: 9.5s; animation-duration: 17s; }
++@keyframes scRise { 0% { transform: translateY(0) rotate(0deg); opacity: 0; } 12% { opacity: .75; } 85% { opacity: .5; } 100% { transform: translateY(-520px) rotate(25deg); opacity: 0; } }
++.sc-fl2 .d, .sc-fl2 .r { animation-name: scRiseD; }
++@keyframes scRiseD { 0% { transform: translateY(0) rotate(45deg); opacity: 0; } 12% { opacity: .85; } 85% { opacity: .55; } 100% { transform: translateY(-520px) rotate(225deg); opacity: 0; } }
+ 
+-/* ---- ajrak on the existing tabs / tiles / strips (home page only: body.sc-theme) ---- */
+-.sc-theme .hm-hero .hm-strip { height: 14px; background: var(--aj) repeat-x 0 0 / 14px 14px; }
+-.sc-theme .hm-stat:before, .sc-theme .hm-fc:before, .sc-theme .hm-t:before { height: 12px; background: var(--aj) repeat-x 0 0 / 12px 12px; }
+-.sc-theme .hm-stat { padding-top: 26px; }
+-.sc-theme .hm-fc { padding-top: 28px; }
+-.sc-theme .hm-t { padding-top: 28px; }
+-.sc-theme .hm-m { position: relative; padding-left: 20px; overflow: hidden; }
+-.sc-theme .hm-m:before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 9px; background: var(--aj) repeat-y 0 0 / 9px 9px; }
+-.sc-theme .hm-tabs button.on { background: #12204F; border-color: #A31D35; box-shadow: 0 0 0 2px #A31D35 inset; }
+-.sc-theme .hm-lead { border-top: 0; position: relative; padding-top: 30px; }
+-.sc-theme .hm-lead:before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 12px; background: var(--aj) repeat-x 0 0 / 12px 12px; border-radius: 18px 18px 0 0; }
+-.sc-theme .notice-bar { box-shadow: 0 0 0 4px #12204F, 0 0 0 9px transparent; border: 0; position: relative; }
+-.sc-theme .notice-bar:before, .sc-theme .notice-bar:after { content: ""; position: absolute; left: 0; right: 0; height: 6px; background: var(--aj) repeat-x 0 0 / 6px 6px; z-index: 1; }
++/* ---- ajrak / rilli on the existing tabs, tiles and strips (home page only: body.sc-theme) ---- */
++.sc-theme .hm-hero .hm-strip { height: 16px; background: var(--rl) repeat-x 0 0 / 16px 16px; }
++.sc-theme .hm-stat:before { height: 14px; background: var(--ajr) repeat-x 0 0 / 14px 14px; }
++.sc-theme .hm-fc:before { height: 14px; background: var(--rl) repeat-x 0 0 / 14px 14px; }
++.sc-theme .hm-t:before { height: 14px; background: var(--ajb) repeat-x 0 0 / 14px 14px; }
++.sc-theme .hm-stat { padding-top: 28px; }
++.sc-theme .hm-fc, .sc-theme .hm-t { padding-top: 30px; }
++.sc-theme .hm-m { position: relative; padding-left: 22px; overflow: hidden; }
++.sc-theme .hm-m:before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 10px; background: var(--ajr) repeat-y 0 0 / 10px 10px; }
++.sc-theme .hm-m:nth-child(even):before { background-image: var(--ajb); }
++.sc-theme .hm-tabs button.on { background: #8E1226; border-color: #5E0B18; box-shadow: 0 0 0 2px #FFD23F inset; }
++.sc-theme .hm-lead { border-top: 0; position: relative; padding-top: 32px; }
++.sc-theme .hm-lead:before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 14px; background: var(--ajr) repeat-x 0 0 / 14px 14px; border-radius: 18px 18px 0 0; }
++.sc-theme .notice-bar { position: relative; border: 0; }
++.sc-theme .notice-bar:before, .sc-theme .notice-bar:after { content: ""; position: absolute; left: 0; right: 0; height: 7px; background: var(--ajr) repeat-x 0 0 / 7px 7px; z-index: 1; }
+ .sc-theme .notice-bar:before { top: 0; } .sc-theme .notice-bar:after { bottom: 0; }
+-.sc-theme .hm-b1, .sc-theme .hm-b2, .sc-theme .hm-b3 { box-shadow: 0 0 0 3px #12204F, 0 0 0 5px #A31D35; }
++.sc-theme .hm-b1, .sc-theme .hm-b2, .sc-theme .hm-b3 { box-shadow: 0 0 0 3px #5E0B18, 0 0 0 5px #FFD23F; }
+ /* page header + top and bottom tab bars */
+-.sc-theme .site-head { border-bottom: 0; }
+-.sc-theme .site-head:after { content: ""; display: block; height: 12px; background: var(--aj) repeat-x 0 0 / 12px 12px; }
+-.sc-theme .nav a.on { background: #12204F; color: #fff; box-shadow: 0 0 0 2px #A31D35 inset; }
+-.sc-theme .m-nav { background: var(--aj) 0 0 / 18px 18px; padding: 6px; gap: 4px; border-color: #12204F; }
+-.sc-theme .m-nav a, .sc-theme .m-nav button { background: rgba(6,40,40,.97); min-width: 0; flex: 1; }
+-.sc-theme .m-nav a.on, .sc-theme .m-nav button.on { background: #D9A91A; }
++.sc-theme .site-head:after { content: ""; display: block; height: 14px; background: var(--rl) repeat-x 0 0 / 14px 14px; }
++.sc-theme .nav a.on { background: #8E1226; color: #fff; box-shadow: 0 0 0 2px #FFD23F inset; }
++.sc-theme .m-nav { background: var(--ajr) 0 0 / 20px 20px; padding: 6px; gap: 4px; border-color: #5E0B18; }
++.sc-theme .m-nav a, .sc-theme .m-nav button { background: rgba(40,6,12,.96); min-width: 0; flex: 1; }
++.sc-theme .m-nav a.on, .sc-theme .m-nav button.on { background: #FFD23F; color: #5E0B18; }
+ 
+ @media (prefers-reduced-motion: reduce) {
+     .sc-rib, .sc-rib-in svg.t, .sc-tick-run, .sc-fl2 > * { animation: none !important; }
+     .sc-fl2 { display: none; }
+ }
++
++/* ---- illustrated Sindhi characters standing on the hero strip ---- */
++.sc-theme .hm-hero.sc-on .in { padding-bottom: 150px; }
++.sc-folk { position: absolute; left: 0; right: 0; bottom: 15px; z-index: 1; display: flex; justify-content: center; align-items: flex-end; gap: 2px; padding: 0 6px; pointer-events: none; }
++.sc-folk svg { width: 25%; max-width: 118px; height: auto; transform-origin: 50% 100%; animation: scSway 4.2s ease-in-out infinite; filter: drop-shadow(0 4px 6px rgba(0,0,0,.35)); }
++.sc-folk svg:nth-child(1) { width: 27%; max-width: 128px; } .sc-folk svg:nth-child(2) { width: 22%; max-width: 100px; animation-delay: .5s; }
++.sc-folk svg:nth-child(3) { animation-delay: 1s; } .sc-folk svg:nth-child(4) { width: 27%; max-width: 128px; animation-delay: 1.5s; }
++@keyframes scSway { 0%, 100% { transform: rotate(-1.4deg); } 50% { transform: rotate(1.4deg) translateY(-3px); } }
++@media (prefers-reduced-motion: reduce) { .sc-folk svg { animation: none !important; } }
++@media (min-width: 700px) {
++    .sc-theme .hm-hero.sc-on .in { padding-bottom: 215px; }
++    .sc-folk svg { max-width: 100px; } .sc-folk svg:nth-child(1), .sc-folk svg:nth-child(4) { max-width: 108px; } .sc-folk svg:nth-child(2) { max-width: 84px; }
++    .sc-folk { gap: 14px; }
++}
+diff --git a/resources/views/pages/_sindhi-float.blade.php b/resources/views/pages/_sindhi-float.blade.php
+index d3584f4..9aa898d 100644
+--- a/resources/views/pages/_sindhi-float.blade.php
++++ b/resources/views/pages/_sindhi-float.blade.php
+@@ -1,11 +1,13 @@
+-{{-- floating ajrak diamonds, topis and landmarks inside the hero (decorative) --}}
++{{-- floating ajrak / rilli diamonds, mirror-work, topis and landmarks inside the hero (decorative) --}}
+ <div class="sc-fl2" aria-hidden="true">
+     <span class="d"></span>
++    <span class="m"></span>
+     <svg><use href="#sc-topi"/></svg>
+-    <span class="d"></span>
++    <span class="r"></span>
+     <svg><use href="#sc-mohenjo"/></svg>
+     <span class="d"></span>
+-    <svg><use href="#sc-fort"/></svg>
+-    <span class="d"></span>
++    <span class="m"></span>
+     <svg><use href="#sc-masjid"/></svg>
++    <span class="r"></span>
++    <svg><use href="#sc-fort"/></svg>
+ </div>
+diff --git a/resources/views/pages/_sindhi-folk.blade.php b/resources/views/pages/_sindhi-folk.blade.php
+new file mode 100644
+index 0000000..c53a5b5
+--- /dev/null
++++ b/resources/views/pages/_sindhi-folk.blade.php
+@@ -0,0 +1,121 @@
++{{-- Original illustrated Sindhi characters (boy, girl, man, woman) standing on the hero strip. Decorative. --}}
++<svg width="0" height="0" style="position:absolute" aria-hidden="true">
++    <defs>
++        <pattern id="scp-ajr" width="22" height="22" patternUnits="userSpaceOnUse">
++            <rect width="22" height="22" fill="#5E0B18"/><circle cx="11" cy="11" r="8.5" fill="#B3122B"/><circle cx="11" cy="11" r="5" fill="#5E0B18"/>
++            <rect x="8" y="8" width="6" height="6" fill="#fff" transform="rotate(45 11 11)"/><circle cx="0" cy="0" r="3" fill="#fff"/><circle cx="22" cy="0" r="3" fill="#fff"/><circle cx="0" cy="22" r="3" fill="#fff"/><circle cx="22" cy="22" r="3" fill="#fff"/>
++        </pattern>
++        <pattern id="scp-rl" width="16" height="16" patternUnits="userSpaceOnUse">
++            <rect width="16" height="16" fill="#0C5C3D"/><polygon points="8,0 16,8 8,16 0,8" fill="#F28C28"/><polygon points="8,3.5 12.5,8 8,12.5 3.5,8" fill="#D81B60"/><circle cx="8" cy="8" r="1.8" fill="#FFD23F"/>
++        </pattern>
++
++        {{-- BOY: topi, white kurta shalwar, ajrak sash --}}
++        <symbol id="sc-boy" viewBox="0 0 100 170">
++            <ellipse cx="50" cy="163" rx="28" ry="4" fill="rgba(0,0,0,.28)"/>
++            <path d="M33 104 L36 150 L47 150 L50 118 L53 150 L64 150 L67 104 Z" fill="#fff" stroke="#c9d1d8" stroke-width="1.2"/>
++            <rect x="32" y="150" width="16" height="7" rx="3" fill="#8D5A2B"/><rect x="52" y="150" width="16" height="7" rx="3" fill="#8D5A2B"/>
++            <path d="M30 74 Q50 66 70 74 L74 114 Q50 122 26 114 Z" fill="#fff" stroke="#c9d1d8" stroke-width="1.2"/>
++            <path d="M30 76 L19 108 L27 112 L36 86 Z M70 76 L81 108 L73 112 L64 86 Z" fill="#fff" stroke="#c9d1d8" stroke-width="1.2"/>
++            <circle cx="23" cy="113" r="4.6" fill="#E3A877"/><circle cx="77" cy="113" r="4.6" fill="#E3A877"/>
++            <path d="M32 72 L41 69 L75 108 L66 116 Z" fill="url(#scp-ajr)" stroke="#3b0610" stroke-width=".9"/>
++            <path d="M44 70 L50 80 L56 70 Z" fill="#E3A877"/>
++            <circle cx="29" cy="47" r="4.4" fill="#E3A877"/><circle cx="71" cy="47" r="4.4" fill="#E3A877"/>
++            <circle cx="50" cy="46" r="22" fill="#E3A877"/>
++            <path d="M29 44 Q30 25 50 24 Q70 25 71 44 Q64 35 50 35 Q36 35 29 44 Z" fill="#1b1b1b"/>
++            <path d="M26 38 Q26 13 50 12 Q74 13 74 38 L63 38 A13 13 0 0 0 37 38 Z" fill="#A31D35" stroke="#FFD23F" stroke-width="1.6"/>
++            <g fill="#fff"><circle cx="50" cy="22" r="2.6"/><circle cx="39" cy="27" r="2"/><circle cx="61" cy="27" r="2"/><circle cx="32" cy="34" r="1.8"/><circle cx="68" cy="34" r="1.8"/></g>
++            <g fill="#FFD23F"><circle cx="50" cy="22" r="1"/><circle cx="39" cy="27" r=".8"/><circle cx="61" cy="27" r=".8"/></g>
++            <ellipse cx="41" cy="50" rx="3.2" ry="4" fill="#2b1a12"/><ellipse cx="59" cy="50" rx="3.2" ry="4" fill="#2b1a12"/>
++            <circle cx="42.1" cy="48.5" r="1.1" fill="#fff"/><circle cx="60.1" cy="48.5" r="1.1" fill="#fff"/>
++            <path d="M36 43 Q41 40 46 43 M54 43 Q59 40 64 43" stroke="#1b1b1b" stroke-width="1.6" fill="none" stroke-linecap="round"/>
++            <path d="M50 53 Q47.5 58 51 58" stroke="#b97a4d" stroke-width="1.4" fill="none" stroke-linecap="round"/>
++            <path d="M42 61 Q50 68 58 61" stroke="#7a2c1c" stroke-width="1.9" fill="none" stroke-linecap="round"/>
++            <circle cx="35" cy="58" r="4" fill="#ff8a7a" opacity=".35"/><circle cx="65" cy="58" r="4" fill="#ff8a7a" opacity=".35"/>
++        </symbol>
++
++        {{-- GIRL: dupatta, mirror-work choli, flared skirt with rilli and ajrak bands --}}
++        <symbol id="sc-girl" viewBox="0 0 100 170">
++            <ellipse cx="50" cy="163" rx="34" ry="4" fill="rgba(0,0,0,.28)"/>
++            <path d="M24 52 Q24 18 50 16 Q76 18 76 52 L81 102 L68 97 Q67 72 62 64 L38 64 Q33 72 32 97 L19 102 Z" fill="url(#scp-ajr)" stroke="#FFD23F" stroke-width="1.6"/>
++            <path d="M34 96 L66 96 L86 152 Q50 162 14 152 Z" fill="#B3122B" stroke="#5E0B18" stroke-width="1"/>
++            <polygon points="27.3,116 72.7,116 76,126 24,126" fill="url(#scp-rl)"/>
++            <polygon points="19.3,139 80.7,139 83.3,147 16.7,147" fill="url(#scp-ajr)"/>
++            <g fill="#fff" stroke="#FFD23F" stroke-width="1"><circle cx="32" cy="132" r="2.3"/><circle cx="44" cy="133" r="2.3"/><circle cx="56" cy="133" r="2.3"/><circle cx="68" cy="132" r="2.3"/></g>
++            <path d="M33 72 Q50 64 67 72 L70 97 L30 97 Z" fill="#B3122B" stroke="#5E0B18" stroke-width="1"/>
++            <path d="M36 70 Q50 84 64 70 L66 80 Q50 94 34 80 Z" fill="url(#scp-rl)"/>
++            <g fill="#fff" stroke="#FFD23F" stroke-width=".9"><circle cx="41" cy="91" r="2.4"/><circle cx="50" cy="93" r="2.4"/><circle cx="59" cy="91" r="2.4"/></g>
++            <rect x="29" y="96" width="42" height="5" rx="2" fill="#FFD23F"/>
++            <g fill="#fff"><circle cx="35" cy="98.5" r="1.1"/><circle cx="43" cy="98.5" r="1.1"/><circle cx="51" cy="98.5" r="1.1"/><circle cx="59" cy="98.5" r="1.1"/><circle cx="66" cy="98.5" r="1.1"/></g>
++            <path d="M32 74 L21 100 L29 104 L37 84 Z M68 74 L79 100 L71 104 L63 84 Z" fill="#B3122B" stroke="#5E0B18" stroke-width="1"/>
++            <circle cx="24" cy="105" r="4.4" fill="#E3A877"/><circle cx="76" cy="105" r="4.4" fill="#E3A877"/>
++            <circle cx="50" cy="47" r="20" fill="#E3A877"/>
++            <path d="M30 46 Q31 27 50 27 Q69 27 70 46 Q61 36 50 36 Q39 36 30 46 Z" fill="#1b1b1b"/>
++            <path d="M50 27 L50 36" stroke="#3a2a22" stroke-width="1.2"/>
++            <circle cx="30" cy="60" r="3.2" fill="#FFD23F"/><path d="M30 63 L30 68" stroke="#FFD23F" stroke-width="2" stroke-linecap="round"/>
++            <circle cx="70" cy="60" r="3.2" fill="#FFD23F"/><path d="M70 63 L70 68" stroke="#FFD23F" stroke-width="2" stroke-linecap="round"/>
++            <ellipse cx="42" cy="49" rx="3" ry="3.8" fill="#2b1a12"/><ellipse cx="58" cy="49" rx="3" ry="3.8" fill="#2b1a12"/>
++            <circle cx="43" cy="47.6" r="1" fill="#fff"/><circle cx="59" cy="47.6" r="1" fill="#fff"/>
++            <path d="M37 43 Q42 40 47 43 M53 43 Q58 40 63 43" stroke="#1b1b1b" stroke-width="1.5" fill="none" stroke-linecap="round"/>
++            <path d="M50 52 Q48 57 51 57" stroke="#b97a4d" stroke-width="1.3" fill="none" stroke-linecap="round"/>
++            <circle cx="47.2" cy="56.2" r="2" fill="none" stroke="#FFD23F" stroke-width="1"/>
++            <path d="M43 60 Q50 66 57 60" stroke="#B3122B" stroke-width="2.2" fill="none" stroke-linecap="round"/>
++            <circle cx="36" cy="57" r="3.8" fill="#ff8a7a" opacity=".38"/><circle cx="64" cy="57" r="3.8" fill="#ff8a7a" opacity=".38"/>
++        </symbol>
++
++        {{-- MAN: cream kurta, ajrak shawl, topi, moustache --}}
++        <symbol id="sc-man" viewBox="0 0 100 170">
++            <ellipse cx="50" cy="163" rx="30" ry="4" fill="rgba(0,0,0,.28)"/>
++            <path d="M32 112 L35 150 L48 150 L50 122 L52 150 L65 150 L68 112 Z" fill="#F3E6C8" stroke="#cdbb92" stroke-width="1.2"/>
++            <rect x="31" y="150" width="18" height="7" rx="3" fill="#6b3f1d"/><rect x="51" y="150" width="18" height="7" rx="3" fill="#6b3f1d"/>
++            <path d="M28 72 Q50 62 72 72 L76 124 Q50 132 24 124 Z" fill="#F3E6C8" stroke="#cdbb92" stroke-width="1.2"/>
++            <path d="M28 74 L17 116 L26 120 L36 88 Z M72 74 L83 116 L74 120 L64 88 Z" fill="#F3E6C8" stroke="#cdbb92" stroke-width="1.2"/>
++            <circle cx="21" cy="121" r="4.8" fill="#C98B5B"/><circle cx="79" cy="121" r="4.8" fill="#C98B5B"/>
++            <path d="M27 70 Q50 60 73 70 L77 78 Q50 70 23 78 Z" fill="url(#scp-ajr)" stroke="#3b0610" stroke-width=".9"/>
++            <path d="M27 72 L33 72 L38 140 L28 140 Z" fill="url(#scp-ajr)" stroke="#3b0610" stroke-width=".9"/>
++            <path d="M73 72 L67 72 L62 140 L72 140 Z" fill="url(#scp-ajr)" stroke="#3b0610" stroke-width=".9"/>
++            <path d="M44 68 L50 78 L56 68 Z" fill="#C98B5B"/>
++            <circle cx="30" cy="43" r="4.4" fill="#C98B5B"/><circle cx="70" cy="43" r="4.4" fill="#C98B5B"/>
++            <circle cx="50" cy="42" r="21" fill="#C98B5B"/>
++            <path d="M29 40 Q30 22 50 21 Q70 22 71 40 Q64 31 50 31 Q36 31 29 40 Z" fill="#1b1b1b"/>
++            <path d="M27 35 Q27 11 50 10 Q73 11 73 35 L63 35 A13 13 0 0 0 37 35 Z" fill="#A31D35" stroke="#FFD23F" stroke-width="1.6"/>
++            <g fill="#fff"><circle cx="50" cy="19" r="2.6"/><circle cx="39" cy="24" r="2"/><circle cx="61" cy="24" r="2"/><circle cx="33" cy="31" r="1.8"/><circle cx="67" cy="31" r="1.8"/></g>
++            <ellipse cx="41" cy="45" rx="2.8" ry="3.4" fill="#2b1a12"/><ellipse cx="59" cy="45" rx="2.8" ry="3.4" fill="#2b1a12"/>
++            <circle cx="42" cy="43.8" r="1" fill="#fff"/><circle cx="60" cy="43.8" r="1" fill="#fff"/>
++            <path d="M35 39 Q41 36 47 39 M53 39 Q59 36 65 39" stroke="#1b1b1b" stroke-width="1.9" fill="none" stroke-linecap="round"/>
++            <path d="M50 48 Q47.5 53 51 53" stroke="#9c6a42" stroke-width="1.4" fill="none" stroke-linecap="round"/>
++            <path d="M38 56 Q44 51 50 55 Q56 51 62 56 Q56 58 50 57 Q44 58 38 56 Z" fill="#1b1b1b"/>
++            <path d="M42 61 Q50 66 58 61" stroke="#7a2c1c" stroke-width="1.8" fill="none" stroke-linecap="round"/>
++            <path d="M33 54 Q36 70 50 72 Q64 70 67 54 Q62 64 50 65 Q38 64 33 54 Z" fill="#1b1b1b"/>
++        </symbol>
++
++        {{-- WOMAN: long blue frock with rilli yoke and ajrak dupatta --}}
++        <symbol id="sc-woman" viewBox="0 0 100 170">
++            <ellipse cx="50" cy="163" rx="32" ry="4" fill="rgba(0,0,0,.28)"/>
++            <path d="M23 50 Q23 15 50 13 Q77 15 77 50 L83 112 L69 106 Q68 70 62 62 L38 62 Q32 70 31 106 L17 112 Z" fill="url(#scp-ajr)" stroke="#FFD23F" stroke-width="1.6"/>
++            <path d="M33 72 Q50 64 67 72 L72 104 L88 156 Q50 164 12 156 L28 104 Z" fill="#0D47A1" stroke="#06265e" stroke-width="1"/>
++            <path d="M35 70 Q50 84 65 70 L67 80 Q50 94 33 80 Z" fill="url(#scp-rl)"/>
++            <path d="M28.6 104 L71.4 104 L74 114 L26 114 Z" fill="url(#scp-rl)"/>
++            <polygon points="19.5,138 80.5,138 83.5,148 16.5,148" fill="url(#scp-ajr)"/>
++            <g fill="#fff" stroke="#FFD23F" stroke-width=".9"><circle cx="42" cy="92" r="2.4"/><circle cx="50" cy="94" r="2.4"/><circle cx="58" cy="92" r="2.4"/><circle cx="34" cy="127" r="2.2"/><circle cx="46" cy="129" r="2.2"/><circle cx="58" cy="129" r="2.2"/><circle cx="68" cy="127" r="2.2"/></g>
++            <path d="M32 74 L20 108 L28 112 L37 86 Z M68 74 L80 108 L72 112 L63 86 Z" fill="#0D47A1" stroke="#06265e" stroke-width="1"/>
++            <circle cx="23" cy="113" r="4.4" fill="#E3A877"/><circle cx="77" cy="113" r="4.4" fill="#E3A877"/>
++            <circle cx="50" cy="45" r="20" fill="#E3A877"/>
++            <path d="M30 44 Q31 25 50 25 Q69 25 70 44 Q61 34 50 34 Q39 34 30 44 Z" fill="#1b1b1b"/>
++            <path d="M50 25 L50 34" stroke="#3a2a22" stroke-width="1.2"/>
++            <circle cx="30" cy="58" r="3.2" fill="#FFD23F"/><path d="M30 61 L30 66" stroke="#FFD23F" stroke-width="2" stroke-linecap="round"/>
++            <circle cx="70" cy="58" r="3.2" fill="#FFD23F"/><path d="M70 61 L70 66" stroke="#FFD23F" stroke-width="2" stroke-linecap="round"/>
++            <ellipse cx="42" cy="47" rx="3" ry="3.8" fill="#2b1a12"/><ellipse cx="58" cy="47" rx="3" ry="3.8" fill="#2b1a12"/>
++            <circle cx="43" cy="45.6" r="1" fill="#fff"/><circle cx="59" cy="45.6" r="1" fill="#fff"/>
++            <path d="M37 41 Q42 38 47 41 M53 41 Q58 38 63 41" stroke="#1b1b1b" stroke-width="1.5" fill="none" stroke-linecap="round"/>
++            <path d="M50 50 Q48 55 51 55" stroke="#b97a4d" stroke-width="1.3" fill="none" stroke-linecap="round"/>
++            <path d="M43 58 Q50 64 57 58" stroke="#B3122B" stroke-width="2.2" fill="none" stroke-linecap="round"/>
++            <circle cx="36" cy="55" r="3.8" fill="#ff8a7a" opacity=".38"/><circle cx="64" cy="55" r="3.8" fill="#ff8a7a" opacity=".38"/>
++        </symbol>
++    </defs>
++</svg>
++<div class="sc-folk" aria-hidden="true">
++    <svg viewBox="0 0 100 170"><use href="#sc-man"/></svg>
++    <svg viewBox="0 0 100 170"><use href="#sc-boy"/></svg>
++    <svg viewBox="0 0 100 170"><use href="#sc-girl"/></svg>
++    <svg viewBox="0 0 100 170"><use href="#sc-woman"/></svg>
++</div>
+diff --git a/resources/views/pages/_sindhi-ribbon.blade.php b/resources/views/pages/_sindhi-ribbon.blade.php
+index 815b5c4..51ebd54 100644
+--- a/resources/views/pages/_sindhi-ribbon.blade.php
++++ b/resources/views/pages/_sindhi-ribbon.blade.php
+@@ -3,15 +3,15 @@
+     <defs>
+         <symbol id="sc-topi" viewBox="0 0 120 90">
+             <path d="M8 74 Q6 22 60 16 Q114 22 112 74 L86 74 A26 26 0 0 0 34 74 Z" fill="#A31D35" stroke="#F2C94C" stroke-width="2.5"/>
+-            <path d="M34 72 A26 26 0 0 1 86 72" fill="none" stroke="#12204F" stroke-width="8" stroke-linecap="round"/>
++            <path d="M34 72 A26 26 0 0 1 86 72" fill="none" stroke="#5E0B18" stroke-width="8" stroke-linecap="round"/>
+             <path d="M34 72 A26 26 0 0 1 86 72" fill="none" stroke="#F2C94C" stroke-width="2" stroke-dasharray="3 4"/>
+             <g fill="#fff" stroke="#F2C94C" stroke-width="1.2"><circle cx="60" cy="34" r="6"/><circle cx="42" cy="44" r="4.5"/><circle cx="78" cy="44" r="4.5"/><circle cx="26" cy="58" r="3.6"/><circle cx="94" cy="58" r="3.6"/></g>
+-            <g fill="#12204F"><circle cx="60" cy="34" r="2.2"/><circle cx="42" cy="44" r="1.7"/><circle cx="78" cy="44" r="1.7"/></g>
++            <g fill="#5E0B18"><circle cx="60" cy="34" r="2.2"/><circle cx="42" cy="44" r="1.7"/><circle cx="78" cy="44" r="1.7"/></g>
+         </symbol>
+         <symbol id="sc-mohenjo" viewBox="0 0 100 70"><g fill="currentColor"><rect x="8" y="58" width="84" height="6"/><rect x="16" y="50" width="68" height="8"/><rect x="26" y="42" width="48" height="8"/><rect x="40" y="26" width="20" height="16"/><path d="M42 26 Q50 10 58 26 Z"/><rect x="48.5" y="6" width="3" height="9"/></g></symbol>
+         <symbol id="sc-makli" viewBox="0 0 100 70"><g fill="currentColor"><rect x="6" y="58" width="88" height="6"/><rect x="12" y="38" width="22" height="20"/><path d="M12 38 Q23 18 34 38 Z"/><rect x="40" y="32" width="24" height="26"/><path d="M40 32 Q52 8 64 32 Z"/><rect x="70" y="40" width="20" height="18"/><path d="M70 40 Q80 22 90 40 Z"/></g></symbol>
+-        <symbol id="sc-fort" viewBox="0 0 100 70"><g fill="currentColor"><rect x="4" y="30" width="92" height="30"/><rect x="2" y="16" width="16" height="44" rx="3"/><rect x="82" y="16" width="16" height="44" rx="3"/><rect x="40" y="38" width="20" height="22" rx="10" fill="#12204F"/></g></symbol>
+-        <symbol id="sc-kotdiji" viewBox="0 0 100 70"><g fill="currentColor"><rect x="10" y="26" width="80" height="34"/><rect x="6" y="14" width="18" height="46"/><rect x="76" y="14" width="18" height="46"/><rect x="38" y="8" width="24" height="52"/><path d="M38 8 L50 0 L62 8 Z"/><rect x="45" y="40" width="10" height="20" rx="5" fill="#12204F"/></g></symbol>
++        <symbol id="sc-fort" viewBox="0 0 100 70"><g fill="currentColor"><rect x="4" y="30" width="92" height="30"/><rect x="2" y="16" width="16" height="44" rx="3"/><rect x="82" y="16" width="16" height="44" rx="3"/><rect x="40" y="38" width="20" height="22" rx="10" fill="#5E0B18"/></g></symbol>
++        <symbol id="sc-kotdiji" viewBox="0 0 100 70"><g fill="currentColor"><rect x="10" y="26" width="80" height="34"/><rect x="6" y="14" width="18" height="46"/><rect x="76" y="14" width="18" height="46"/><rect x="38" y="8" width="24" height="52"/><path d="M38 8 L50 0 L62 8 Z"/><rect x="45" y="40" width="10" height="20" rx="5" fill="#5E0B18"/></g></symbol>
+         <symbol id="sc-masjid" viewBox="0 0 100 70"><g fill="currentColor"><rect x="6" y="58" width="88" height="6"/><rect x="10" y="40" width="80" height="18"/><path d="M12 40 Q22 22 32 40 Z"/><path d="M56 40 Q66 22 76 40 Z"/><path d="M32 40 Q50 6 68 40 Z"/></g></symbol>
+         <symbol id="sc-bhit" viewBox="0 0 100 70"><g fill="currentColor"><rect x="6" y="58" width="88" height="6"/><rect x="26" y="36" width="48" height="22"/><path d="M28 36 Q50 4 72 36 Z"/><rect x="14" y="24" width="7" height="34"/><rect x="79" y="24" width="7" height="34"/><path d="M13 24 L17.5 14 L22 24 Z"/><path d="M78 24 L82.5 14 L87 24 Z"/></g></symbol>
+     </defs>
+diff --git a/resources/views/pages/home.blade.php b/resources/views/pages/home.blade.php
+index 578ee6d..da62a45 100644
+--- a/resources/views/pages/home.blade.php
++++ b/resources/views/pages/home.blade.php
+@@ -95,7 +95,7 @@
+ @endif
+ 
+ <div class="hm-hero{{ !empty($info->school_photo_url) ? ' photo' : '' }}{{ ($festive ?? null) === 'sindhi' ? ' sc-on' : '' }}"@if (!empty($info->school_photo_url)) style="background-image:linear-gradient(180deg,rgba(6,54,50,.5) 0%,rgba(6,54,50,.68) 45%,rgba(4,36,32,.95) 100%),url('{{ $info->school_photo_url }}')"@endif>
+-    @if (($festive ?? null) === 'sindhi')@include('pages._sindhi-float')@endif
++    @if (($festive ?? null) === 'sindhi')@include('pages._sindhi-float')@include('pages._sindhi-folk')@endif
+     <div class="in">
+         <span class="hm-pill">GOVERNMENT SCHOOL &middot; GARHO</span>
+         <h1>{{ $info->name ?? 'GBLSS Garho' }}</h1>
