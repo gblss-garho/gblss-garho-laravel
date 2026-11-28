@@ -35,3 +35,4 @@ missing_dob.csv
 *.sql.gz
 
 /public/uploads/
+*.patch
