@@ -1,67 +1,84 @@
-/* ============ Sindhi Culture Day theme ============ */
-/* ajrak tile (indigo, madder-red, white): used as the pattern for tabs, tiles and strips */
-:root { --aj: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2312204F'/%3E%3Cpolygon points='32,3 61,32 32,61 3,32' fill='%23A31D35'/%3E%3Cpolygon points='32,11 53,32 32,53 11,32' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3Cpolygon points='32,19 45,32 32,45 19,32' fill='%2312204F'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%23fff'/%3E%3Ccircle cx='32' cy='32' r='2.6' fill='%23A31D35'/%3E%3Ccircle cx='3' cy='3' r='4' fill='%23fff'/%3E%3Ccircle cx='61' cy='3' r='4' fill='%23fff'/%3E%3Ccircle cx='3' cy='61' r='4' fill='%23fff'/%3E%3Ccircle cx='61' cy='61' r='4' fill='%23fff'/%3E%3Ccircle cx='32' cy='3' r='2' fill='%23fff'/%3E%3Ccircle cx='32' cy='61' r='2' fill='%23fff'/%3E%3Ccircle cx='3' cy='32' r='2' fill='%23fff'/%3E%3Ccircle cx='61' cy='32' r='2' fill='%23fff'/%3E%3C/svg%3E"); }
+:root { --ajr: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Crect width='72' height='72' fill='%235E0B18'/%3E%0A%3Ccircle cx='36' cy='36' r='27' fill='%23B3122B'/%3E%3Ccircle cx='36' cy='36' r='27' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-dasharray='0.1 6.1'/%3E%0A%3Ccircle cx='36' cy='36' r='19' fill='%235E0B18'/%3E%3Ccircle cx='36' cy='36' r='19' fill='none' stroke='%23fff' stroke-width='1.4'/%3E%0A%3Crect x='26' y='26' width='20' height='20' fill='%23fff'/%3E%3Crect x='26' y='26' width='20' height='20' fill='%23fff' transform='rotate(45 36 36)'/%3E%0A%3Crect x='30' y='30' width='12' height='12' fill='%23B3122B'/%3E%3Crect x='30' y='30' width='12' height='12' fill='%23B3122B' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='3.2' fill='%23fff'/%3E%0A%3Cg fill='%2316090B' stroke='%23fff' stroke-width='1.2'%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(0,0)'/%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(72,0)'/%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(0,72)'/%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(72,72)'/%3E%3C/g%3E%0A%3Cg fill='%23fff'%3E%3Ccircle cx='36' cy='3' r='3.4'/%3E%3Ccircle cx='36' cy='69' r='3.4'/%3E%3Ccircle cx='3' cy='36' r='3.4'/%3E%3Ccircle cx='69' cy='36' r='3.4'/%3E%3Ccircle cx='13' cy='13' r='2'/%3E%3Ccircle cx='59' cy='13' r='2'/%3E%3Ccircle cx='13' cy='59' r='2'/%3E%3Ccircle cx='59' cy='59' r='2'/%3E%3C/g%3E%0A%3Cg fill='%235E0B18'%3E%3Ccircle cx='36' cy='3' r='1.5'/%3E%3Ccircle cx='36' cy='69' r='1.5'/%3E%3Ccircle cx='3' cy='36' r='1.5'/%3E%3Ccircle cx='69' cy='36' r='1.5'/%3E%3C/g%3E%3C/svg%3E"); --ajb: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Crect width='72' height='72' fill='%230B2A6B'/%3E%0A%3Ccircle cx='36' cy='36' r='27' fill='%231F74DE'/%3E%3Ccircle cx='36' cy='36' r='27' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-dasharray='0.1 6.1'/%3E%0A%3Ccircle cx='36' cy='36' r='19' fill='%230B2A6B'/%3E%3Ccircle cx='36' cy='36' r='19' fill='none' stroke='%23fff' stroke-width='1.4'/%3E%0A%3Crect x='26' y='26' width='20' height='20' fill='%23fff'/%3E%3Crect x='26' y='26' width='20' height='20' fill='%23fff' transform='rotate(45 36 36)'/%3E%0A%3Crect x='30' y='30' width='12' height='12' fill='%231F74DE'/%3E%3Crect x='30' y='30' width='12' height='12' fill='%231F74DE' transform='rotate(45 36 36)'/%3E%3Ccircle cx='36' cy='36' r='3.2' fill='%23fff'/%3E%0A%3Cg fill='%2306163F' stroke='%23fff' stroke-width='1.2'%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(0,0)'/%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(72,0)'/%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(0,72)'/%3E%3Cpolygon points='0,-9 9,0 0,9 -9,0' transform='translate(72,72)'/%3E%3C/g%3E%0A%3Cg fill='%23fff'%3E%3Ccircle cx='36' cy='3' r='3.4'/%3E%3Ccircle cx='36' cy='69' r='3.4'/%3E%3Ccircle cx='3' cy='36' r='3.4'/%3E%3Ccircle cx='69' cy='36' r='3.4'/%3E%3Ccircle cx='13' cy='13' r='2'/%3E%3Ccircle cx='59' cy='13' r='2'/%3E%3Ccircle cx='13' cy='59' r='2'/%3E%3Ccircle cx='59' cy='59' r='2'/%3E%3C/g%3E%0A%3Cg fill='%230B2A6B'%3E%3Ccircle cx='36' cy='3' r='1.5'/%3E%3Ccircle cx='36' cy='69' r='1.5'/%3E%3Ccircle cx='3' cy='36' r='1.5'/%3E%3Ccircle cx='69' cy='36' r='1.5'/%3E%3C/g%3E%3C/svg%3E"); --rl: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230C5C3D'/%3E%0A%3Cpolygon points='32,2 62,32 32,62 2,32' fill='%23F28C28'/%3E%3Cpolygon points='32,12 52,32 32,52 12,32' fill='%23D81B60'/%3E%3Cpolygon points='32,20 44,32 32,44 20,32' fill='%23FFD23F'/%3E%0A%3Ccircle cx='32' cy='32' r='6' fill='%23fff'/%3E%3Ccircle cx='32' cy='32' r='2.6' fill='%231565C0'/%3E%0A%3Cg fill='%23fff'%3E%3Ccircle cx='32' cy='7' r='1.8'/%3E%3Ccircle cx='32' cy='57' r='1.8'/%3E%3Ccircle cx='7' cy='32' r='1.8'/%3E%3Ccircle cx='57' cy='32' r='1.8'/%3E%3C/g%3E%0A%3Cg fill='%231E88E5' stroke='%23fff' stroke-width='1'%3E%3Cpolygon points='0,-7 7,0 0,7 -7,0' transform='translate(0,0)'/%3E%3Cpolygon points='0,-7 7,0 0,7 -7,0' transform='translate(64,0)'/%3E%3Cpolygon points='0,-7 7,0 0,7 -7,0' transform='translate(0,64)'/%3E%3Cpolygon points='0,-7 7,0 0,7 -7,0' transform='translate(64,64)'/%3E%3C/g%3E%3C/svg%3E"); }
+/* Sindhi Culture Day theme v3: madder-red & indigo ajrak, rilli patchwork, sky blue, sun yellow.
+   --ajr red ajrak, --ajb blue ajrak, --rl rilli (multicolour embroidery). */
 
-/* slim greeting ribbon above the hero */
-.sc-rib { position: relative; margin: 14px 0 16px; border-radius: 16px; padding: 7px; background: var(--aj) 0 0 / 28px 28px; box-shadow: 0 10px 26px rgba(18,32,79,.3); animation: scSlide 30s linear infinite; }
-@keyframes scSlide { to { background-position: 28px 0; } }
-.sc-rib-in { display: flex; align-items: center; gap: 12px; border-radius: 11px; padding: 8px 14px; background: linear-gradient(90deg, #0B1535, #1D2F6E 50%, #0B1535); color: #fff; }
-.sc-rib-in svg.t { flex: none; width: 46px; height: 35px; filter: drop-shadow(0 3px 5px rgba(0,0,0,.4)); animation: scBob 3.6s ease-in-out infinite; }
+/* ---- greeting ribbon ---- */
+.sc-rib { position: relative; margin: 14px 0 16px; border-radius: 18px; padding: 8px; background: var(--ajr) 0 0 / 40px 40px; box-shadow: 0 12px 28px rgba(94,11,24,.38); animation: scSlide 36s linear infinite; }
+@keyframes scSlide { to { background-position: 40px 0; } }
+.sc-rib-in { position: relative; overflow: hidden; display: flex; align-items: center; gap: 12px; border-radius: 12px; padding: 10px 14px; color: #fff; background: radial-gradient(circle at 12% 50%, rgba(246,176,30,.55) 0, rgba(246,176,30,0) 34%), linear-gradient(100deg, #5E0B18, #8E1226 55%, #5E0B18); }
+.sc-rib-in svg.t { position: relative; flex: none; width: 50px; height: 38px; filter: drop-shadow(0 3px 5px rgba(0,0,0,.45)); animation: scBob 3.6s ease-in-out infinite; }
 @keyframes scBob { 50% { transform: translateY(-3px) rotate(-3deg); } }
-.sc-rib-tx { flex: 1; text-align: center; line-height: 1.35; }
-.sc-rib-tx .sd { display: block; font-size: 16px; white-space: nowrap; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.45); }
-.sc-rib-tx small { display: block; text-transform: uppercase; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10.5px; letter-spacing: 1.2px; font-weight: 700; color: #F2C94C; }
-.sc-rib-tx em { display: none; }
-.sc-day { flex: none; text-align: center; padding: 3px 11px; border-radius: 10px; background: #A31D35; color: #fff; line-height: 1.05; box-shadow: 0 4px 10px rgba(163,29,53,.45); }
+.sc-rib-tx { position: relative; flex: 1; text-align: center; line-height: 1.35; }
+.sc-rib-tx .sd { display: block; font-size: 16px; white-space: nowrap; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.5); }
+.sc-rib-tx small { display: block; text-transform: uppercase; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10px; letter-spacing: 1.1px; font-weight: 700; color: #FFD66B; }
+.sc-day { position: relative; flex: none; text-align: center; padding: 3px 11px; border-radius: 10px; background: #fff; color: #8E1226; line-height: 1.05; box-shadow: 0 4px 10px rgba(0,0,0,.35); }
 .sc-day b { display: block; font-family: 'Baloo 2', serif; font-size: 22px; }
 .sc-day span { font-size: 9.5px; letter-spacing: .8px; font-weight: 700; }
-/* heritage-site ticker */
-.sc-tick { margin-top: 7px; overflow: hidden; border-radius: 11px; background: #0B1535; border: 1px solid rgba(242,201,76,.25); }
+/* heritage ticker on a sky-blue band */
+.sc-tick { margin-top: 8px; overflow: hidden; border-radius: 12px; background: linear-gradient(90deg, #0D47A1, #1E88E5 50%, #0D47A1); border: 2px solid #fff; }
 .sc-tick-run { display: inline-flex; white-space: nowrap; animation: scTick 46s linear infinite; padding: 6px 0; }
 .sc-tick:hover .sc-tick-run { animation-play-state: paused; }
 @keyframes scTick { to { transform: translateX(-50%); } }
-.sc-tk { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; color: #F2C94C; font-size: 13px; }
+.sc-tk { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; color: #FFE082; font-size: 13px; }
 .sc-tk svg { width: 34px; height: 24px; flex: none; }
 .sc-tk b { color: #fff; font-family: 'Baloo 2', 'Noto Serif', serif; font-weight: 600; }
-.sc-tk i { font-style: normal; color: #A31D35; }
+.sc-tk i { font-style: normal; color: #FFD23F; }
 
-/* floating ajrak diamonds, topis and landmarks over the hero */
+/* ---- floating over the hero: ajrak diamonds, rilli diamonds, mirror-work, topi, landmarks ---- */
 .sc-fl2 { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
 .sc-fl2 > * { position: absolute; bottom: -50px; opacity: 0; animation: scRise 12s linear infinite; }
-.sc-fl2 .d { width: 18px; height: 18px; background: var(--aj) center / 18px 18px; border: 2px solid #fff; transform: rotate(45deg); }
-.sc-fl2 svg { width: 38px; height: 28px; color: #F2C94C; }
-.sc-fl2 > :nth-child(1) { left: 6%; animation-delay: 0s; }  .sc-fl2 > :nth-child(2) { left: 20%; animation-delay: 3s; animation-duration: 15s; }
-.sc-fl2 > :nth-child(3) { left: 33%; animation-delay: 6s; }  .sc-fl2 > :nth-child(4) { left: 48%; animation-delay: 1.5s; animation-duration: 14s; }
-.sc-fl2 > :nth-child(5) { left: 61%; animation-delay: 8s; }  .sc-fl2 > :nth-child(6) { left: 74%; animation-delay: 4.5s; animation-duration: 16s; }
-.sc-fl2 > :nth-child(7) { left: 86%; animation-delay: 10s; } .sc-fl2 > :nth-child(8) { left: 93%; animation-delay: 2s; animation-duration: 13s; }
-@keyframes scRise { 0% { transform: translateY(0) rotate(0deg); opacity: 0; } 12% { opacity: .55; } 85% { opacity: .4; } 100% { transform: translateY(-520px) rotate(25deg); opacity: 0; } }
-.sc-fl2 .d { animation-name: scRiseD; }
-@keyframes scRiseD { 0% { transform: translateY(0) rotate(45deg); opacity: 0; } 12% { opacity: .6; } 85% { opacity: .4; } 100% { transform: translateY(-520px) rotate(225deg); opacity: 0; } }
+.sc-fl2 .d { width: 20px; height: 20px; background: var(--ajr) center / 20px 20px; border: 2px solid #fff; transform: rotate(45deg); }
+.sc-fl2 .r { width: 20px; height: 20px; background: var(--rl) center / 20px 20px; border: 2px solid #fff; transform: rotate(45deg); }
+.sc-fl2 .m { width: 16px; height: 16px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff 0 30%, #cfd8dc 31% 55%, #fff 56%); box-shadow: 0 0 0 3px #D81B60, 0 0 0 5px #FFD23F; }
+.sc-fl2 svg { width: 40px; height: 29px; color: #FFD23F; }
+.sc-fl2 > :nth-child(1) { left: 6%; animation-delay: 0s; }  .sc-fl2 > :nth-child(2) { left: 18%; animation-delay: 3s; animation-duration: 15s; }
+.sc-fl2 > :nth-child(3) { left: 30%; animation-delay: 6s; }  .sc-fl2 > :nth-child(4) { left: 42%; animation-delay: 1.5s; animation-duration: 14s; }
+.sc-fl2 > :nth-child(5) { left: 55%; animation-delay: 8s; }  .sc-fl2 > :nth-child(6) { left: 66%; animation-delay: 4.5s; animation-duration: 16s; }
+.sc-fl2 > :nth-child(7) { left: 77%; animation-delay: 10s; } .sc-fl2 > :nth-child(8) { left: 86%; animation-delay: 2s; animation-duration: 13s; }
+.sc-fl2 > :nth-child(9) { left: 94%; animation-delay: 7s; }  .sc-fl2 > :nth-child(10) { left: 12%; animation-delay: 9.5s; animation-duration: 17s; }
+@keyframes scRise { 0% { transform: translateY(0) rotate(0deg); opacity: 0; } 12% { opacity: .75; } 85% { opacity: .5; } 100% { transform: translateY(-520px) rotate(25deg); opacity: 0; } }
+.sc-fl2 .d, .sc-fl2 .r { animation-name: scRiseD; }
+@keyframes scRiseD { 0% { transform: translateY(0) rotate(45deg); opacity: 0; } 12% { opacity: .85; } 85% { opacity: .55; } 100% { transform: translateY(-520px) rotate(225deg); opacity: 0; } }
 
-/* ---- ajrak on the existing tabs / tiles / strips (home page only: body.sc-theme) ---- */
-.sc-theme .hm-hero .hm-strip { height: 14px; background: var(--aj) repeat-x 0 0 / 14px 14px; }
-.sc-theme .hm-stat:before, .sc-theme .hm-fc:before, .sc-theme .hm-t:before { height: 12px; background: var(--aj) repeat-x 0 0 / 12px 12px; }
-.sc-theme .hm-stat { padding-top: 26px; }
-.sc-theme .hm-fc { padding-top: 28px; }
-.sc-theme .hm-t { padding-top: 28px; }
-.sc-theme .hm-m { position: relative; padding-left: 20px; overflow: hidden; }
-.sc-theme .hm-m:before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 9px; background: var(--aj) repeat-y 0 0 / 9px 9px; }
-.sc-theme .hm-tabs button.on { background: #12204F; border-color: #A31D35; box-shadow: 0 0 0 2px #A31D35 inset; }
-.sc-theme .hm-lead { border-top: 0; position: relative; padding-top: 30px; }
-.sc-theme .hm-lead:before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 12px; background: var(--aj) repeat-x 0 0 / 12px 12px; border-radius: 18px 18px 0 0; }
-.sc-theme .notice-bar { box-shadow: 0 0 0 4px #12204F, 0 0 0 9px transparent; border: 0; position: relative; }
-.sc-theme .notice-bar:before, .sc-theme .notice-bar:after { content: ""; position: absolute; left: 0; right: 0; height: 6px; background: var(--aj) repeat-x 0 0 / 6px 6px; z-index: 1; }
+/* ---- ajrak / rilli on the existing tabs, tiles and strips (home page only: body.sc-theme) ---- */
+.sc-theme .hm-hero .hm-strip { height: 16px; background: var(--rl) repeat-x 0 0 / 16px 16px; }
+.sc-theme .hm-stat:before { height: 14px; background: var(--ajr) repeat-x 0 0 / 14px 14px; }
+.sc-theme .hm-fc:before { height: 14px; background: var(--rl) repeat-x 0 0 / 14px 14px; }
+.sc-theme .hm-t:before { height: 14px; background: var(--ajb) repeat-x 0 0 / 14px 14px; }
+.sc-theme .hm-stat { padding-top: 28px; }
+.sc-theme .hm-fc, .sc-theme .hm-t { padding-top: 30px; }
+.sc-theme .hm-m { position: relative; padding-left: 22px; overflow: hidden; }
+.sc-theme .hm-m:before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 10px; background: var(--ajr) repeat-y 0 0 / 10px 10px; }
+.sc-theme .hm-m:nth-child(even):before { background-image: var(--ajb); }
+.sc-theme .hm-tabs button.on { background: #8E1226; border-color: #5E0B18; box-shadow: 0 0 0 2px #FFD23F inset; }
+.sc-theme .hm-lead { border-top: 0; position: relative; padding-top: 32px; }
+.sc-theme .hm-lead:before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 14px; background: var(--ajr) repeat-x 0 0 / 14px 14px; border-radius: 18px 18px 0 0; }
+.sc-theme .notice-bar { position: relative; border: 0; }
+.sc-theme .notice-bar:before, .sc-theme .notice-bar:after { content: ""; position: absolute; left: 0; right: 0; height: 7px; background: var(--ajr) repeat-x 0 0 / 7px 7px; z-index: 1; }
 .sc-theme .notice-bar:before { top: 0; } .sc-theme .notice-bar:after { bottom: 0; }
-.sc-theme .hm-b1, .sc-theme .hm-b2, .sc-theme .hm-b3 { box-shadow: 0 0 0 3px #12204F, 0 0 0 5px #A31D35; }
+.sc-theme .hm-b1, .sc-theme .hm-b2, .sc-theme .hm-b3 { box-shadow: 0 0 0 3px #5E0B18, 0 0 0 5px #FFD23F; }
 /* page header + top and bottom tab bars */
-.sc-theme .site-head { border-bottom: 0; }
-.sc-theme .site-head:after { content: ""; display: block; height: 12px; background: var(--aj) repeat-x 0 0 / 12px 12px; }
-.sc-theme .nav a.on { background: #12204F; color: #fff; box-shadow: 0 0 0 2px #A31D35 inset; }
-.sc-theme .m-nav { background: var(--aj) 0 0 / 18px 18px; padding: 6px; gap: 4px; border-color: #12204F; }
-.sc-theme .m-nav a, .sc-theme .m-nav button { background: rgba(6,40,40,.97); min-width: 0; flex: 1; }
-.sc-theme .m-nav a.on, .sc-theme .m-nav button.on { background: #D9A91A; }
+.sc-theme .site-head:after { content: ""; display: block; height: 14px; background: var(--rl) repeat-x 0 0 / 14px 14px; }
+.sc-theme .nav a.on { background: #8E1226; color: #fff; box-shadow: 0 0 0 2px #FFD23F inset; }
+.sc-theme .m-nav { background: var(--ajr) 0 0 / 20px 20px; padding: 6px; gap: 4px; border-color: #5E0B18; }
+.sc-theme .m-nav a, .sc-theme .m-nav button { background: rgba(40,6,12,.96); min-width: 0; flex: 1; }
+.sc-theme .m-nav a.on, .sc-theme .m-nav button.on { background: #FFD23F; color: #5E0B18; }
 
 @media (prefers-reduced-motion: reduce) {
     .sc-rib, .sc-rib-in svg.t, .sc-tick-run, .sc-fl2 > * { animation: none !important; }
     .sc-fl2 { display: none; }
+}
+
+/* ---- illustrated Sindhi characters standing on the hero strip ---- */
+.sc-theme .hm-hero.sc-on .in { padding-bottom: 150px; }
+.sc-folk { position: absolute; left: 0; right: 0; bottom: 15px; z-index: 1; display: flex; justify-content: center; align-items: flex-end; gap: 2px; padding: 0 6px; pointer-events: none; }
+.sc-folk svg { width: 25%; max-width: 118px; height: auto; transform-origin: 50% 100%; animation: scSway 4.2s ease-in-out infinite; filter: drop-shadow(0 4px 6px rgba(0,0,0,.35)); }
+.sc-folk svg:nth-child(1) { width: 27%; max-width: 128px; } .sc-folk svg:nth-child(2) { width: 22%; max-width: 100px; animation-delay: .5s; }
+.sc-folk svg:nth-child(3) { animation-delay: 1s; } .sc-folk svg:nth-child(4) { width: 27%; max-width: 128px; animation-delay: 1.5s; }
+@keyframes scSway { 0%, 100% { transform: rotate(-1.4deg); } 50% { transform: rotate(1.4deg) translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .sc-folk svg { animation: none !important; } }
+@media (min-width: 700px) {
+    .sc-theme .hm-hero.sc-on .in { padding-bottom: 215px; }
+    .sc-folk svg { max-width: 100px; } .sc-folk svg:nth-child(1), .sc-folk svg:nth-child(4) { max-width: 108px; } .sc-folk svg:nth-child(2) { max-width: 84px; }
+    .sc-folk { gap: 14px; }
 }
