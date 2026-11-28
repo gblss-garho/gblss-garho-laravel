@@ -227,7 +227,7 @@
     </style>
 </head>
 @php $info = \Illuminate\Support\Facades\DB::table('school_info')->first(); @endphp
-<body class="{{ !empty($info->school_photo_url) ? 'has-bg' : '' }}"@if (!empty($info->school_photo_url)) style="--bgimg:url('{{ $info->school_photo_url }}')"@endif>
+<body class="{{ !empty($info->school_photo_url) ? 'has-bg' : '' }}{{ (($festive ?? null) === 'sindhi') ? ' sc-theme' : '' }}"@if (!empty($info->school_photo_url)) style="--bgimg:url('{{ $info->school_photo_url }}')"@endif>
 @php
     $u = auth()->user();
     $role = $u->role ?? null;

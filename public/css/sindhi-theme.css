@@ -1,0 +1,67 @@
+/* ============ Sindhi Culture Day theme ============ */
+/* ajrak tile (indigo, madder-red, white): used as the pattern for tabs, tiles and strips */
+:root { --aj: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%2312204F'/%3E%3Cpolygon points='32,3 61,32 32,61 3,32' fill='%23A31D35'/%3E%3Cpolygon points='32,11 53,32 32,53 11,32' fill='none' stroke='%23fff' stroke-width='1.6'/%3E%3Cpolygon points='32,19 45,32 32,45 19,32' fill='%2312204F'/%3E%3Ccircle cx='32' cy='32' r='6' fill='%23fff'/%3E%3Ccircle cx='32' cy='32' r='2.6' fill='%23A31D35'/%3E%3Ccircle cx='3' cy='3' r='4' fill='%23fff'/%3E%3Ccircle cx='61' cy='3' r='4' fill='%23fff'/%3E%3Ccircle cx='3' cy='61' r='4' fill='%23fff'/%3E%3Ccircle cx='61' cy='61' r='4' fill='%23fff'/%3E%3Ccircle cx='32' cy='3' r='2' fill='%23fff'/%3E%3Ccircle cx='32' cy='61' r='2' fill='%23fff'/%3E%3Ccircle cx='3' cy='32' r='2' fill='%23fff'/%3E%3Ccircle cx='61' cy='32' r='2' fill='%23fff'/%3E%3C/svg%3E"); }
+
+/* slim greeting ribbon above the hero */
+.sc-rib { position: relative; margin: 14px 0 16px; border-radius: 16px; padding: 7px; background: var(--aj) 0 0 / 28px 28px; box-shadow: 0 10px 26px rgba(18,32,79,.3); animation: scSlide 30s linear infinite; }
+@keyframes scSlide { to { background-position: 28px 0; } }
+.sc-rib-in { display: flex; align-items: center; gap: 12px; border-radius: 11px; padding: 8px 14px; background: linear-gradient(90deg, #0B1535, #1D2F6E 50%, #0B1535); color: #fff; }
+.sc-rib-in svg.t { flex: none; width: 46px; height: 35px; filter: drop-shadow(0 3px 5px rgba(0,0,0,.4)); animation: scBob 3.6s ease-in-out infinite; }
+@keyframes scBob { 50% { transform: translateY(-3px) rotate(-3deg); } }
+.sc-rib-tx { flex: 1; text-align: center; line-height: 1.35; }
+.sc-rib-tx .sd { display: block; font-size: 16px; white-space: nowrap; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.45); }
+.sc-rib-tx small { display: block; text-transform: uppercase; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 10.5px; letter-spacing: 1.2px; font-weight: 700; color: #F2C94C; }
+.sc-rib-tx em { display: none; }
+.sc-day { flex: none; text-align: center; padding: 3px 11px; border-radius: 10px; background: #A31D35; color: #fff; line-height: 1.05; box-shadow: 0 4px 10px rgba(163,29,53,.45); }
+.sc-day b { display: block; font-family: 'Baloo 2', serif; font-size: 22px; }
+.sc-day span { font-size: 9.5px; letter-spacing: .8px; font-weight: 700; }
+/* heritage-site ticker */
+.sc-tick { margin-top: 7px; overflow: hidden; border-radius: 11px; background: #0B1535; border: 1px solid rgba(242,201,76,.25); }
+.sc-tick-run { display: inline-flex; white-space: nowrap; animation: scTick 46s linear infinite; padding: 6px 0; }
+.sc-tick:hover .sc-tick-run { animation-play-state: paused; }
+@keyframes scTick { to { transform: translateX(-50%); } }
+.sc-tk { display: inline-flex; align-items: center; gap: 8px; padding: 0 18px; color: #F2C94C; font-size: 13px; }
+.sc-tk svg { width: 34px; height: 24px; flex: none; }
+.sc-tk b { color: #fff; font-family: 'Baloo 2', 'Noto Serif', serif; font-weight: 600; }
+.sc-tk i { font-style: normal; color: #A31D35; }
+
+/* floating ajrak diamonds, topis and landmarks over the hero */
+.sc-fl2 { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+.sc-fl2 > * { position: absolute; bottom: -50px; opacity: 0; animation: scRise 12s linear infinite; }
+.sc-fl2 .d { width: 18px; height: 18px; background: var(--aj) center / 18px 18px; border: 2px solid #fff; transform: rotate(45deg); }
+.sc-fl2 svg { width: 38px; height: 28px; color: #F2C94C; }
+.sc-fl2 > :nth-child(1) { left: 6%; animation-delay: 0s; }  .sc-fl2 > :nth-child(2) { left: 20%; animation-delay: 3s; animation-duration: 15s; }
+.sc-fl2 > :nth-child(3) { left: 33%; animation-delay: 6s; }  .sc-fl2 > :nth-child(4) { left: 48%; animation-delay: 1.5s; animation-duration: 14s; }
+.sc-fl2 > :nth-child(5) { left: 61%; animation-delay: 8s; }  .sc-fl2 > :nth-child(6) { left: 74%; animation-delay: 4.5s; animation-duration: 16s; }
+.sc-fl2 > :nth-child(7) { left: 86%; animation-delay: 10s; } .sc-fl2 > :nth-child(8) { left: 93%; animation-delay: 2s; animation-duration: 13s; }
+@keyframes scRise { 0% { transform: translateY(0) rotate(0deg); opacity: 0; } 12% { opacity: .55; } 85% { opacity: .4; } 100% { transform: translateY(-520px) rotate(25deg); opacity: 0; } }
+.sc-fl2 .d { animation-name: scRiseD; }
+@keyframes scRiseD { 0% { transform: translateY(0) rotate(45deg); opacity: 0; } 12% { opacity: .6; } 85% { opacity: .4; } 100% { transform: translateY(-520px) rotate(225deg); opacity: 0; } }
+
+/* ---- ajrak on the existing tabs / tiles / strips (home page only: body.sc-theme) ---- */
+.sc-theme .hm-hero .hm-strip { height: 14px; background: var(--aj) repeat-x 0 0 / 14px 14px; }
+.sc-theme .hm-stat:before, .sc-theme .hm-fc:before, .sc-theme .hm-t:before { height: 12px; background: var(--aj) repeat-x 0 0 / 12px 12px; }
+.sc-theme .hm-stat { padding-top: 26px; }
+.sc-theme .hm-fc { padding-top: 28px; }
+.sc-theme .hm-t { padding-top: 28px; }
+.sc-theme .hm-m { position: relative; padding-left: 20px; overflow: hidden; }
+.sc-theme .hm-m:before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 9px; background: var(--aj) repeat-y 0 0 / 9px 9px; }
+.sc-theme .hm-tabs button.on { background: #12204F; border-color: #A31D35; box-shadow: 0 0 0 2px #A31D35 inset; }
+.sc-theme .hm-lead { border-top: 0; position: relative; padding-top: 30px; }
+.sc-theme .hm-lead:before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 12px; background: var(--aj) repeat-x 0 0 / 12px 12px; border-radius: 18px 18px 0 0; }
+.sc-theme .notice-bar { box-shadow: 0 0 0 4px #12204F, 0 0 0 9px transparent; border: 0; position: relative; }
+.sc-theme .notice-bar:before, .sc-theme .notice-bar:after { content: ""; position: absolute; left: 0; right: 0; height: 6px; background: var(--aj) repeat-x 0 0 / 6px 6px; z-index: 1; }
+.sc-theme .notice-bar:before { top: 0; } .sc-theme .notice-bar:after { bottom: 0; }
+.sc-theme .hm-b1, .sc-theme .hm-b2, .sc-theme .hm-b3 { box-shadow: 0 0 0 3px #12204F, 0 0 0 5px #A31D35; }
+/* page header + top and bottom tab bars */
+.sc-theme .site-head { border-bottom: 0; }
+.sc-theme .site-head:after { content: ""; display: block; height: 12px; background: var(--aj) repeat-x 0 0 / 12px 12px; }
+.sc-theme .nav a.on { background: #12204F; color: #fff; box-shadow: 0 0 0 2px #A31D35 inset; }
+.sc-theme .m-nav { background: var(--aj) 0 0 / 18px 18px; padding: 6px; gap: 4px; border-color: #12204F; }
+.sc-theme .m-nav a, .sc-theme .m-nav button { background: rgba(6,40,40,.97); min-width: 0; flex: 1; }
+.sc-theme .m-nav a.on, .sc-theme .m-nav button.on { background: #D9A91A; }
+
+@media (prefers-reduced-motion: reduce) {
+    .sc-rib, .sc-rib-in svg.t, .sc-tick-run, .sc-fl2 > * { animation: none !important; }
+    .sc-fl2 { display: none; }
+}

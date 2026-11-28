@@ -90,10 +90,12 @@
 @endif
 
 @if (($festive ?? null) === 'sindhi')
-    @include('pages._sindhi-culture')
+    <link rel="stylesheet" href="{{ asset('css/sindhi-theme.css') }}?v={{ @filemtime(public_path('css/sindhi-theme.css')) }}">
+    @include('pages._sindhi-ribbon')
 @endif
 
 <div class="hm-hero{{ !empty($info->school_photo_url) ? ' photo' : '' }}{{ ($festive ?? null) === 'sindhi' ? ' sc-on' : '' }}"@if (!empty($info->school_photo_url)) style="background-image:linear-gradient(180deg,rgba(6,54,50,.5) 0%,rgba(6,54,50,.68) 45%,rgba(4,36,32,.95) 100%),url('{{ $info->school_photo_url }}')"@endif>
+    @if (($festive ?? null) === 'sindhi')@include('pages._sindhi-float')@endif
     <div class="in">
         <span class="hm-pill">GOVERNMENT SCHOOL &middot; GARHO</span>
         <h1>{{ $info->name ?? 'GBLSS Garho' }}</h1>
